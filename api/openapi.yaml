@@ -1,0 +1,504 @@
+openapi: 3.0.3
+info:
+  title: ACMG-AMP MCP Server API
+  description: |
+    A Golang-based backend service that implements the ACMG/AMP guidelines for genetic variant classification.
+    The system provides standardized variant interpretation capabilities for both somatic and germline mutations,
+    with integration support for AI agents like ChatGPT, Claude, and Gemini.
+  version: 1.0.0
+  contact:
+    name: ACMG-AMP MCP Server
+    url: https://github.com/acmg-amp-mcp-server
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+  - url: https://api.acmg-amp-mcp.example.com
+    description: Production server
+
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Returns the health status of the service
+      operationId: getHealth
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+
+  /api/v1/variants/interpret:
+    post:
+      summary: Interpret genetic variant
+      description: |
+        Submit a genetic variant for ACMG/AMP classification and receive a detailed interpretation report.
+        The service will analyze the variant using evidence from multiple databases and apply ACMG/AMP guidelines.
+      operationId: interpretVariant
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VariantRequest'
+      responses:
+        '200':
+          description: Variant interpretation completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VariantResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPError'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPError'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPError'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPError'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    VariantRequest:
+      type: object
+      required:
+        - hgvs
+        - client_id
+        - request_id
+      properties:
+        hgvs:
+          type: string
+          description: HGVS notation for the genetic variant
+          example: "NM_000059.3:c.274G>T"
+        gene_symbol:
+          type: string
+          description: Gene symbol (optional)
+          example: "BRCA1"
+        transcript:
+          type: string
+          description: Transcript ID (optional)
+          example: "NM_000059.3"
+        client_id:
+          type: string
+          description: Client identifier
+          example: "ai-agent-chatgpt"
+        request_id:
+          type: string
+          description: Unique request identifier
+          example: "req-123456789"
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+          description: Additional metadata for the request
+        requested_at:
+          type: string
+          format: date-time
+          description: Timestamp when the request was made
+
+    VariantResponse:
+      type: object
+      properties:
+        request_id:
+          type: string
+          description: Unique request identifier
+          example: "req-123456789"
+        variant:
+          $ref: '#/components/schemas/StandardizedVariant'
+        classification:
+          $ref: '#/components/schemas/Classification'
+        confidence:
+          $ref: '#/components/schemas/ConfidenceLevel'
+        report:
+          $ref: '#/components/schemas/InterpretationReport'
+        processing_time:
+          type: string
+          description: Time taken to process the request
+          example: "2.5s"
+        processed_at:
+          type: string
+          format: date-time
+          description: Timestamp when processing completed
+        errors:
+          type: array
+          items:
+            type: string
+          description: Any errors encountered during processing
+
+    StandardizedVariant:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique variant identifier
+        hgvs:
+          type: string
+          description: HGVS notation
+          example: "NM_000059.3:c.274G>T"
+        chromosome:
+          type: string
+          description: Chromosome
+          example: "17"
+        position:
+          type: integer
+          format: int64
+          description: Genomic position
+          example: 43104261
+        reference:
+          type: string
+          description: Reference allele
+          example: "G"
+        alternative:
+          type: string
+          description: Alternative allele
+          example: "T"
+        gene_symbol:
+          type: string
+          description: Gene symbol
+          example: "BRCA1"
+        gene_id:
+          type: string
+          description: Gene ID
+          example: "672"
+        transcript:
+          type: string
+          description: Transcript ID
+          example: "NM_000059.3"
+        variant_type:
+          type: string
+          description: Type of variant
+          example: "GERMLINE"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Classification:
+      type: string
+      enum:
+        - PATHOGENIC
+        - LIKELY_PATHOGENIC
+        - VUS
+        - LIKELY_BENIGN
+        - BENIGN
+      description: ACMG/AMP classification result
+
+    ConfidenceLevel:
+      type: string
+      enum:
+        - High
+        - Medium
+        - Low
+      description: Confidence level in the classification
+
+    InterpretationReport:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique report identifier
+        variant:
+          $ref: '#/components/schemas/StandardizedVariant'
+        classification:
+          $ref: '#/components/schemas/ClassificationResult'
+        summary:
+          type: string
+          description: Summary of the interpretation
+        clinical_context:
+          type: string
+          description: Clinical context and implications
+        recommendations:
+          type: array
+          items:
+            type: string
+          description: Clinical recommendations
+        references:
+          type: array
+          items:
+            $ref: '#/components/schemas/Reference'
+          description: Literature and database references
+        generated_at:
+          type: string
+          format: date-time
+        version:
+          type: string
+          description: Report format version
+
+    ClassificationResult:
+      type: object
+      properties:
+        classification:
+          $ref: '#/components/schemas/Classification'
+        confidence:
+          $ref: '#/components/schemas/ConfidenceLevel'
+        rules:
+          $ref: '#/components/schemas/RuleApplication'
+        evidence:
+          $ref: '#/components/schemas/AggregatedEvidence'
+        rationale:
+          type: string
+          description: Rationale for the classification
+        classified_at:
+          type: string
+          format: date-time
+        classifier_version:
+          type: string
+          description: Version of the classification algorithm
+
+    RuleApplication:
+      type: object
+      properties:
+        pathogenic_rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/ACMGAMPRule'
+        benign_rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/ACMGAMPRule'
+        summary:
+          type: string
+          description: Summary of applied rules
+        applied_at:
+          type: string
+          format: date-time
+
+    ACMGAMPRule:
+      type: object
+      properties:
+        code:
+          type: string
+          description: ACMG/AMP rule code
+          example: "PVS1"
+        category:
+          type: string
+          enum:
+            - PATHOGENIC
+            - BENIGN
+        strength:
+          type: string
+          enum:
+            - VERY_STRONG
+            - STRONG
+            - MODERATE
+            - SUPPORTING
+        met:
+          type: boolean
+          description: Whether the rule criteria was met
+        evidence:
+          type: string
+          description: Evidence supporting the rule
+        rationale:
+          type: string
+          description: Rationale for applying the rule
+
+    AggregatedEvidence:
+      type: object
+      properties:
+        clinvar_data:
+          $ref: '#/components/schemas/ClinVarData'
+        population_data:
+          $ref: '#/components/schemas/PopulationData'
+        somatic_data:
+          $ref: '#/components/schemas/SomaticData'
+        computational_data:
+          $ref: '#/components/schemas/ComputationalData'
+        gathered_at:
+          type: string
+          format: date-time
+
+    ClinVarData:
+      type: object
+      properties:
+        variation_id:
+          type: string
+        clinical_significance:
+          type: string
+        review_status:
+          type: string
+        submissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClinVarSubmission'
+        last_evaluated:
+          type: string
+          format: date-time
+        conditions:
+          type: array
+          items:
+            type: string
+
+    ClinVarSubmission:
+      type: object
+      properties:
+        submitter:
+          type: string
+        clinical_significance:
+          type: string
+        review_status:
+          type: string
+        submission_date:
+          type: string
+          format: date-time
+        condition:
+          type: string
+
+    PopulationData:
+      type: object
+      properties:
+        allele_frequency:
+          type: number
+          format: double
+        allele_count:
+          type: integer
+        allele_number:
+          type: integer
+        population_frequencies:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+        homozygote_count:
+          type: integer
+        quality_metrics:
+          $ref: '#/components/schemas/QualityMetrics'
+
+    SomaticData:
+      type: object
+      properties:
+        cosmic_id:
+          type: string
+        tumor_types:
+          type: array
+          items:
+            type: string
+        sample_count:
+          type: integer
+        mutation_count:
+          type: integer
+        pathogenicity:
+          type: string
+
+    ComputationalData:
+      type: object
+      properties:
+        sift_score:
+          type: number
+          format: double
+        polyphen_score:
+          type: number
+          format: double
+        cadd_score:
+          type: number
+          format: double
+        gerp_score:
+          type: number
+          format: double
+        phylop_score:
+          type: number
+          format: double
+
+    QualityMetrics:
+      type: object
+      properties:
+        coverage:
+          type: integer
+        quality:
+          type: number
+          format: double
+        filter_pass:
+          type: boolean
+
+    Reference:
+      type: object
+      properties:
+        type:
+          type: string
+        id:
+          type: string
+        title:
+          type: string
+        authors:
+          type: string
+        journal:
+          type: string
+        year:
+          type: integer
+        url:
+          type: string
+
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "healthy"
+        version:
+          type: string
+          example: "1.0.0"
+        timestamp:
+          type: string
+          format: date-time
+        services:
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            database: "healthy"
+            redis: "healthy"
+            clinvar: "healthy"
+        uptime:
+          type: string
+          example: "24h30m15s"
+
+    MCPError:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Error code
+          example: "INVALID_INPUT"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Invalid HGVS notation provided"
+        details:
+          type: string
+          description: Additional error details
+        timestamp:
+          type: string
+          format: date-time
+        request_id:
+          type: string
+          description: Request ID for tracing
