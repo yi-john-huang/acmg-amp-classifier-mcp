@@ -1,4 +1,4 @@
-openapi: 3.0.3
+openapi: 3.1.0
 info:
   title: ACMG-AMP MCP Server API
   description: |
@@ -26,12 +26,12 @@ paths:
       description: Returns the health status of the service
       operationId: getHealth
       responses:
-        '200':
+        "200":
           description: Service is healthy
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HealthStatus'
+                $ref: "#/components/schemas/HealthStatus"
 
   /api/v1/variants/interpret:
     post:
@@ -47,38 +47,38 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/VariantRequest'
+              $ref: "#/components/schemas/VariantRequest"
       responses:
-        '200':
+        "200":
           description: Variant interpretation completed successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/VariantResponse'
-        '400':
+                $ref: "#/components/schemas/VariantResponse"
+        "400":
           description: Invalid request data
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MCPError'
-        '401':
+                $ref: "#/components/schemas/MCPError"
+        "401":
           description: Authentication required
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MCPError'
-        '429':
+                $ref: "#/components/schemas/MCPError"
+        "429":
           description: Rate limit exceeded
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MCPError'
-        '500':
+                $ref: "#/components/schemas/MCPError"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MCPError'
+                $ref: "#/components/schemas/MCPError"
 
 components:
   securitySchemes:
@@ -133,13 +133,13 @@ components:
           description: Unique request identifier
           example: "req-123456789"
         variant:
-          $ref: '#/components/schemas/StandardizedVariant'
+          $ref: "#/components/schemas/StandardizedVariant"
         classification:
-          $ref: '#/components/schemas/Classification'
+          $ref: "#/components/schemas/Classification"
         confidence:
-          $ref: '#/components/schemas/ConfidenceLevel'
+          $ref: "#/components/schemas/ConfidenceLevel"
         report:
-          $ref: '#/components/schemas/InterpretationReport'
+          $ref: "#/components/schemas/InterpretationReport"
         processing_time:
           type: string
           description: Time taken to process the request
@@ -229,9 +229,9 @@ components:
           type: string
           description: Unique report identifier
         variant:
-          $ref: '#/components/schemas/StandardizedVariant'
+          $ref: "#/components/schemas/StandardizedVariant"
         classification:
-          $ref: '#/components/schemas/ClassificationResult'
+          $ref: "#/components/schemas/ClassificationResult"
         summary:
           type: string
           description: Summary of the interpretation
@@ -246,7 +246,7 @@ components:
         references:
           type: array
           items:
-            $ref: '#/components/schemas/Reference'
+            $ref: "#/components/schemas/Reference"
           description: Literature and database references
         generated_at:
           type: string
@@ -259,13 +259,13 @@ components:
       type: object
       properties:
         classification:
-          $ref: '#/components/schemas/Classification'
+          $ref: "#/components/schemas/Classification"
         confidence:
-          $ref: '#/components/schemas/ConfidenceLevel'
+          $ref: "#/components/schemas/ConfidenceLevel"
         rules:
-          $ref: '#/components/schemas/RuleApplication'
+          $ref: "#/components/schemas/RuleApplication"
         evidence:
-          $ref: '#/components/schemas/AggregatedEvidence'
+          $ref: "#/components/schemas/AggregatedEvidence"
         rationale:
           type: string
           description: Rationale for the classification
@@ -282,11 +282,11 @@ components:
         pathogenic_rules:
           type: array
           items:
-            $ref: '#/components/schemas/ACMGAMPRule'
+            $ref: "#/components/schemas/ACMGAMPRule"
         benign_rules:
           type: array
           items:
-            $ref: '#/components/schemas/ACMGAMPRule'
+            $ref: "#/components/schemas/ACMGAMPRule"
         summary:
           type: string
           description: Summary of applied rules
@@ -327,13 +327,13 @@ components:
       type: object
       properties:
         clinvar_data:
-          $ref: '#/components/schemas/ClinVarData'
+          $ref: "#/components/schemas/ClinVarData"
         population_data:
-          $ref: '#/components/schemas/PopulationData'
+          $ref: "#/components/schemas/PopulationData"
         somatic_data:
-          $ref: '#/components/schemas/SomaticData'
+          $ref: "#/components/schemas/SomaticData"
         computational_data:
-          $ref: '#/components/schemas/ComputationalData'
+          $ref: "#/components/schemas/ComputationalData"
         gathered_at:
           type: string
           format: date-time
@@ -350,7 +350,7 @@ components:
         submissions:
           type: array
           items:
-            $ref: '#/components/schemas/ClinVarSubmission'
+            $ref: "#/components/schemas/ClinVarSubmission"
         last_evaluated:
           type: string
           format: date-time
@@ -392,7 +392,7 @@ components:
         homozygote_count:
           type: integer
         quality_metrics:
-          $ref: '#/components/schemas/QualityMetrics'
+          $ref: "#/components/schemas/QualityMetrics"
 
     SomaticData:
       type: object
