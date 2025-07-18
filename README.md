@@ -71,9 +71,103 @@ graph TD
 * Bioinformaticians
 * Medical Researchers
 
+## Project Structure
+
+```
+/
+├── cmd/                    # Main applications
+│   └── server/            # HTTP server entry point
+├── internal/              # Private application code
+│   ├── api/              # HTTP handlers and routing
+│   ├── config/           # Configuration management
+│   ├── domain/           # Business logic and entities
+│   ├── repository/       # Data access layer
+│   └── service/          # Application services
+├── pkg/                  # Public library code
+│   ├── acmg/            # ACMG/AMP rule engine
+│   ├── hgvs/            # HGVS parsing utilities
+│   └── external/        # External API clients
+├── api/                 # OpenAPI/Swagger specs
+├── migrations/          # Database migrations
+├── docker/             # Docker configurations
+├── docs/               # Documentation
+└── config.example.yaml # Example configuration
+```
+
+## Core Interfaces
+
+The service is built around well-defined interfaces:
+
+- **APIGateway**: HTTP request handling and coordination
+- **InputParser**: HGVS validation and variant standardization  
+- **InterpretationEngine**: ACMG/AMP rule application and classification
+- **KnowledgeBaseAccess**: External database integration
+- **ReportGenerator**: Structured report generation
+
 ## Getting Started
 
-*(Instructions for deployment, configuration, and API usage will be provided upon project release.)*
+### Prerequisites
+- Go 1.21+
+- PostgreSQL 15+
+- Redis 7+
+
+### Quick Start with Docker
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd acmg-amp-mcp-server
+   ```
+
+2. **Copy configuration**
+   ```bash
+   cp config.example.yaml config.yaml
+   # Edit config.yaml with your database and API settings
+   ```
+
+3. **Run with Docker Compose**
+   ```bash
+   docker-compose up -d
+   ```
+
+4. **Check health**
+   ```bash
+   curl http://localhost:8080/health
+   ```
+
+### Local Development
+
+```bash
+# Install dependencies
+go mod download
+
+# Run the server
+go run cmd/server/main.go
+
+# Run tests
+go test ./...
+```
+
+## Configuration
+
+The service uses Viper for configuration management with support for:
+- YAML configuration files
+- Environment variables (prefixed with `ACMG_AMP_`)
+- Sensible defaults for development
+
+Key configuration sections:
+- **Server**: HTTP server settings
+- **Database**: PostgreSQL connection settings  
+- **Redis**: Cache configuration
+- **External**: API keys and settings for ClinVar, gnomAD, COSMIC
+- **Logging**: Log level and format settings
+
+## API Endpoints
+
+- `GET /health` - Health check
+- `POST /api/v1/interpret` - Variant interpretation
+- `GET /api/v1/variant/:id` - Get variant details
+- `GET /api/v1/interpretation/:id` - Get interpretation results
 
 ## Licensing
 
