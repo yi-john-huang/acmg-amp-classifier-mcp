@@ -3,8 +3,18 @@
   "name": "Security Pre-Commit Scanner",
   "description": "Scans changed files for potential security issues like API keys, credentials, tokens, and other sensitive information before commit",
   "version": "1",
+  "metadata": {
+    "timestamp": "2025-07-19T12:00:00Z",
+    "context": {
+      "project_type": "medical_genetics",
+      "security_standards": [
+        "HIPAA",
+        "clinical_data_protection"
+      ]
+    }
+  },
   "when": {
-    "type": "fileEdited",
+    "type": "preCommit",
     "patterns": [
       "*.go",
       "*.yaml",
@@ -20,6 +30,6 @@
   },
   "then": {
     "type": "askAgent",
-    "prompt": "Review the following files for potential security issues:\n\n1. Look for API keys, tokens, or credentials in source code\n2. Check for private keys or sensitive credentials\n3. Scan for encryption keys or certificates\n4. Identify authentication tokens or session IDs\n5. Flag passwords or secrets in configuration files\n6. Detect IP addresses containing sensitive data\n7. Find hardcoded internal URLs\n8. Spot database connection credentials\n\nFor each issue found:\n1. Highlight the specific security risk\n2. Suggest a secure alternative approach\n3. Recommend security best practices\n\nThis is particularly important for this medical genetics software project which must maintain high security standards for clinical data.\n\nIf no security issues are found, confirm that the code appears secure and suggest any proactive security improvements."
+    "prompt": "# Security Pre-Commit Scan\n\nReview the changed files for potential security issues in this medical genetics software project. Focus on:\n\n1. API keys, tokens, or credentials in source code\n2. Private keys or sensitive credentials\n3. Encryption keys or certificates\n4. Authentication tokens or session IDs\n5. Passwords or secrets in configuration files\n6. IP addresses containing sensitive data\n7. Hardcoded internal URLs\n8. Database connection credentials\n\nFor each security issue found:\n1. Highlight the specific line and security risk\n2. Suggest a secure alternative approach (e.g., environment variables, secret management)\n3. Recommend security best practices aligned with medical software requirements\n\nPay special attention to:\n- HIPAA compliance considerations\n- Patient data protection requirements\n- Clinical audit trail integrity\n- Medical data access controls\n\nIf no security issues are found, confirm that the code appears secure and suggest any proactive security improvements that align with medical software standards."
   }
 }
