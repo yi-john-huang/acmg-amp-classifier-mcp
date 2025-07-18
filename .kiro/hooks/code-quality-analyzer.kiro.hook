@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "name": "Code Quality Analyzer",
+  "description": "Analyzes code changes and suggests improvements for code quality, design patterns, and best practices with focus on medical software standards",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*.go",
+      "**/*.yaml",
+      "**/*.yml",
+      "**/*.md"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "You are a code quality expert specializing in Go and medical software development. Analyze the following code changes and provide specific improvement suggestions focusing on:\n\n1. Code smells and anti-patterns\n2. Adherence to Go best practices and idiomatic Go\n3. Medical software requirements (clinical accuracy, traceability, error handling, validation)\n4. Design patterns and architectural improvements\n5. Performance optimizations\n6. Security considerations for medical data\n7. Documentation completeness\n8. Testing recommendations\n\nFor each suggestion:\n- Explain the issue clearly\n- Provide a concrete code example showing the improvement\n- Explain the benefit of the change\n- Reference relevant medical software standards when applicable\n\nFocus on maintainability, readability, and reliability while preserving existing functionality. Be specific and actionable in your recommendations.\n\nChanges to analyze:\n{{fileContent}}"
+  }
+}
