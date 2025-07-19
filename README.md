@@ -1,6 +1,6 @@
 # MCP Service: AI-Powered Variant Interpretation Assistant
 
-**(Project Status: Concept / In Development)**
+**(Project Status: Active Development - Database Layer Complete)**
 
 ## Overview
 
@@ -17,6 +17,27 @@ The goal of the MCP Service is to:
 3.  Provide a seamless user experience for clinicians through integration with familiar AI tools.
 4.  Facilitate accurate and reproducible variant classification in clinical and research settings.
 
+## Implementation Status
+
+### ✅ Completed Components
+- **Database Layer**: PostgreSQL with pgx driver, connection pooling, and migrations
+- **Repository Pattern**: Variant and interpretation data access with JSONB support
+- **Domain Models**: Complete type definitions for variants, classifications, and rules
+- **Database Schema**: Optimized tables with proper indexing for genomic queries
+- **Integration Testing**: Test containers for isolated database testing
+
+### 🚧 In Development
+- **Input Parser**: HGVS notation validation and variant normalization
+- **External API Integration**: ClinVar, gnomAD, and COSMIC client implementations
+- **ACMG/AMP Rule Engine**: 28 evidence criteria implementation
+- **HTTP API Layer**: REST endpoints with Gin framework
+
+### 📋 Planned Features
+- **Report Generation**: Structured clinical reports with recommendations
+- **Caching Layer**: Redis integration for external API response caching
+- **Authentication**: API key validation and rate limiting
+- **Monitoring**: Comprehensive logging and metrics collection
+
 ## Features
 
 * **ACMG/AMP Guideline Engine:** Implements the core logic for classifying variants based on evidence criteria.
@@ -24,6 +45,7 @@ The goal of the MCP Service is to:
 * **AI Agent Ready API:** A defined API layer allows straightforward integration with platforms like ChatGPT, Claude, Gemini, etc.
 * **Evidence Aggregation:** Connects to essential public databases (e.g., ClinVar, gnomAD, COSMIC) and potentially internal institutional databases.
 * **Structured Reporting:** Outputs clear classification results (Pathogenic, Likely Pathogenic, VUS, Likely Benign, Benign) along with the specific ACMG/AMP evidence codes met.
+* **Clinical Database**: PostgreSQL-based storage with full audit trails and JSONB support for flexible evidence storage.
 
 ## Architecture
 
@@ -109,7 +131,7 @@ The service is built around well-defined interfaces:
 ### Prerequisites
 - Go 1.21+
 - PostgreSQL 15+
-- Redis 7+
+- Redis 7+ (for caching)
 
 ### Quick Start with Docker
 
@@ -119,21 +141,49 @@ The service is built around well-defined interfaces:
    cd acmg-amp-mcp-server
    ```
 
-2. **Copy configuration**
+2. **Set up environment variables (IMPORTANT)**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your actual values - NEVER commit this file!
+   ```
+
+3. **Copy configuration**
    ```bash
    cp config.example.yaml config.yaml
-   # Edit config.yaml with your database and API settings
+   # Configuration will automatically use environment variables
    ```
 
-3. **Run with Docker Compose**
+4. **Run with Docker Compose**
    ```bash
+   # Development (uses .env file)
    docker-compose up -d
+   
+   # Production (uses Docker secrets - recommended)
+   ./scripts/setup-secrets.sh
+   docker-compose -f docker-compose.prod.yml up -d
    ```
 
-4. **Check health**
+5. **Run database migrations**
+   ```bash
+   # Migrations are automatically applied on startup
+   # Or run manually: go run cmd/migrate/main.go up
+   ```
+
+6. **Check health**
    ```bash
    curl http://localhost:8080/health
    ```
+
+### Security Notice
+
+⚠️ **This is medical software handling genetic data. Security is critical:**
+
+- Never commit `.env` files or secrets to version control
+- Use strong, unique passwords for all services
+- Enable TLS/HTTPS in production environments
+- Regularly rotate API keys and database passwords
+- Monitor audit logs for suspicious activity
+- See [SECURITY.md](SECURITY.md) for complete security guidelines
 
 ### Local Development
 
@@ -141,10 +191,20 @@ The service is built around well-defined interfaces:
 # Install dependencies
 go mod download
 
+# Set up local PostgreSQL database
+createdb acmg_amp_dev
+
+# Copy and configure environment
+cp config.example.yaml config.yaml
+# Edit database connection settings
+
+# Run database migrations
+go run cmd/migrate/main.go up
+
 # Run the server
 go run cmd/server/main.go
 
-# Run tests
+# Run tests (requires test database)
 go test ./...
 ```
 
@@ -156,18 +216,99 @@ The service uses Viper for configuration management with support for:
 - Sensible defaults for development
 
 Key configuration sections:
-- **Server**: HTTP server settings
-- **Database**: PostgreSQL connection settings  
-- **Redis**: Cache configuration
+- **Server**: HTTP server settings (port, timeouts, CORS)
+- **Database**: PostgreSQL connection settings with connection pooling
+- **Redis**: Cache configuration for external API responses
 - **External**: API keys and settings for ClinVar, gnomAD, COSMIC
-- **Logging**: Log level and format settings
+- **Logging**: Structured logging with configurable levels
+
+### Database Configuration
+
+The service requires PostgreSQL 15+ with the following features:
+- UUID generation (`gen_random_uuid()`)
+- JSONB support for storing evidence and rule data
+- Full-text search capabilities for variant queries
+- Connection pooling for optimal performance
+
+### Database Schema
+
+The system uses two main tables:
+- **variants**: Stores genetic variant information with HGVS notation
+- **interpretations**: Stores classification results with ACMG/AMP rule applications
+
+Database migrations are managed automatically and include:
+- Proper indexing for genomic coordinates and gene symbols
+- JSONB indexes for efficient rule and evidence queries
+- Audit timestamps with automatic updates
 
 ## API Endpoints
 
-- `GET /health` - Health check
-- `POST /api/v1/interpret` - Variant interpretation
-- `GET /api/v1/variant/:id` - Get variant details
-- `GET /api/v1/interpretation/:id` - Get interpretation results
+### Health and Status
+- `GET /health` - Service health check with database connectivity
+- `GET /metrics` - Prometheus metrics endpoint
+- `GET /version` - Service version information
+
+### Variant Management
+- `POST /api/v1/variants` - Create or retrieve variant by HGVS
+- `GET /api/v1/variants/:id` - Get variant details by UUID
+- `GET /api/v1/variants/hgvs/:notation` - Get variant by HGVS notation
+- `GET /api/v1/variants/gene/:symbol` - List variants by gene symbol
+
+### Interpretation Services
+- `POST /api/v1/interpret` - Perform variant interpretation with ACMG/AMP rules
+- `GET /api/v1/interpretations/:id` - Get interpretation results by UUID
+- `GET /api/v1/interpretations/variant/:variant_id` - Get interpretations for a variant
+- `GET /api/v1/interpretations/classification/:type` - Filter by classification type
+
+### Request/Response Format
+
+#### Variant Interpretation Request
+```json
+{
+  "hgvs": "NC_000017.11:g.43094692G>A",
+  "gene_symbol": "BRCA1",
+  "transcript": "NM_007294.4",
+  "client_id": "clinical_lab_001",
+  "request_id": "req_12345",
+  "metadata": {
+    "patient_age": "45",
+    "indication": "breast_cancer_risk"
+  }
+}
+```
+
+#### Interpretation Response
+```json
+{
+  "request_id": "req_12345",
+  "variant": {
+    "id": "uuid-here",
+    "hgvs_genomic": "NC_000017.11:g.43094692G>A",
+    "chromosome": "17",
+    "position": 43094692,
+    "gene_symbol": "BRCA1",
+    "variant_type": "GERMLINE"
+  },
+  "classification": "PATHOGENIC",
+  "confidence": "HIGH",
+  "report": {
+    "applied_rules": [
+      {
+        "code": "PVS1",
+        "category": "PATHOGENIC",
+        "strength": "VERY_STRONG",
+        "met": true,
+        "evidence": "Null variant in critical domain",
+        "rationale": "Frameshift variant in BRCA1 exon 11"
+      }
+    ],
+    "summary": "This variant is classified as Pathogenic based on strong evidence...",
+    "recommendations": ["Genetic counseling recommended", "Consider cascade testing"]
+  },
+  "processing_time": "1.2s",
+  "processed_at": "2025-01-19T10:30:00Z"
+}
+```
 
 ## Licensing
 
