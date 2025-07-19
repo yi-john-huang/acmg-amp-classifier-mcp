@@ -1,5 +1,10 @@
 package domain
 
+import (
+	"errors"
+	"time"
+)
+
 // Classification represents the ACMG/AMP classification result
 type Classification string
 
@@ -44,4 +49,25 @@ const (
 	HIGH   ConfidenceLevel = "High"
 	MEDIUM ConfidenceLevel = "Medium"
 	LOW    ConfidenceLevel = "Low"
+)
+
+// InterpretationRecord represents a stored variant interpretation
+type InterpretationRecord struct {
+	ID               string                 `json:"id"`
+	VariantID        string                 `json:"variant_id"`
+	Classification   Classification         `json:"classification"`
+	ConfidenceLevel  ConfidenceLevel        `json:"confidence_level"`
+	AppliedRules     []ACMGAMPRule          `json:"applied_rules"`
+	EvidenceSummary  map[string]interface{} `json:"evidence_summary"`
+	ReportData       map[string]interface{} `json:"report_data"`
+	ProcessingTimeMS int                    `json:"processing_time_ms"`
+	ClientID         *string                `json:"client_id,omitempty"`
+	RequestID        *string                `json:"request_id,omitempty"`
+	CreatedAt        time.Time              `json:"created_at"`
+	UpdatedAt        time.Time              `json:"updated_at"`
+}
+
+// Common errors
+var (
+	ErrNotFound = errors.New("not found")
 )
