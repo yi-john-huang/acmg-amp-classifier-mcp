@@ -10,8 +10,9 @@ services:
       - "8080:8080"
     environment:
       - ACMG_AMP_DATABASE_HOST=postgres
-      - ACMG_AMP_DATABASE_PASSWORD=postgres
+      - ACMG_AMP_DATABASE_PASSWORD=${DATABASE_PASSWORD}
       - ACMG_AMP_REDIS_HOST=redis
+      - ACMG_AMP_REDIS_PASSWORD=${REDIS_PASSWORD:-}
     depends_on:
       - postgres
       - redis
@@ -29,9 +30,9 @@ services:
   postgres:
     image: postgres:15-alpine
     environment:
-      - POSTGRES_DB=acmg_amp_mcp
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=${POSTGRES_DB:-acmg_amp_mcp}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
@@ -51,6 +52,16 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    command: >
+      sh -c "
+        if [ -n \"$$REDIS_PASSWORD\" ]; then
+          redis-server --requirepass \"$$REDIS_PASSWORD\"
+        else
+          redis-server
+        fi
+      "
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]

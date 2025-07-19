@@ -3,23 +3,23 @@
 
 # Server configuration
 server:
-  host: "0.0.0.0"
-  port: 8080
+  host: "${SERVER_HOST}"
+  port: ${SERVER_PORT}
   read_timeout: "30s"
   write_timeout: "30s"
   idle_timeout: "120s"
-  tls_enabled: false
-  # cert_file: "/path/to/cert.pem"
-  # key_file: "/path/to/key.pem"
+  tls_enabled: ${TLS_ENABLED}
+  cert_file: "${TLS_CERT_FILE}"
+  key_file: "${TLS_KEY_FILE}"
 
 # Database configuration
 database:
-  host: "localhost"
-  port: 5432
-  database: "acmg_amp_mcp"
-  username: "postgres"
-  password: "your_password_here"
-  ssl_mode: "disable"
+  host: "${DATABASE_HOST}"
+  port: ${DATABASE_PORT}
+  database: "${DATABASE_NAME}"
+  username: "${DATABASE_USERNAME}"
+  password: "${DATABASE_PASSWORD}"
+  ssl_mode: "${DATABASE_SSL_MODE}"
   max_open_conns: 25
   max_idle_conns: 5
   conn_max_lifetime: "5m"
@@ -28,28 +28,29 @@ database:
 external_api:
   clinvar:
     base_url: "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
-    api_key: ""  # Optional
+    api_key: "${CLINVAR_API_KEY}"  # Optional
     timeout: "30s"
     rate_limit: 10
     retry_count: 3
   
   gnomad:
     base_url: "https://gnomad.broadinstitute.org/api/"
-    api_key: ""  # Optional
+    api_key: "${GNOMAD_API_KEY}"  # Optional
     timeout: "30s"
     rate_limit: 10
     retry_count: 3
   
   cosmic:
     base_url: "https://cancer.sanger.ac.uk/cosmic/"
-    api_key: "your_cosmic_api_key_here"  # Required for COSMIC
+    api_key: "${COSMIC_API_KEY}"  # Required for COSMIC
     timeout: "30s"
     rate_limit: 10
     retry_count: 3
 
 # Cache configuration (Redis)
 cache:
-  redis_url: "redis://localhost:6379"
+  redis_url: "${REDIS_URL}"
+  password: "${REDIS_PASSWORD}"
   default_ttl: "24h"
   max_retries: 3
   pool_size: 10
@@ -57,9 +58,9 @@ cache:
 
 # Logging configuration
 logging:
-  level: "info"  # debug, info, warn, error, fatal, panic
-  format: "json"  # json, text
-  output: "stdout"  # stdout, stderr, or file path
+  level: "${LOG_LEVEL}"  # debug, info, warn, error, fatal, panic
+  format: "${LOG_FORMAT}"  # json, text
+  output: "${LOG_OUTPUT}"  # stdout, stderr, or file path
   # For file output:
   # filename: "/var/log/acmg-amp-mcp-server.log"
   max_size: 100  # MB
@@ -67,5 +68,11 @@ logging:
   max_age: 28  # days
   compress: true
 
-# Environment (optional)
-# environment: "development"  # development, staging, production
+# Security configuration
+security:
+  jwt_secret: "${JWT_SECRET}"
+  encryption_key: "${ENCRYPTION_KEY}"
+  api_key_salt: "${API_KEY_SALT}"
+
+# Environment
+environment: "${ENVIRONMENT}"  # development, staging, production
