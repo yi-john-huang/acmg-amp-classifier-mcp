@@ -4,8 +4,6 @@
 *.dll
 *.so
 *.dylib
-bin/
-server
 
 # Test binary, built with `go test -c`
 *.test
@@ -19,12 +17,74 @@ server
 # Go workspace file
 go.work
 
-# IDE specific files
-.idea/
+# Environment variables and secrets
+.env
+.env.local
+.env.production
+.env.staging
+config.yaml
+config.prod.yaml
+config.staging.yaml
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Log files
+*.log
+logs/
+
+# IDE files
 .vscode/
+.idea/
 *.swp
 *.swo
+*~
 
-# OS specific files
+# OS generated files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+
+# Docker volumes
+postgres_data/
+redis_data/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Coverage reports
+coverage.out
+coverage.html
+
+# Build artifacts
+dist/
+build/
+bin/
+
+# Security scan results
+security-scan-*.json
+security-scan-*.txt
+
+# Backup files
+*.bak
+*.backup
+
+# Certificate files (should be managed externally)
+*.pem
+*.key
+*.crt
+*.cert
+
+# API documentation generated files
+docs/api/generated/
+
+# Test containers data
+testcontainers-*

@@ -1,0 +1,136 @@
+# Production Docker Compose Configuration
+# This configuration uses Docker secrets for secure credential management
+version: '3.8'
+
+services:
+  # ACMG-AMP MCP Server
+  acmg-amp-server:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - ACMG_AMP_DATABASE_HOST=postgres
+      - ACMG_AMP_DATABASE_PASSWORD_FILE=/run/secrets/db_password
+      - ACMG_AMP_REDIS_HOST=redis
+      - ACMG_AMP_REDIS_PASSWORD_FILE=/run/secrets/redis_password
+      - COSMIC_API_KEY_FILE=/run/secrets/cosmic_api_key
+      - JWT_SECRET_FILE=/run/secrets/jwt_secret
+      - ENCRYPTION_KEY_FILE=/run/secrets/encryption_key
+    secrets:
+      - db_password
+      - redis_password
+      - cosmic_api_key
+      - jwt_secret
+      - encryption_key
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./config.prod.yaml:/root/config.yaml:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=acmg_amp_mcp
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    ports:
+      - "127.0.0.1:5432:5432"  # Bind to localhost only
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1:6379:6379"  # Bind to localhost only
+    volumes:
+      - redis_data:/data
+    secrets:
+      - redis_password
+    command: >
+      sh -c "
+        redis-server --requirepass $$(cat /run/secrets/redis_password)
+      "
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "$$(cat /run/secrets/redis_password)", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+
+secrets:
+  db_password:
+    external: true
+    name: acmg_amp_db_password
+  postgres_password:
+    external: true
+    name: acmg_amp_postgres_password
+  redis_password:
+    external: true
+    name: acmg_amp_redis_password
+  cosmic_api_key:
+    external: true
+    name: acmg_amp_cosmic_api_key
+  jwt_secret:
+    external: true
+    name: acmg_amp_jwt_secret
+  encryption_key:
+    external: true
+    name: acmg_amp_encryption_key
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

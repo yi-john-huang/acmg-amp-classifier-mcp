@@ -4,7 +4,7 @@
   "description": "Monitors changes to Go source files and other relevant files, then prompts to update documentation in README.md or docs directory to keep documentation in sync with code",
   "version": "1",
   "when": {
-    "type": "fileEdited",
+    "type": "userTriggered",
     "patterns": [
       "**/*.go",
       "api/*.yaml",
