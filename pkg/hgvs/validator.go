@@ -69,7 +69,8 @@ func (v *Validator) ValidateHGVS(hgvs string) error {
 	return domain.NewValidationError("hgvs", "Unrecognized HGVS notation format", hgvs)
 }
 
-// ValidateGeneSymbol validates gene symbol format
+// ValidateGeneSymbol validates gene symbol format (basic validation only)
+// For medical-grade validation, use GeneValidator.ValidateGeneSymbol instead
 func (v *Validator) ValidateGeneSymbol(symbol string) error {
 	if symbol == "" {
 		return nil // Gene symbol is optional
@@ -82,7 +83,8 @@ func (v *Validator) ValidateGeneSymbol(symbol string) error {
 	return nil
 }
 
-// ValidateTranscript validates transcript ID format
+// ValidateTranscript validates transcript ID format (basic validation only)
+// For medical-grade validation, use GeneValidator.ValidateTranscript instead
 func (v *Validator) ValidateTranscript(transcript string) error {
 	if transcript == "" {
 		return nil // Transcript is optional
