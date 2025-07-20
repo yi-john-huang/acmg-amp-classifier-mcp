@@ -18,7 +18,10 @@ The system implements all 28 ACMG/AMP evidence criteria for variant classificati
 
 ### Testing
 - `go test ./...` - Run all tests
+- `go test ./internal/service ./pkg/hgvs ./internal/domain` - Run tests for completed components
 - `go test -v ./internal/repository/variant_test.go` - Run specific test with verbose output
+- `go test -v ./pkg/hgvs/...` - Run HGVS validation and parsing tests
+- `go test -v ./internal/service/...` - Run service layer tests
 - Tests use testcontainers for database integration testing
 
 ### Database Operations
@@ -37,9 +40,9 @@ The system implements all 28 ACMG/AMP evidence criteria for variant classificati
 
 ### Core Components
 - **API Gateway** (`internal/api/`): HTTP request handling with Gin framework
-- **Domain Models** (`internal/domain/`): Business entities and interfaces
+- **Domain Models** (`internal/domain/`): Business entities with medical validation and audit support
 - **Repository Layer** (`internal/repository/`): PostgreSQL data access with pgx driver
-- **Service Layer** (`internal/service/`): Business logic orchestration
+- **Service Layer** (`internal/service/`): Business logic orchestration and input parsing
 - **External Packages** (`pkg/`): Reusable components (ACMG rules, HGVS validation, external APIs)
 
 ### Key Interfaces (internal/domain/interfaces.go)
@@ -54,6 +57,12 @@ The system implements all 28 ACMG/AMP evidence criteria for variant classificati
 - **variants**: Genetic variant information with HGVS notation and genomic coordinates
 - **interpretations**: Classification results with ACMG/AMP rule applications stored as JSONB
 - Uses UUID primary keys and optimized indexing for genomic queries
+
+### Enhanced Domain Types
+- **Classification types** with medical validation (`IsValid()`, `RequiresClinicalAction()`)
+- **Audit logging support** with structured fields for medical compliance
+- **Clinical significance** descriptions for patient communication
+- **Extended metadata** for traceability and regulatory requirements
 
 ### Configuration
 - Uses Viper for configuration management
@@ -78,6 +87,14 @@ The system implements all 28 ACMG/AMP evidence criteria for variant classificati
 - Use TLS/HTTPS in production environments
 - Validate genetic nomenclature (HGVS) strictly
 
+### HGVS Validation and Parsing
+- **Input Parser Service** (`internal/service/input_parser.go`): Orchestrates HGVS parsing and validation
+- **HGVS Parser** (`pkg/hgvs/parser.go`): Handles genomic, coding, and protein HGVS notation
+- **Gene Validator** (`pkg/hgvs/gene_validator.go`): Medical-grade gene symbol and transcript validation following HUGO standards
+- **Basic Validator** (`pkg/hgvs/validator.go`): Core HGVS format validation and component parsing
+- Supports RefSeq, Ensembl, Entrez, and HGNC identifier validation
+- Comprehensive normalization for consistent variant representation
+
 ### External API Integration
 - ClinVar: Public NCBI database (optional API key for higher rate limits)
 - gnomAD: Population frequency data (optional API key)
@@ -85,10 +102,12 @@ The system implements all 28 ACMG/AMP evidence criteria for variant classificati
 - All external calls should be cached in Redis with appropriate TTLs
 
 ### Testing Strategy
-- Unit tests for domain logic and utilities
+- Unit tests for domain logic and utilities (90%+ coverage for medical components)
 - Integration tests using testcontainers for database operations
 - Repository tests verify PostgreSQL interactions
 - HGVS validator tests ensure proper variant notation parsing
+- Table-driven tests for medical validation scenarios
+- Clinical validation against known variant classifications
 
 ### Code Patterns
 - Repository pattern for data access
@@ -99,6 +118,14 @@ The system implements all 28 ACMG/AMP evidence criteria for variant classificati
 - Custom error types with context wrapping (use `fmt.Errorf` with `%w` verb)
 - Table-driven tests for ACMG/AMP rule validation
 - Context.Context as first parameter for cancellable operations
+
+### Medical Validation Guidelines
+- **Always use GeneValidator** for medical-grade gene/transcript validation in production code
+- **Use Basic Validator** only for simple HGVS format validation or component parsing
+- **Input Parser Service** should be the primary entry point for variant validation workflows
+- **Validation Errors** must include medical context and be traceable for audit requirements
+- **Gene Symbols** must follow HUGO standards (uppercase, proper formatting)
+- **Transcript IDs** must be validated against RefSeq/Ensembl patterns before processing
 
 ### Service Deployment
 - Supports both development and production Docker Compose configurations
@@ -112,17 +139,17 @@ The system implements all 28 ACMG/AMP evidence criteria for variant classificati
 - **Project Structure**: Go module with standard directory layout (✅ Task 1)
 - **Data Models**: Core structs and validation for genetic variants (✅ Task 2)
 - **Database Layer**: PostgreSQL integration with migrations and repository pattern (✅ Task 3)
+- **Input Parser**: HGVS notation parsing and variant normalization (✅ Task 4)
 
 ### In Progress
-- **Input Parser**: HGVS notation parsing and variant normalization (Task 4)
 - **External APIs**: Integration with ClinVar, gnomAD, and COSMIC databases (Task 5)
 
 ### Pending Implementation
-- ACMG/AMP rule engine with all 28 evidence criteria
-- Variant interpretation engine with classification workflow
-- Report generation system with structured outputs
-- API gateway with authentication and rate limiting
-- Comprehensive logging and monitoring
-- OpenAPI documentation and error handling
+- ACMG/AMP rule engine with all 28 evidence criteria (Task 6)
+- Variant interpretation engine with classification workflow (Task 7)
+- Report generation system with structured outputs (Task 8)
+- API gateway with authentication and rate limiting (Task 9)
+- Comprehensive logging and monitoring (Task 10)
+- OpenAPI documentation and error handling (Tasks 11-12)
 
 See `./.kiro/specs/acmg-amp-mcp-server/tasks.md` for detailed implementation plan.
