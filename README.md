@@ -2,6 +2,8 @@
 
 **(Project Status: Active Development - Database Layer Complete)**
 
+🔬 **Research & Educational Use Only** | ⚖️ **Non-Commercial License** | 🏥 **Not for Clinical Use**
+
 ## Overview
 
 The Medical Classification Platform (MCP) Service is a backend system designed to assist physicians, clinical geneticists, and researchers in interpreting somatic and germline genetic variants. It leverages the standardized **ACMG/AMP guidelines** for variant classification to provide consistent and evidence-based interpretations.
@@ -27,8 +29,10 @@ The goal of the MCP Service is to:
 - **Integration Testing**: Comprehensive test suite using testcontainers for isolated database testing
 - **Migration System**: Automated database migrations with up/down support and version tracking
 
+### ✅ Recently Completed
+- **Input Parser**: HGVS notation validation and variant normalization with medical-grade gene validation
+
 ### 🚧 In Development
-- **Input Parser**: HGVS notation validation and variant normalization
 - **External API Integration**: ClinVar, gnomAD, and COSMIC client implementations
 - **ACMG/AMP Rule Engine**: 28 evidence criteria implementation
 - **HTTP API Layer**: REST endpoints with Gin framework
@@ -175,16 +179,23 @@ The service is built around well-defined interfaces:
    curl http://localhost:8080/health
    ```
 
-### Security Notice
+### Security & Compliance Notice
 
-⚠️ **This is medical software handling genetic data. Security is critical:**
+⚠️ **This is medical software handling genetic data. Security and compliance are critical:**
 
+**Security Requirements:**
 - Never commit `.env` files or secrets to version control
 - Use strong, unique passwords for all services
 - Enable TLS/HTTPS in production environments
 - Regularly rotate API keys and database passwords
 - Monitor audit logs for suspicious activity
 - See [SECURITY.md](SECURITY.md) for complete security guidelines
+
+**License Compliance:**
+- ✅ Ensure your use case complies with the Non-Commercial License
+- ❌ Commercial use requires separate licensing agreement
+- 🏥 Clinical use is prohibited without regulatory approval
+- 📚 Keep this README and LICENSE files with any distribution
 
 ### Local Development
 
@@ -324,21 +335,35 @@ Production-ready schema with two core tables:
 }
 ```
 
-## Licensing
+## License
 
-**License Grant:** The licensor grants you a license to use, copy, and modify the software **strictly for Non-Commercial Use**.
+This software is released under a **Non-Commercial License**. 
 
-**Non-Commercial Use Definition:** "Non-Commercial Use" means usage for purposes that do not involve generating revenue, promoting a commercial enterprise, or forming part of a service offered for a fee. This includes academic research, teaching, personal experimentation, and use within a non-profit organization for internal research purposes not directly tied to paid services.
+### ✅ **Permitted Uses (Non-Commercial)**
+- Academic research and education
+- Personal experimentation and learning
+- Non-profit organization internal research
+- Open source contributions and improvements
+- Clinical research (non-patient care)
 
-**Commercial Use Restriction:** Any use of this software for "Commercial Use" is **strictly prohibited** without obtaining a separate, written commercial license agreement from the licensor and paying the applicable license fees. "Commercial Use" includes, but is not limited to:
-    * Integrating the software or its components into a product or service offered for sale or license.
-    * Using the software to provide paid consulting, analysis, or reporting services.
-    * Using the software within a for-profit organization for routine operations that generate revenue.
-    * Distributing the software bundled with commercial offerings.
+### ❌ **Prohibited Uses (Commercial)**
+- Clinical practice and patient care
+- Integration into commercial products or services
+- Paid consulting or analysis services
+- Revenue-generating operations
+- Commercial distribution or resale
 
-**Source Code Availability:** While the source code may be made available, this availability does not grant any rights for Commercial Use. All rights not expressly granted for Non-Commercial Use are reserved by the licensor.
+### 📋 **Medical Software Disclaimer**
 
-**Disclaimer:** This license text is provided for informational purposes. It is strongly recommended to consult with legal counsel to draft a formal and enforceable license agreement that accurately reflects these terms.
+⚠️ **IMPORTANT: This software is for research and educational purposes only.**
+
+- **NOT approved for clinical use or patient care**
+- **NOT a medical device or diagnostic tool**
+- **Requires additional validation for clinical settings**
+- **Should not be used as sole basis for medical decisions**
+- **Requires regulatory approval for clinical use**
+
+Any clinical application requires appropriate medical oversight, validation studies, and regulatory compliance.
 
 ## Contact for Commercial Licensing
 
