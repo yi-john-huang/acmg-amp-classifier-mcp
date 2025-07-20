@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is the ACMG-AMP MCP (Medical Classification Platform) Server - a Go-based backend service for AI-powered genetic variant interpretation using ACMG/AMP guidelines. The service is designed to integrate with AI agents (ChatGPT, Claude, Gemini) to provide standardized variant classification for clinical geneticists and researchers.
 
+The system implements all 28 ACMG/AMP evidence criteria for variant classification and follows a multi-stage pipeline: input validation and parsing, evidence aggregation from multiple databases, ACMG/AMP rule application, and structured report generation.
+
 ## Development Commands
 
 ### Building and Running
@@ -23,6 +25,7 @@ This is the ACMG-AMP MCP (Medical Classification Platform) Server - a Go-based b
 - `go run cmd/migrate/main.go up` - Apply database migrations (auto-applied on startup)
 - Migrations are located in `migrations/` directory
 - Uses PostgreSQL 15+ with JSONB support for evidence storage
+- Database layer is fully implemented with repository pattern and test containers
 
 ### Development Setup
 1. Copy `config.example.yaml` to `config.yaml`
@@ -61,15 +64,19 @@ This is the ACMG-AMP MCP (Medical Classification Platform) Server - a Go-based b
 ## Development Guidelines
 
 ### Coding Standards and Requirements
-- **ALWAYS** consult the coding rules in `./kiro/steering/` before implementing any features
-- **ALWAYS** read the design and requirements in `./kiro/specs/acmg-amp-mcp-server/` before starting development
+- **ALWAYS** consult the coding rules in `./.kiro/steering/` before implementing any features
+- **ALWAYS** read the design and requirements in `./.kiro/specs/acmg-amp-mcp-server/` before starting development
 - These directories contain essential project-specific guidelines that must be followed for all code changes
 
 ### Medical Data Handling
 - This handles sensitive genetic information - follow security best practices
+- **Clinical Accuracy**: All ACMG/AMP rule implementations must be validated against published guidelines
+- **Traceability**: Every classification decision must be fully traceable with evidence citations
+- **Audit Trail**: All operations must be logged for clinical audit requirements
 - Never commit secrets, API keys, or `.env` files
-- All database operations should include audit trails
+- Never store patient-identifiable information
 - Use TLS/HTTPS in production environments
+- Validate genetic nomenclature (HGVS) strictly
 
 ### External API Integration
 - ClinVar: Public NCBI database (optional API key for higher rate limits)
@@ -85,13 +92,37 @@ This is the ACMG-AMP MCP (Medical Classification Platform) Server - a Go-based b
 
 ### Code Patterns
 - Repository pattern for data access
-- Interface-driven design for modularity
+- Interface-driven design for modularity (keep interfaces small and focused)
 - JSONB for flexible evidence storage
 - Connection pooling for PostgreSQL performance
 - Structured logging with configurable levels
+- Custom error types with context wrapping (use `fmt.Errorf` with `%w` verb)
+- Table-driven tests for ACMG/AMP rule validation
+- Context.Context as first parameter for cancellable operations
 
 ### Service Deployment
 - Supports both development and production Docker Compose configurations
 - Health checks on all services (/health endpoint for main service)
 - Automatic migration application on startup
 - Uses PostgreSQL 15 and Redis 7 Alpine images
+
+## Implementation Status
+
+### Completed Components
+- **Project Structure**: Go module with standard directory layout (✅ Task 1)
+- **Data Models**: Core structs and validation for genetic variants (✅ Task 2)
+- **Database Layer**: PostgreSQL integration with migrations and repository pattern (✅ Task 3)
+
+### In Progress
+- **Input Parser**: HGVS notation parsing and variant normalization (Task 4)
+- **External APIs**: Integration with ClinVar, gnomAD, and COSMIC databases (Task 5)
+
+### Pending Implementation
+- ACMG/AMP rule engine with all 28 evidence criteria
+- Variant interpretation engine with classification workflow
+- Report generation system with structured outputs
+- API gateway with authentication and rate limiting
+- Comprehensive logging and monitoring
+- OpenAPI documentation and error handling
+
+See `./.kiro/specs/acmg-amp-mcp-server/tasks.md` for detailed implementation plan.
