@@ -37,14 +37,14 @@
   - ✅ Write comprehensive unit tests for various HGVS formats and edge cases
   - _Requirements: 1.2, 1.3_
 
-- [ ] 5. Build external database integration layer
+- [x] 5. Build external database integration layer
 
-  - Implement ClinVar API client with HTTP requests and response parsing
-  - Create gnomAD API client for population frequency data retrieval
-  - Build COSMIC API client for somatic variant information
-  - Add Redis caching layer for external API responses with configurable TTL
-  - Implement circuit breaker pattern for external API failures
-  - Write integration tests with mock HTTP servers
+  - ✅ Implement ClinVar API client with HTTP requests and response parsing
+  - ✅ Create gnomAD API client for population frequency data retrieval
+  - ✅ Build COSMIC API client for somatic variant information
+  - ✅ Add Redis caching layer for external API responses with configurable TTL
+  - ✅ Implement circuit breaker pattern for external API failures
+  - ✅ Write integration tests with mock HTTP servers
   - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
 - [ ] 6. Develop ACMG/AMP rule engine core
