@@ -214,11 +214,114 @@ git commit  # Automatically triggers security scan
    - Third-party security audits
    - Vulnerability scanning
 
+## AI Tool Security Guidelines
+
+### Using Kiro and Claude Code Safely
+
+This project integrates with AI development tools (Kiro, Claude Code) that require special security considerations when handling sensitive genetic data and credentials.
+
+#### Credential Protection for AI Tools
+
+1. **File Access Control**
+   ```bash
+   # AI tools respect these ignore patterns
+   .kiro-ignore         # Kiro AI tool ignore patterns
+   .claudecode-ignore   # Claude Code specific patterns
+   .dockerignore        # Docker build context protection
+   .gitignore           # Version control protection
+   ```
+
+2. **Sensitive Data Exclusion**
+   - **Medical Data**: Patient information, genetic variants, clinical data
+   - **API Credentials**: ClinVar, gnomAD, COSMIC API keys
+   - **Database Secrets**: Connection strings, passwords, JWT tokens
+   - **Certificates**: SSL/TLS certificates and private keys
+   - **Audit Trails**: Security logs and compliance reports
+
+3. **Best Practices with AI Tools**
+   ```bash
+   # Before using AI tools, verify ignore files are in place
+   ls -la .kiro-ignore .claudecode-ignore
+   
+   # Review what files AI tools can access
+   git ls-files | grep -E "\.(key|pem|crt|cert)$"
+   
+   # Ensure no credentials are accidentally exposed
+   grep -r "password\|secret\|key" --exclude-dir=.git .
+   ```
+
+#### Medical Data Handling with AI Tools
+
+1. **HIPAA Compliance Considerations**
+   - AI tools should never access real patient data
+   - Use synthetic test data for development assistance
+   - Maintain audit trails of AI tool interactions with medical systems
+
+2. **Genetic Data Protection**
+   ```yaml
+   # Example patterns in .claudecode-ignore
+   patient*data*
+   genetic*data*
+   variant*data*.json
+   *clinical*trial*
+   *medical*record*
+   ```
+
+3. **Clinical Safety Requirements**
+   - AI-generated medical code must undergo clinical review
+   - ACMG/AMP rule implementations require medical validation
+   - Never commit AI-generated clinical decision logic without expert review
+
+#### AI Tool Configuration Security
+
+1. **Conversation History Protection**
+   ```bash
+   # Ensure AI tool conversations are not persisted
+   conversation-history/
+   claude-conversations/
+   chatgpt-sessions/
+   ai-tool-logs/
+   *.ai-session
+   ```
+
+2. **Environment Isolation**
+   ```bash
+   # Use separate environments for AI tool development
+   export ENVIRONMENT=development
+   export AI_TOOL_MODE=safe
+   export MEDICAL_DATA_ACCESS=false
+   ```
+
+3. **Access Monitoring**
+   - Log AI tool file access patterns
+   - Monitor for credential exposure in AI conversations
+   - Regular audits of AI tool permissions and access
+
+#### Emergency Response for AI Tool Incidents
+
+If sensitive data is accidentally exposed to AI tools:
+
+1. **Immediate Actions**
+   - Disconnect AI tool access immediately
+   - Review conversation/session logs
+   - Identify exposed credentials or medical data
+
+2. **Remediation Steps**
+   - Rotate all potentially exposed credentials
+   - Update ignore files to prevent future exposure
+   - Review AI tool configuration and permissions
+
+3. **Prevention Measures**
+   - Implement pre-commit hooks to scan for credentials
+   - Regular training on AI tool security practices
+   - Automated monitoring of ignore file compliance
+
 ## Contact Information
 
 - **Security Team**: [security@your-domain.com]
 - **Development Team**: [dev@your-domain.com]
 - **Emergency Contact**: [emergency@your-domain.com]
+- **Medical Safety Officer**: [medical-safety@your-domain.com]
 
 ## Acknowledgments
 
