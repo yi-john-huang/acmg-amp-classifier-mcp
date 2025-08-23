@@ -1,0 +1,194 @@
+# Docker Ignore File - Security and Credential Protection
+# Exclude sensitive files and credentials from Docker build context
+
+# Environment Variables and Configuration
+.env
+.env.local
+.env.development
+.env.staging
+.env.production
+.env.test
+.env.*
+config.yaml
+config.prod.yaml
+config.staging.yaml
+config.dev.yaml
+config.*.yaml
+
+# API Keys and Secrets
+*api*key*
+*api*token*
+*secret*
+*password*
+*credential*
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cert
+*.cer
+*.der
+*.csr
+*jwt*secret*
+*encryption*key*
+*signing*key*
+*private*key*
+
+# Database and Cache Credentials
+*database*password*
+*db*password*
+*postgres*password*
+*mysql*password*
+*redis*password*
+database.json
+credentials.json
+redis.dump
+memcached.dump
+*.sql
+*.dump
+*.backup
+*.sqlite
+*.db
+
+# Docker Secrets and Overrides
+docker-compose.override.yml
+docker-compose.*.yml
+secrets/
+docker/secrets/
+
+# Cloud Provider Credentials
+.aws/
+.azure/
+.gcp/
+*service*account*.json
+*credentials*.json
+*.serviceaccount
+gcloud-service-key.json
+
+# SSL/TLS Certificates
+ssl/
+certs/
+certificates/
+*.p7b
+*.p7c
+*.p7m
+*.p7s
+*.jks
+*.keystore
+*.truststore
+
+# Medical and Sensitive Data
+patient*data*
+phi*
+hipaa*
+clinical*data*
+genetic*data*
+variant*data*.json
+*patient*
+*clinical*trial*
+*medical*record*
+
+# Audit and Security Files  
+audit/
+security-scan-*
+vulnerability-*
+compliance-*
+*audit*trail*
+*security*report*
+
+# Test Data That May Contain Real Information
+testdata/real/
+test-data/production/
+*real*patient*
+*production*data*
+*live*data*
+
+# Build Artifacts and Caches
+node_modules/
+vendor/
+target/
+dist/
+build/
+out/
+*.exe
+*.bin
+
+# Log Files
+*.log
+logs/
+log/
+audit.log
+security.log
+access.log
+
+# Temporary and Backup Files
+tmp/
+temp/
+*.tmp
+*.temp
+.tmp/
+.temp/
+*.backup
+*.bak
+*.old
+*.orig
+*backup*
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Version Control
+.git/
+.gitconfig
+
+# Package Manager Files (may contain auth tokens)
+.npmrc
+.yarnrc
+.yarnrc.yml
+pip.conf
+.pypirc
+composer.auth.json
+
+# Session Files
+sessions/
+cache/
+*.session
+*.cache
+
+# Archive Files
+*.zip
+*.tar
+*.gz
+*.rar
+*.7z
+*.tar.gz
+*.tgz
+
+# AI Tool Data
+conversation-history/
+claude-conversations/
+chatgpt-sessions/
+ai-tool-logs/
+*.ai-session
+*conversation*history*
+
+# OS Files
+*.lnk
+*.url
+
+# Configuration Management
+ansible/
+terraform/
+helm/
+k8s/
+kubernetes/
+*terraform*
+*ansible*
+*vault*
