@@ -87,6 +87,55 @@ The system implements all 28 ACMG/AMP evidence criteria for variant classificati
 - Use TLS/HTTPS in production environments
 - Validate genetic nomenclature (HGVS) strictly
 
+### AI Tool Security and Credential Protection
+
+**CRITICAL**: This project uses sensitive medical data and credentials that must never be exposed to AI tools or version control.
+
+#### File Protection
+Claude Code and other AI tools are configured to ignore sensitive files through:
+- `.claudecode-ignore`: Claude Code specific patterns
+- `.kiro-ignore`: Kiro AI tool patterns  
+- `.dockerignore`: Docker build protection
+- `.gitignore`: Version control protection
+
+#### Credential Handling Rules
+1. **NEVER** discuss, display, or work with actual API keys, passwords, or secrets
+2. **ALWAYS** use example/template files (.env.example, config.example.yaml)
+3. **NEVER** generate or suggest real credentials - use placeholders only
+4. **ALWAYS** refer developers to proper credential management procedures
+
+#### Medical Data Protection
+1. **NEVER** work with real patient data, genetic variants, or clinical information
+2. **ALWAYS** use synthetic/example data for development assistance
+3. **NEVER** generate or modify code that processes actual medical records
+4. **ALWAYS** remind developers of HIPAA and clinical safety requirements
+
+#### Safe Development Practices
+```bash
+# Verify AI tool protection is in place
+ls -la .kiro-ignore .claudecode-ignore
+
+# Check for accidental credential exposure
+grep -r "password\|secret\|api.*key" --exclude-dir=.git .
+
+# Use example files for reference
+cp config.example.yaml config.yaml
+cp .env.example .env
+```
+
+#### Emergency Credential Exposure Response
+If credentials are accidentally exposed in AI conversations:
+1. Immediately rotate all potentially exposed credentials
+2. Review and update ignore file patterns
+3. Notify security team per SECURITY.md guidelines
+4. Audit AI tool access logs and conversation history
+
+#### Medical Code Validation Requirements
+- All AI-generated ACMG/AMP rule implementations MUST undergo clinical review
+- Never commit AI-generated medical decision logic without expert validation
+- Maintain clear audit trails of AI assistance in medical software development
+- Follow medical software development lifecycle (IEC 62304) principles
+
 ### HGVS Validation and Parsing
 - **Input Parser Service** (`internal/service/input_parser.go`): Orchestrates HGVS parsing and validation
 - **HGVS Parser** (`pkg/hgvs/parser.go`): Handles genomic, coding, and protein HGVS notation
