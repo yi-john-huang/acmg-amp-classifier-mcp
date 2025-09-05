@@ -23,7 +23,6 @@ func main() {
 		log.Fatalf("Configuration validation failed: %v", err)
 	}
 
-	cfg := configManager.GetConfig()
 	log.Printf("Starting ACMG-AMP MCP Server with protocol version %s", "2025-01-01")
 
 	// Create MCP server
