@@ -8,6 +8,8 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/acmg-amp-mcp-server/internal/config"
+	"github.com/acmg-amp-mcp-server/internal/mcp/protocol"
+	"github.com/acmg-amp-mcp-server/internal/mcp/tools"
 	"github.com/acmg-amp-mcp-server/internal/mcp/transport"
 )
 
@@ -17,6 +19,8 @@ type Server struct {
 	mcpServer       *mcp.Server
 	transportMgr    *transport.Manager
 	activeTransport transport.Transport
+	protocolCore    *protocol.ProtocolCore
+	toolRegistry    *tools.ToolRegistry
 	logger          *logrus.Logger
 }
 
@@ -39,6 +43,26 @@ func NewServer(configManager *config.Manager) (*Server, error) {
 	// Create transport manager
 	transportMgr := transport.NewManager(logger, mcpConfig)
 
+	// Create protocol core
+	protocolCore := protocol.NewProtocolCore(logger)
+
+	// Create message router
+	router := protocol.NewMessageRouter(logger)
+
+	// The protocol core will route messages through its built-in system handlers
+	// and the message router handles tool-specific routing
+
+	// Create tool registry and register tools
+	toolRegistry := tools.NewToolRegistry(logger, router)
+	if err := toolRegistry.RegisterAllTools(); err != nil {
+		return nil, fmt.Errorf("failed to register tools: %w", err)
+	}
+
+	// Validate all tools
+	if err := toolRegistry.ValidateAllTools(); err != nil {
+		return nil, fmt.Errorf("tool validation failed: %w", err)
+	}
+
 	// Create server info
 	serverInfo := &mcp.Implementation{
 		Name:    "acmg-amp-mcp-server",
@@ -52,6 +76,8 @@ func NewServer(configManager *config.Manager) (*Server, error) {
 		config:       configManager,
 		mcpServer:    mcpServer,
 		transportMgr: transportMgr,
+		protocolCore: protocolCore,
+		toolRegistry: toolRegistry,
 		logger:       logger,
 	}
 
@@ -133,9 +159,15 @@ func (s *Server) registerCapabilities() error {
 
 // registerClassificationTools registers ACMG/AMP classification tools
 func (s *Server) registerClassificationTools() error {
-	// TODO: Implement tool registration when MCP SDK API is finalized
-	// For now, return success to allow building
-	s.logger.Debug("Registered classification tools (placeholder)")
+	// Tools are now registered via the ToolRegistry during server initialization
+	toolsInfo := s.toolRegistry.GetRegisteredToolsInfo()
+	s.logger.WithField("tool_count", len(toolsInfo)).Debug("Classification tools registered")
+	
+	// Log registered tools
+	for _, toolInfo := range toolsInfo {
+		s.logger.WithField("tool_name", toolInfo.Name).Debug("Tool available")
+	}
+	
 	return nil
 }
 
