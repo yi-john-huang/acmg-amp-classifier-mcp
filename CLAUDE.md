@@ -15,7 +15,8 @@ Kiro-style Spec Driven Development implementation using claude code slash comman
 **Specs** (`.kiro/specs/`) - Formalize development process for individual features
 
 ### Active Specifications
-- Check `.kiro/specs/` for active specifications
+- `acmg-amp-mcp-server` - Original ACMG/AMP server specification (Tasks 1-5 completed, Tasks 6-16 revised for MCP)
+- `mcp-acmg-amp-server` - MCP-native implementation specification for AI agent integration
 - Use `/kiro:spec-status [feature-name]` to check progress
 
 ## Development Guidelines

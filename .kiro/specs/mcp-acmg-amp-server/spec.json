@@ -1,0 +1,34 @@
+{
+  "feature_name": "mcp-acmg-amp-server",
+  "created_at": "2025-01-05T00:00:00Z",
+  "updated_at": "2025-01-05T00:00:00Z",
+  "language": "en",
+  "phase": "initialized",
+  "description": "MCP-native ACMG/AMP genetic variant classification server with AI agent integration",
+  "approvals": {
+    "requirements": {
+      "generated": false,
+      "approved": false
+    },
+    "design": {
+      "generated": false,
+      "approved": false
+    },
+    "tasks": {
+      "generated": false,
+      "approved": false
+    }
+  },
+  "ready_for_implementation": false,
+  "dependencies": [
+    "acmg-amp-mcp-server"
+  ],
+  "technology_stack": [
+    "Go 1.21+",
+    "Model Context Protocol (MCP)",
+    "JSON-RPC 2.0",
+    "github.com/modelcontextprotocol/go-sdk",
+    "PostgreSQL",
+    "Redis"
+  ]
+}

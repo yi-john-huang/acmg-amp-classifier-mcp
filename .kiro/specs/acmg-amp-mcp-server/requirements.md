@@ -19,14 +19,14 @@ The ACMG-AMP MCP Server is a Golang-based backend service that implements the AC
 
 ### Requirement 2
 
-**User Story:** As a physician using AI agents, I want the MCP server to integrate seamlessly with ChatGPT, Claude, and Gemini, so that I can interact with the service using natural language.
+**User Story:** As a physician using AI agents, I want the MCP server to integrate seamlessly with ChatGPT, Claude, and Gemini through the Model Context Protocol, so that I can interact with the service using natural language.
 
 #### Acceptance Criteria
 
-1. WHEN an AI agent sends a request THEN the system SHALL accept and process the request through a standardized API gateway
-2. WHEN responding to AI agents THEN the system SHALL format responses in a structured, parseable format
-3. IF authentication is required THEN the system SHALL support API key-based authentication
-4. WHEN multiple concurrent requests arrive THEN the system SHALL handle them without performance degradation
+1. WHEN an AI agent sends a request THEN the system SHALL accept and process the request through the MCP protocol using JSON-RPC 2.0
+2. WHEN responding to AI agents THEN the system SHALL format responses according to MCP message specifications
+3. IF authentication is required THEN the system SHALL support MCP client authentication and capability negotiation
+4. WHEN multiple concurrent requests arrive THEN the system SHALL handle them without performance degradation through the MCP transport layer
 
 ### Requirement 3
 
@@ -85,11 +85,55 @@ The ACMG-AMP MCP Server is a Golang-based backend service that implements the AC
 
 ### Requirement 8
 
-**User Story:** As a developer integrating with the MCP server, I want comprehensive API documentation and error handling, so that I can build reliable client applications.
+**User Story:** As a developer integrating with the MCP server, I want comprehensive tool documentation and error handling, so that I can build reliable MCP client applications.
 
 #### Acceptance Criteria
 
-1. WHEN API endpoints are accessed THEN the system SHALL provide OpenAPI/Swagger documentation
-2. WHEN invalid requests are made THEN the system SHALL return standardized HTTP error codes with descriptive messages
-3. WHEN rate limits are exceeded THEN the system SHALL return appropriate 429 status codes with retry information
-4. WHEN system maintenance is required THEN the system SHALL provide graceful degradation and maintenance mode responses
+1. WHEN MCP capabilities are queried THEN the system SHALL provide complete tool, resource, and prompt definitions
+2. WHEN invalid requests are made THEN the system SHALL return standardized JSON-RPC error responses with descriptive messages
+3. WHEN rate limits are exceeded THEN the system SHALL return appropriate MCP error codes with retry information
+4. WHEN system maintenance is required THEN the system SHALL provide graceful degradation through MCP notification messages
+
+### Requirement 9
+
+**User Story:** As an AI agent developer, I want the server to implement the Model Context Protocol specification fully, so that my agent can discover and use all available capabilities.
+
+#### Acceptance Criteria
+
+1. WHEN initializing connection THEN the system SHALL support MCP protocol negotiation with version compatibility
+2. WHEN capabilities are requested THEN the system SHALL expose all tools, resources, and prompts through MCP discovery
+3. WHEN tools are invoked THEN the system SHALL execute them according to MCP tool call specifications
+4. WHEN resources are accessed THEN the system SHALL provide them through MCP resource URIs with proper content types
+
+### Requirement 10
+
+**User Story:** As an AI agent, I want to access ACMG/AMP functionality through standardized MCP tools, so that I can perform genetic variant analysis programmatically.
+
+#### Acceptance Criteria
+
+1. WHEN classifying variants THEN the system SHALL expose classification functionality as MCP tools with structured parameters
+2. WHEN validating HGVS notation THEN the system SHALL provide validation tools with clear success/failure responses
+3. WHEN querying evidence THEN the system SHALL offer database query tools that return structured evidence data
+4. WHEN generating reports THEN the system SHALL provide report generation tools with configurable output formats
+
+### Requirement 11
+
+**User Story:** As an AI agent, I want to access variant data and results through MCP resources, so that I can retrieve information efficiently without tool execution overhead.
+
+#### Acceptance Criteria
+
+1. WHEN variant data is stored THEN the system SHALL expose it through MCP resource URIs (variant/{id})
+2. WHEN classification results exist THEN the system SHALL provide them as MCP resources (interpretation/{id})
+3. WHEN evidence is aggregated THEN the system SHALL expose evidence collections as queryable MCP resources
+4. WHEN requesting resource lists THEN the system SHALL support MCP resource templates for dynamic discovery
+
+### Requirement 12
+
+**User Story:** As a clinical user working with AI agents, I want guided prompts for variant interpretation workflows, so that I can leverage AI assistance for complex clinical decisions.
+
+#### Acceptance Criteria
+
+1. WHEN starting variant interpretation THEN the system SHALL provide MCP prompts for clinical workflow guidance
+2. WHEN reviewing evidence THEN the system SHALL offer structured prompts for evidence evaluation
+3. WHEN generating reports THEN the system SHALL provide prompts for report customization and patient communication
+4. WHEN training scenarios are needed THEN the system SHALL expose educational prompts for learning ACMG/AMP guidelines
