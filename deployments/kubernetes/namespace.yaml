@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mcp-acmg-amp
+  labels:
+    name: mcp-acmg-amp
+    app.kubernetes.io/name: mcp-acmg-amp-server
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/component: namespace
+    app.kubernetes.io/managed-by: kubectl
+  annotations:
+    description: "Namespace for MCP ACMG/AMP Variant Classification Server"
+    contact: "mcp-team@example.com"

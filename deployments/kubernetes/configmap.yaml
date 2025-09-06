@@ -1,0 +1,105 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mcp-acmg-amp-config
+  namespace: mcp-acmg-amp
+  labels:
+    app.kubernetes.io/name: mcp-acmg-amp-server
+    app.kubernetes.io/component: config
+data:
+  # MCP Server Configuration
+  MCP_TRANSPORT: "http"
+  MCP_HTTP_PORT: "8080"
+  MCP_HTTPS_PORT: "8443"
+  MCP_METRICS_PORT: "9090"
+  
+  # Logging Configuration
+  MCP_LOG_LEVEL: "info"
+  MCP_LOG_FORMAT: "json"
+  
+  # Performance Configuration
+  MCP_MAX_CONNECTIONS: "1000"
+  MCP_CACHE_ENABLED: "true"
+  MCP_COMPRESSION_ENABLED: "true"
+  
+  # Application Configuration
+  RUN_MIGRATIONS: "true"
+  GOMAXPROCS: "0"
+  
+  # Performance Tuning
+  DB_MAX_OPEN_CONNS: "25"
+  DB_MAX_IDLE_CONNS: "5"
+  DB_CONN_MAX_LIFETIME: "300s"
+  
+  REDIS_MAX_IDLE: "10"
+  REDIS_MAX_ACTIVE: "100"
+  REDIS_IDLE_TIMEOUT: "240s"
+  
+  CACHE_DEFAULT_TTL: "15m"
+  CACHE_MAX_SIZE: "100MB"
+  
+  COMPRESSION_THRESHOLD: "1KB"
+  COMPRESSION_LEVEL: "6"
+  
+  # Security Configuration
+  CORS_ALLOWED_ORIGINS: "*"
+  CORS_ALLOWED_METHODS: "GET,POST,PUT,DELETE,OPTIONS"
+  CORS_ALLOWED_HEADERS: "*"
+  
+  RATE_LIMIT_REQUESTS_PER_MINUTE: "60"
+  RATE_LIMIT_BURST: "10"
+  
+  # Healthcare/Clinical Configuration
+  HIPAA_COMPLIANCE_MODE: "true"
+  AUDIT_LOG_ENABLED: "true"
+  AUDIT_LOG_RETENTION_DAYS: "90"
+  ANONYMIZE_PATIENT_DATA: "true"
+  
+  # Health Check Configuration
+  HEALTH_CHECK_INTERVAL: "30s"
+  HEALTH_CHECK_TIMEOUT: "10s"
+  HEALTH_CHECK_RETRIES: "3"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mcp-redis-config
+  namespace: mcp-acmg-amp
+  labels:
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/component: config
+data:
+  redis.conf: |
+    # Redis Configuration for MCP ACMG/AMP Server
+    
+    # Memory Management
+    maxmemory 512mb
+    maxmemory-policy allkeys-lru
+    
+    # Persistence
+    save 900 1
+    save 300 10
+    save 60 10000
+    
+    # Append Only File
+    appendonly yes
+    appendfsync everysec
+    
+    # Security
+    protected-mode yes
+    
+    # Network
+    bind 0.0.0.0
+    port 6379
+    
+    # Logging
+    loglevel notice
+    
+    # Client Management
+    timeout 300
+    tcp-keepalive 300
+    
+    # Performance
+    tcp-backlog 511
+    databases 16

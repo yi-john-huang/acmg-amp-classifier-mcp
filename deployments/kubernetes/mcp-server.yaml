@@ -1,0 +1,246 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-acmg-amp-server
+  namespace: mcp-acmg-amp
+  labels:
+    app.kubernetes.io/name: mcp-acmg-amp-server
+    app.kubernetes.io/component: server
+    app.kubernetes.io/version: "1.0.0"
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mcp-acmg-amp-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mcp-acmg-amp-server
+        app.kubernetes.io/component: server
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      initContainers:
+      - name: wait-for-postgres
+        image: postgres:15-alpine
+        command:
+          - sh
+          - -c
+          - |
+            until pg_isready -h postgresql -p 5432 -U mcpuser; do
+              echo "Waiting for PostgreSQL..."
+              sleep 2
+            done
+        env:
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mcp-acmg-amp-secrets
+              key: POSTGRES_PASSWORD
+      - name: wait-for-redis
+        image: redis:7-alpine
+        command:
+          - sh
+          - -c
+          - |
+            until redis-cli -h redis -p 6379 ping; do
+              echo "Waiting for Redis..."
+              sleep 2
+            done
+      containers:
+      - name: mcp-server
+        image: mcp-acmg-amp-server:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        # Database Configuration
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: mcp-acmg-amp-secrets
+              key: DATABASE_URL
+        
+        # Redis Configuration
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: mcp-acmg-amp-secrets
+              key: REDIS_URL
+        
+        # External API Keys
+        - name: CLINVAR_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: mcp-acmg-amp-secrets
+              key: CLINVAR_API_KEY
+        - name: GNOMAD_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: mcp-acmg-amp-secrets
+              key: GNOMAD_API_KEY
+        - name: COSMIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: mcp-acmg-amp-secrets
+              key: COSMIC_API_KEY
+        - name: HGMD_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: mcp-acmg-amp-secrets
+              key: HGMD_API_KEY
+        
+        # Security Configuration
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: mcp-acmg-amp-secrets
+              key: JWT_SECRET
+        
+        # Configuration from ConfigMap
+        envFrom:
+        - configMapRef:
+            name: mcp-acmg-amp-config
+        
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        - name: https
+          containerPort: 8443
+          protocol: TCP
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+        
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 2
+        
+        startupProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 30
+        
+        resources:
+          limits:
+            cpu: 2000m
+            memory: 2Gi
+          requests:
+            cpu: 500m
+            memory: 512Mi
+        
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/config
+          readOnly: true
+        - name: tls-certs
+          mountPath: /app/certs
+          readOnly: true
+        - name: logs-volume
+          mountPath: /app/logs
+        - name: data-volume
+          mountPath: /app/data
+        
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
+      
+      volumes:
+      - name: config-volume
+        configMap:
+          name: mcp-acmg-amp-config
+      - name: tls-certs
+        secret:
+          secretName: mcp-tls-secret
+      - name: logs-volume
+        emptyDir: {}
+      - name: data-volume
+        emptyDir: {}
+      
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-acmg-amp-server
+  namespace: mcp-acmg-amp
+  labels:
+    app.kubernetes.io/name: mcp-acmg-amp-server
+    app.kubernetes.io/component: server
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  - name: https
+    port: 8443
+    targetPort: 8443
+    protocol: TCP
+  - name: metrics
+    port: 9090
+    targetPort: 9090
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: mcp-acmg-amp-server
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-acmg-amp-server-loadbalancer
+  namespace: mcp-acmg-amp
+  labels:
+    app.kubernetes.io/name: mcp-acmg-amp-server
+    app.kubernetes.io/component: loadbalancer
+spec:
+  type: LoadBalancer
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+    protocol: TCP
+  - name: https
+    port: 443
+    targetPort: 8443
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: mcp-acmg-amp-server
