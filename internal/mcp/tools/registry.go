@@ -1,6 +1,9 @@
 package tools
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/sirupsen/logrus"
 
 	"github.com/acmg-amp-mcp-server/internal/mcp/protocol"
@@ -124,4 +127,25 @@ func (tr *ToolRegistry) ValidateAllTools() error {
 
 	tr.logger.Info("Tool validation completed")
 	return nil
+}
+
+// ExecuteTool executes a tool by name using the registered handler
+func (tr *ToolRegistry) ExecuteTool(ctx context.Context, req *protocol.JSONRPC2Request) *protocol.JSONRPC2Response {
+	tr.logger.WithField("tool", req.Method).Debug("Executing tool")
+	
+	// Get the tool handler from the router
+	handler, exists := tr.router.GetToolHandler(req.Method)
+	if !exists {
+		return &protocol.JSONRPC2Response{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error: &protocol.RPCError{
+				Code:    protocol.MethodNotFound,
+				Message: fmt.Sprintf("Tool '%s' not found", req.Method),
+			},
+		}
+	}
+	
+	// Execute the tool using its handler
+	return handler.HandleTool(ctx, req)
 }

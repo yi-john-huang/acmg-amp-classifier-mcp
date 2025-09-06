@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/sirupsen/logrus"
@@ -57,15 +58,45 @@ func NewServer(configManager *config.Manager) (*Server, error) {
 
 	// Create external services for evidence gathering
 	// TODO: Extract individual configs from mcpConfig once available
-	// For now, create with default/empty configs
+	// For now, create with sensible default configs
 	knowledgeBaseService, err := external.NewKnowledgeBaseService(
-		domain.ClinVarConfig{},
-		domain.GnomADConfig{},
-		domain.COSMICConfig{},
-		domain.PubMedConfig{},
-		domain.LOVDConfig{},
-		domain.HGMDConfig{},
-		domain.CacheConfig{},
+		domain.ClinVarConfig{
+			BaseURL:   "https://eutils.ncbi.nlm.nih.gov/entrez/eutils",
+			RateLimit: 3, // 3 requests per second (NCBI guideline)
+			Timeout:   30 * time.Second,
+		},
+		domain.GnomADConfig{
+			BaseURL:   "https://gnomad.broadinstitute.org/api",
+			RateLimit: 10,
+			Timeout:   30 * time.Second,
+		},
+		domain.COSMICConfig{
+			BaseURL:   "https://cancer.sanger.ac.uk/cosmic/search",
+			RateLimit: 5,
+			Timeout:   30 * time.Second,
+		},
+		domain.PubMedConfig{
+			BaseURL:   "https://eutils.ncbi.nlm.nih.gov/entrez/eutils",
+			RateLimit: 3, // 3 requests per second (NCBI guideline)
+			Timeout:   30 * time.Second,
+		},
+		domain.LOVDConfig{
+			BaseURL:   "https://www.lovd.nl/3.0/api",
+			RateLimit: 5,
+			Timeout:   30 * time.Second,
+		},
+		domain.HGMDConfig{
+			BaseURL:   "https://my.qiagendigitalinsights.com/bbp/view/hgmd",
+			RateLimit: 2,
+			Timeout:   30 * time.Second,
+		},
+		domain.CacheConfig{
+			RedisURL:    "redis://localhost:6379/0",
+			DefaultTTL:  300 * time.Second, // 5 minutes
+			MaxRetries:  3,
+			PoolSize:    10,
+			PoolTimeout: 5 * time.Second,
+		},
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create knowledge base service: %w", err)

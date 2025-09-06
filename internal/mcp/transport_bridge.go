@@ -7,6 +7,7 @@ import (
 	"io"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 	"github.com/sirupsen/logrus"
 
 	"github.com/acmg-amp-mcp-server/internal/mcp/transport"
@@ -28,100 +29,154 @@ func NewMCPTransportBridge(customTransport transport.Transport, logger *logrus.L
 	}
 }
 
-// ReadMessage implements mcp.Transport interface
-func (b *MCPTransportBridge) ReadMessage() ([]byte, error) {
-	b.logger.Debug("Reading message through transport bridge")
-	return b.customTransport.ReadMessage()
+// Connect implements the mcp.Transport interface
+func (b *MCPTransportBridge) Connect(ctx context.Context) (mcp.Connection, error) {
+	b.logger.Debug("Connecting through transport bridge")
+	
+	// Start our custom transport
+	if err := b.customTransport.Start(ctx); err != nil {
+		return nil, fmt.Errorf("failed to start custom transport: %w", err)
+	}
+	
+	// Return a connection that bridges our transport to MCP SDK
+	return &MCPConnectionBridge{
+		customTransport: b.customTransport,
+		logger:          b.logger,
+	}, nil
 }
 
-// WriteMessage implements mcp.Transport interface
-func (b *MCPTransportBridge) WriteMessage(data []byte) error {
-	b.logger.Debug("Writing message through transport bridge")
-	return b.customTransport.WriteMessage(data)
+// MCPConnectionBridge bridges our custom transport to MCP SDK Connection
+type MCPConnectionBridge struct {
+	customTransport transport.Transport
+	logger          *logrus.Logger
 }
 
-// Close implements mcp.Transport interface
-func (b *MCPTransportBridge) Close() error {
-	b.logger.Debug("Closing transport through bridge")
-	return b.customTransport.Close()
-}
-
-// ReadJSONMessage reads and unmarshals a JSON message
-func (b *MCPTransportBridge) ReadJSONMessage(v interface{}) error {
-	data, err := b.ReadMessage()
+// Read implements the mcp.Connection interface
+func (c *MCPConnectionBridge) Read(ctx context.Context) (jsonrpc.Message, error) {
+	c.logger.Debug("Reading message through connection bridge")
+	
+	// Read raw bytes from our custom transport
+	data, err := c.customTransport.ReadMessage()
 	if err != nil {
 		if err == io.EOF {
-			return err // Pass through EOF as-is for proper handling
+			return nil, err // Pass through EOF as-is
 		}
-		return fmt.Errorf("failed to read message: %w", err)
+		return nil, fmt.Errorf("failed to read from custom transport: %w", err)
 	}
 	
 	if len(data) == 0 {
-		return io.EOF
+		return nil, io.EOF
 	}
 	
-	if err := json.Unmarshal(data, v); err != nil {
-		b.logger.WithError(err).WithField("data", string(data)).Error("Failed to unmarshal JSON message")
-		return fmt.Errorf("failed to unmarshal JSON: %w", err)
-	}
-	
-	return nil
-}
-
-// WriteJSONMessage marshals and writes a JSON message
-func (b *MCPTransportBridge) WriteJSONMessage(v interface{}) error {
-	data, err := json.Marshal(v)
+	// Parse JSON-RPC message
+	var rawMsg json.RawMessage = data
+	msg, err := parseJSONRPCMessage(rawMsg)
 	if err != nil {
-		b.logger.WithError(err).Error("Failed to marshal JSON message")
-		return fmt.Errorf("failed to marshal JSON: %w", err)
+		c.logger.WithError(err).WithField("data", string(data)).Error("Failed to parse JSON-RPC message")
+		return nil, fmt.Errorf("failed to parse JSON-RPC message: %w", err)
 	}
 	
-	return b.WriteMessage(data)
+	return msg, nil
 }
 
-// Start starts the underlying transport
-func (b *MCPTransportBridge) Start(ctx context.Context) error {
-	b.logger.Info("Starting transport bridge")
-	return b.customTransport.Start(ctx)
+// Write implements the mcp.Connection interface  
+func (c *MCPConnectionBridge) Write(ctx context.Context, msg jsonrpc.Message) error {
+	c.logger.Debug("Writing message through connection bridge")
+	
+	// Encode JSON-RPC message to bytes
+	data, err := json.Marshal(msg)
+	if err != nil {
+		c.logger.WithError(err).Error("Failed to marshal JSON-RPC message")
+		return fmt.Errorf("failed to marshal JSON-RPC message: %w", err)
+	}
+	
+	// Write to our custom transport
+	return c.customTransport.WriteMessage(data)
 }
 
-// IsClosed returns whether the transport is closed
-func (b *MCPTransportBridge) IsClosed() bool {
-	return b.customTransport.IsClosed()
+// Close implements the mcp.Connection interface
+func (c *MCPConnectionBridge) Close() error {
+	c.logger.Debug("Closing connection through bridge")
+	return c.customTransport.Close()
 }
 
-// MCPToolHandler bridges MCP SDK tool calls to our internal tool registry
-type MCPToolHandler struct {
-	toolRegistry *tools.ToolRegistry
-	toolName     string
-	logger       *logrus.Logger
+// SessionID implements the mcp.Connection interface
+func (c *MCPConnectionBridge) SessionID() string {
+	// Generate or return a session ID - for now return a simple identifier
+	return "acmg-amp-session"
 }
 
-// NewMCPToolHandler creates a new MCP tool handler
+// parseJSONRPCMessage parses raw JSON into a jsonrpc.Message
+func parseJSONRPCMessage(raw json.RawMessage) (jsonrpc.Message, error) {
+	// First try to determine if it's a request, response, or notification
+	var base struct {
+		JSONRPC string          `json:"jsonrpc"`
+		Method  string          `json:"method,omitempty"`
+		ID      json.RawMessage `json:"id,omitempty"`
+		Result  json.RawMessage `json:"result,omitempty"`
+		Error   json.RawMessage `json:"error,omitempty"`
+	}
+	
+	if err := json.Unmarshal(raw, &base); err != nil {
+		return nil, fmt.Errorf("invalid JSON-RPC message: %w", err)
+	}
+	
+	// If it has a method, it's a request or notification
+	if base.Method != "" {
+		var req jsonrpc.Request
+		if err := json.Unmarshal(raw, &req); err != nil {
+			return nil, fmt.Errorf("invalid JSON-RPC request: %w", err)
+		}
+		return &req, nil
+	}
+	
+	// Otherwise, it's a response
+	var resp jsonrpc.Response
+	if err := json.Unmarshal(raw, &resp); err != nil {
+		return nil, fmt.Errorf("invalid JSON-RPC response: %w", err)
+	}
+	return &resp, nil
+}
+
+// NewMCPToolHandler creates a new MCP tool handler function
 func NewMCPToolHandler(toolRegistry *tools.ToolRegistry, toolName string, logger *logrus.Logger) mcp.ToolHandler {
-	return &MCPToolHandler{
-		toolRegistry: toolRegistry,
-		toolName:     toolName,
-		logger:       logger,
+	return func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		logger.WithField("tool", toolName).Debug("Handling MCP tool call")
+		
+		// Convert MCP call to our internal protocol
+		internalReq := &protocol.JSONRPC2Request{
+			Method: toolName,
+			Params: req.Params.Arguments,
+		}
+		
+		// Execute through our tool registry
+		response := toolRegistry.ExecuteTool(ctx, internalReq)
+		
+		// Convert internal response to MCP CallToolResult
+		var result *mcp.CallToolResult
+		
+		if response.Error != nil {
+			// Return error as tool result with isError flag
+			result = &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Tool execution failed: %s", response.Error.Message),
+					},
+				},
+				IsError: true,
+			}
+		} else {
+			// Convert successful result
+			result = &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Tool %s executed successfully", toolName),
+					},
+				},
+				StructuredContent: response.Result,
+			}
+		}
+		
+		return result, nil
 	}
-}
-
-// Handle implements mcp.ToolHandler interface
-func (h *MCPToolHandler) Handle(ctx context.Context, params map[string]interface{}) (interface{}, error) {
-	h.logger.WithField("tool", h.toolName).Debug("Handling MCP tool call")
-	
-	// Convert MCP call to our internal protocol
-	req := &protocol.JSONRPC2Request{
-		Method: h.toolName,
-		Params: params,
-	}
-	
-	// Execute through our tool registry
-	response := h.toolRegistry.ExecuteTool(ctx, req)
-	
-	if response.Error != nil {
-		return nil, fmt.Errorf("tool execution failed: %s", response.Error.Message)
-	}
-	
-	return response.Result, nil
 }

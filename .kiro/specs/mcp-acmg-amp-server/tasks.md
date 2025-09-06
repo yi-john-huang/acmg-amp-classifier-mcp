@@ -15,36 +15,40 @@ From original `acmg-amp-mcp-server` specification:
 
 ## MCP-Native Implementation Tasks
 
-- [ ] 1. Set up MCP Go SDK foundation
+- [x] 1. Set up MCP Go SDK foundation
 
-  - Add `github.com/modelcontextprotocol/go-sdk` dependency to go.mod with version pinning
-  - Create main MCP server application structure in `cmd/mcp-server/main.go`
-  - Implement basic MCP server initialization with configuration management
-  - Set up logging and error handling frameworks for MCP operations
-  - Create configuration structure for MCP transport and capability settings
-  - Write unit tests for MCP server initialization and configuration loading
+  - ✅ Add `github.com/modelcontextprotocol/go-sdk` dependency to go.mod with version pinning (v0.3.1)
+  - ✅ Create main MCP server application structure in `cmd/mcp-server/main.go`
+  - ✅ Implement basic MCP server initialization with configuration management
+  - ✅ Set up logging and error handling frameworks for MCP operations
+  - ✅ Create configuration structure for MCP transport and capability settings
+  - ✅ Fixed MCP SDK interface integration (Transport.Connect method implemented)
+  - ✅ Write unit tests for MCP server initialization and configuration loading
   - _Requirements: 1.1, 1.2, 1.3_
 
-- [ ] 2. Implement MCP transport layer
+- [x] 2. Implement MCP transport layer
 
-  - Create stdio transport handler for local AI agent connections (Claude Desktop)
-  - Implement HTTP with Server-Sent Events transport for remote AI agents
-  - Add transport auto-detection based on environment and configuration
-  - Implement connection management with client tracking and cleanup
-  - Create graceful shutdown handling for all transport types
-  - Add transport-specific configuration options and validation
-  - Write integration tests for transport layer with mock clients
+  - ✅ Create stdio transport handler for local AI agent connections (Claude Desktop)
+  - ✅ Implement HTTP with Server-Sent Events transport for remote AI agents
+  - ✅ Add transport auto-detection based on environment and configuration
+  - ✅ Implement connection management with client tracking and cleanup
+  - ✅ Create graceful shutdown handling for all transport types
+  - ✅ Add transport-specific configuration options and validation
+  - ✅ Fixed transport bridge to properly implement MCP SDK interfaces
+  - ✅ Write integration tests for transport layer with mock clients
   - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-- [ ] 3. Build JSON-RPC 2.0 protocol core
+- [x] 3. Build JSON-RPC 2.0 protocol core
 
-  - Implement JSON-RPC 2.0 message handler using MCP SDK
-  - Create capability negotiation and protocol version management
-  - Build message routing for tools, resources, and prompts
-  - Add client session management with authentication support
-  - Implement rate limiting per MCP client with configurable limits
-  - Create comprehensive error handling with JSON-RPC error codes
-  - Write unit tests for protocol compliance and message handling
+  - ✅ Implement JSON-RPC 2.0 message handler using MCP SDK
+  - ✅ Create capability negotiation and protocol version management
+  - ✅ Build message routing for tools, resources, and prompts
+  - ✅ Add client session management with authentication support
+  - ✅ Implement rate limiting per MCP client with configurable limits
+  - ✅ Create comprehensive error handling with JSON-RPC error codes
+  - ✅ Fixed ToolHandler interface to match MCP SDK function signature
+  - ✅ Implemented ExecuteTool method in ToolRegistry for proper tool execution
+  - ✅ Write unit tests for protocol compliance and message handling
   - _Requirements: 1.1, 1.2, 1.4, 10.3_
 
 - [x] 4. Implement ACMG/AMP classification tools
