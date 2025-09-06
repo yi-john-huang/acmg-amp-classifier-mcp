@@ -68,6 +68,9 @@ type ExternalAPIConfig struct {
 	ClinVar ClinVarConfig `mapstructure:"clinvar"`
 	GnomAD  GnomADConfig  `mapstructure:"gnomad"`
 	COSMIC  COSMICConfig  `mapstructure:"cosmic"`
+	PubMed  PubMedConfig  `mapstructure:"pubmed"`
+	LOVD    LOVDConfig    `mapstructure:"lovd"`
+	HGMD    HGMDConfig    `mapstructure:"hgmd"`
 }
 
 // ClinVarConfig represents ClinVar API configuration
@@ -131,4 +134,34 @@ type MCPConfig struct {
 	EnableCaching    bool          `mapstructure:"enable_caching"`
 	ToolCacheTTL     time.Duration `mapstructure:"tool_cache_ttl"`
 	ResourceCacheTTL time.Duration `mapstructure:"resource_cache_ttl"`
+}
+
+// PubMedConfig represents PubMed API configuration
+type PubMedConfig struct {
+	BaseURL    string        `mapstructure:"base_url"`
+	APIKey     string        `mapstructure:"api_key"`
+	Email      string        `mapstructure:"email"`      // Required by NCBI
+	Timeout    time.Duration `mapstructure:"timeout"`
+	RateLimit  int           `mapstructure:"rate_limit"`
+	RetryCount int           `mapstructure:"retry_count"`
+}
+
+// LOVDConfig represents LOVD API configuration
+type LOVDConfig struct {
+	BaseURL    string        `mapstructure:"base_url"`
+	APIKey     string        `mapstructure:"api_key"`
+	Timeout    time.Duration `mapstructure:"timeout"`
+	RateLimit  int           `mapstructure:"rate_limit"`
+	RetryCount int           `mapstructure:"retry_count"`
+}
+
+// HGMDConfig represents HGMD API configuration
+type HGMDConfig struct {
+	BaseURL        string        `mapstructure:"base_url"`
+	APIKey         string        `mapstructure:"api_key"`
+	License        string        `mapstructure:"license"`          // Professional license
+	IsProfessional bool          `mapstructure:"is_professional"`  // Use professional API
+	Timeout        time.Duration `mapstructure:"timeout"`
+	RateLimit      int           `mapstructure:"rate_limit"`
+	RetryCount     int           `mapstructure:"retry_count"`
 }

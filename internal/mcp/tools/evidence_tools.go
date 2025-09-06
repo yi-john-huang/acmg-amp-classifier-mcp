@@ -639,36 +639,233 @@ func (t *QueryEvidenceTool) calculateQualityScores(dbResults map[string]interfac
 	availableSources := float64(len(dbResults))
 	quality.DataCompleteness = availableSources / totalSources
 
-	// Assess source reliability
+	// Enhanced source reliability assessment
 	for source := range dbResults {
 		switch source {
 		case "clinvar":
-			quality.SourceReliability[source] = 0.95
+			// High reliability, assess based on review status
+			baseReliability := 0.95
+			if clinvarData, exists := dbResults["clinvar"].(map[string]interface{}); exists {
+				if reviewStatus, exists := clinvarData["review_status"].(string); exists {
+					switch reviewStatus {
+					case "reviewed_by_expert_panel", "criteria_provided_multiple_submitters_no_conflicts":
+						quality.SourceReliability[source] = 0.98
+					case "criteria_provided_single_submitter":
+						quality.SourceReliability[source] = 0.85
+					default:
+						quality.SourceReliability[source] = baseReliability
+					}
+				} else {
+					quality.SourceReliability[source] = baseReliability
+				}
+			}
+			quality.EvidenceStrength[source] = "high"
+			
 		case "gnomad":
+			// Very high reliability for population data
 			quality.SourceReliability[source] = 0.98
+			quality.EvidenceStrength[source] = "high"
+			
 		case "cosmic":
+			// Good reliability for somatic data
 			quality.SourceReliability[source] = 0.85
+			quality.EvidenceStrength[source] = "moderate"
+			
+		case "pubmed":
+			// Assess based on citation quality and quantity
+			baseReliability := 0.80
+			if pubmedData, exists := dbResults["pubmed"].(map[string]interface{}); exists {
+				if highImpact, exists := pubmedData["high_impact_citations"].(int); exists && highImpact > 0 {
+					quality.SourceReliability[source] = 0.90
+					quality.EvidenceStrength[source] = "high"
+				} else if totalCitations, exists := pubmedData["total_citations"].(int); exists && totalCitations > 5 {
+					quality.SourceReliability[source] = 0.85
+					quality.EvidenceStrength[source] = "moderate"
+				} else {
+					quality.SourceReliability[source] = baseReliability
+					quality.EvidenceStrength[source] = "supporting"
+				}
+			} else {
+				quality.SourceReliability[source] = baseReliability
+				quality.EvidenceStrength[source] = "supporting"
+			}
+			
+		case "lovd":
+			// Gene-specific databases have variable reliability
+			baseReliability := 0.75
+			if lovdData, exists := dbResults["lovd"].(map[string]interface{}); exists {
+				if functionalData, exists := lovdData["functional_data"].([]interface{}); exists && len(functionalData) > 0 {
+					quality.SourceReliability[source] = 0.85
+					quality.EvidenceStrength[source] = "moderate"
+				} else {
+					quality.SourceReliability[source] = baseReliability
+					quality.EvidenceStrength[source] = "supporting"
+				}
+			} else {
+				quality.SourceReliability[source] = baseReliability
+				quality.EvidenceStrength[source] = "supporting"
+			}
+			
+		case "hgmd":
+			// Commercial database with curated data
+			baseReliability := 0.88
+			if hgmdData, exists := dbResults["hgmd"].(map[string]interface{}); exists {
+				if mutationType, exists := hgmdData["mutation_type"].(string); exists {
+					switch mutationType {
+					case "DM": // Disease-causing
+						quality.SourceReliability[source] = 0.95
+						quality.EvidenceStrength[source] = "high"
+					case "DM?": // Likely disease-causing
+						quality.SourceReliability[source] = 0.85
+						quality.EvidenceStrength[source] = "moderate"
+					default:
+						quality.SourceReliability[source] = baseReliability
+						quality.EvidenceStrength[source] = "supporting"
+					}
+				} else {
+					quality.SourceReliability[source] = baseReliability
+					quality.EvidenceStrength[source] = "moderate"
+				}
+			} else {
+				quality.SourceReliability[source] = baseReliability
+				quality.EvidenceStrength[source] = "moderate"
+			}
+			
 		default:
-			quality.SourceReliability[source] = 0.80
+			quality.SourceReliability[source] = 0.70
+			quality.EvidenceStrength[source] = "supporting"
 		}
 	}
 
-	// Calculate conflict score
-	quality.ConflictScore = 0.1 // Low conflict
+	// Enhanced conflict score calculation
+	quality.ConflictScore = t.calculateConflictScore(dbResults)
 
-	// Assess freshness
-	quality.FreshnessScore = 0.9 // Recent data
+	// Enhanced freshness assessment
+	quality.FreshnessScore = t.calculateFreshnessScore(dbResults)
 
-	// Overall quality assessment
-	if quality.DataCompleteness >= 0.8 && quality.ConflictScore <= 0.2 {
+	// Enhanced overall quality assessment
+	avgReliability := t.calculateAverageReliability(quality.SourceReliability)
+	
+	if quality.DataCompleteness >= 0.8 && quality.ConflictScore <= 0.2 && avgReliability >= 0.90 {
+		quality.OverallQuality = "Excellent"
+	} else if quality.DataCompleteness >= 0.7 && quality.ConflictScore <= 0.3 && avgReliability >= 0.85 {
 		quality.OverallQuality = "High"
-	} else if quality.DataCompleteness >= 0.6 {
+	} else if quality.DataCompleteness >= 0.5 && quality.ConflictScore <= 0.5 && avgReliability >= 0.75 {
 		quality.OverallQuality = "Moderate"
-	} else {
+	} else if quality.DataCompleteness >= 0.3 {
 		quality.OverallQuality = "Limited"
+	} else {
+		quality.OverallQuality = "Insufficient"
 	}
 
 	return quality
+}
+
+// calculateConflictScore assesses conflicts between different evidence sources
+func (t *QueryEvidenceTool) calculateConflictScore(dbResults map[string]interface{}) float64 {
+	conflictScore := 0.0
+	
+	// Check for conflicts between clinical significance assessments
+	clinvarSignificance := ""
+	hgmdSignificance := ""
+	
+	if clinvarData, exists := dbResults["clinvar"].(map[string]interface{}); exists {
+		if sig, exists := clinvarData["clinical_significance"].(string); exists {
+			clinvarSignificance = strings.ToLower(sig)
+		}
+	}
+	
+	if hgmdData, exists := dbResults["hgmd"].(map[string]interface{}); exists {
+		if classification, exists := hgmdData["classification"].(string); exists {
+			hgmdSignificance = strings.ToLower(classification)
+		}
+	}
+	
+	// Assess conflict between ClinVar and HGMD
+	if clinvarSignificance != "" && hgmdSignificance != "" {
+		if t.isConflictingClassification(clinvarSignificance, hgmdSignificance) {
+			conflictScore += 0.3
+		}
+	}
+	
+	// Check population frequency conflicts with pathogenic assertions
+	if gnomadData, exists := dbResults["gnomad"].(map[string]interface{}); exists {
+		if alleleFreq, exists := gnomadData["allele_frequency"].(float64); exists && alleleFreq > 0.01 {
+			// High frequency conflicts with pathogenic classification
+			if strings.Contains(clinvarSignificance, "pathogenic") || strings.Contains(hgmdSignificance, "disease") {
+				conflictScore += 0.4
+			}
+		}
+	}
+	
+	return conflictScore
+}
+
+// calculateFreshnessScore assesses how recent the evidence is
+func (t *QueryEvidenceTool) calculateFreshnessScore(dbResults map[string]interface{}) float64 {
+	freshnessScore := 0.0
+	sourceCount := 0
+	
+	// Check PubMed citation recency
+	if pubmedData, exists := dbResults["pubmed"].(map[string]interface{}); exists {
+		if recentCitations, exists := pubmedData["recent_citations"].(int); exists {
+			if totalCitations, exists := pubmedData["total_citations"].(int); exists && totalCitations > 0 {
+				recentRatio := float64(recentCitations) / float64(totalCitations)
+				freshnessScore += recentRatio
+				sourceCount++
+			}
+		}
+	}
+	
+	// Check ClinVar last evaluated
+	if clinvarData, exists := dbResults["clinvar"].(map[string]interface{}); exists {
+		if lastEval, exists := clinvarData["last_evaluated"].(string); exists {
+			if lastEvalTime, err := time.Parse("2006-01-02", lastEval); err == nil {
+				monthsAgo := time.Since(lastEvalTime).Hours() / (24 * 30)
+				if monthsAgo <= 12 {
+					freshnessScore += 1.0
+				} else if monthsAgo <= 24 {
+					freshnessScore += 0.7
+				} else {
+					freshnessScore += 0.3
+				}
+				sourceCount++
+			}
+		}
+	}
+	
+	// Default to moderate freshness if no temporal data
+	if sourceCount == 0 {
+		return 0.7
+	}
+	
+	return freshnessScore / float64(sourceCount)
+}
+
+// calculateAverageReliability calculates the average reliability across sources
+func (t *QueryEvidenceTool) calculateAverageReliability(reliability map[string]float64) float64 {
+	if len(reliability) == 0 {
+		return 0.0
+	}
+	
+	total := 0.0
+	for _, score := range reliability {
+		total += score
+	}
+	
+	return total / float64(len(reliability))
+}
+
+// isConflictingClassification determines if two classifications conflict
+func (t *QueryEvidenceTool) isConflictingClassification(class1, class2 string) bool {
+	pathogenic1 := strings.Contains(class1, "pathogenic") || strings.Contains(class1, "disease")
+	pathogenic2 := strings.Contains(class2, "pathogenic") || strings.Contains(class2, "disease")
+	
+	benign1 := strings.Contains(class1, "benign")
+	benign2 := strings.Contains(class2, "benign")
+	
+	// Conflict if one is pathogenic and other is benign
+	return (pathogenic1 && benign2) || (benign1 && pathogenic2)
 }
 
 // generateRecommendations creates actionable recommendations based on evidence

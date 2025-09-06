@@ -17,12 +17,18 @@ func NewKnowledgeBaseService(
 	clinVarConfig domain.ClinVarConfig,
 	gnomADConfig domain.GnomADConfig,
 	cosmicConfig domain.COSMICConfig,
+	pubMedConfig domain.PubMedConfig,
+	lovdConfig domain.LOVDConfig,
+	hgmdConfig domain.HGMDConfig,
 	cacheConfig domain.CacheConfig,
 ) (*KnowledgeBaseService, error) {
 	resilientClient, err := NewResilientExternalClient(
 		clinVarConfig,
 		gnomADConfig,
 		cosmicConfig,
+		pubMedConfig,
+		lovdConfig,
+		hgmdConfig,
 		cacheConfig,
 	)
 	if err != nil {
@@ -52,6 +58,21 @@ func (k *KnowledgeBaseService) QueryGnomAD(variant *domain.StandardizedVariant) 
 // QueryCOSMIC queries COSMIC database
 func (k *KnowledgeBaseService) QueryCOSMIC(variant *domain.StandardizedVariant) (*domain.SomaticData, error) {
 	return k.resilientClient.QueryCOSMIC(context.Background(), variant)
+}
+
+// QueryPubMed queries PubMed database
+func (k *KnowledgeBaseService) QueryPubMed(variant *domain.StandardizedVariant) (*domain.LiteratureData, error) {
+	return k.resilientClient.QueryPubMed(context.Background(), variant)
+}
+
+// QueryLOVD queries LOVD database
+func (k *KnowledgeBaseService) QueryLOVD(variant *domain.StandardizedVariant) (*domain.LOVDData, error) {
+	return k.resilientClient.QueryLOVD(context.Background(), variant)
+}
+
+// QueryHGMD queries HGMD database
+func (k *KnowledgeBaseService) QueryHGMD(variant *domain.StandardizedVariant) (*domain.HGMDData, error) {
+	return k.resilientClient.QueryHGMD(context.Background(), variant)
 }
 
 // GetStats returns comprehensive statistics about the knowledge base service
