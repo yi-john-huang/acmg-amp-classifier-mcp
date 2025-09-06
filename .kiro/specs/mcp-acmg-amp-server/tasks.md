@@ -80,7 +80,7 @@ From original `acmg-amp-mcp-server` specification:
   - Write unit tests for report generation and format validation
   - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-- [ ] 7. Create MCP resource providers
+- [x] 7. Create MCP resource providers
 
   - Implement `variant/{id}` resource template with dynamic content loading
   - Create `interpretation/{id}` resource for classification result access
@@ -91,7 +91,7 @@ From original `acmg-amp-mcp-server` specification:
   - Write integration tests for resource access patterns and URI resolution
   - _Requirements: 6.1, 6.2, 6.3, 6.4_
 
-- [ ] 8. Develop MCP prompt templates
+- [x] 8. Develop MCP prompt templates
 
   - Create `clinical_interpretation` prompt for systematic workflow guidance
   - Build `evidence_review` prompt for structured evidence evaluation
