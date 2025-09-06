@@ -145,23 +145,29 @@ graph TD
 
 ```
 /
-├── cmd/                    # Main applications
-│   └── server/            # HTTP server entry point
-├── internal/              # Private application code
-│   ├── api/              # HTTP handlers and routing
-│   ├── config/           # Configuration management
-│   ├── domain/           # Business logic and entities
-│   ├── repository/       # Data access layer
-│   └── service/          # Application services
-├── pkg/                  # Public library code
-│   ├── acmg/            # ACMG/AMP rule engine
-│   ├── hgvs/            # HGVS parsing utilities
-│   └── external/        # External API clients
-├── api/                 # OpenAPI/Swagger specs
-├── migrations/          # Database migrations
-├── docker/             # Docker configurations
-├── docs/               # Documentation
-└── config.example.yaml # Example configuration
+├── cmd/                          # Main applications
+│   └── mcp-server/              # MCP server entry point
+├── internal/                    # Private application code
+│   ├── config/                 # Configuration management
+│   ├── domain/                 # Business logic and entities
+│   ├── mcp/                    # MCP protocol implementation
+│   │   ├── protocol/          # JSON-RPC 2.0 protocol core
+│   │   ├── transport/         # Transport layer (stdio/HTTP-SSE)
+│   │   ├── tools/             # ACMG/AMP tool implementations
+│   │   ├── resources/         # MCP resource providers
+│   │   └── prompts/           # MCP prompt templates
+│   └── service/               # Application services
+├── pkg/                        # Public library code
+│   └── external/              # External API clients (6 databases)
+├── deployments/               # Deployment configurations
+│   └── kubernetes/           # Kubernetes manifests
+├── docs/                      # Documentation
+├── examples/                  # Usage examples and integrations
+│   └── ai-agents/            # AI agent integration examples
+├── scripts/                   # Deployment and utility scripts
+├── .env.example              # Environment configuration template
+├── docker-compose.yml        # Docker Compose configuration
+└── Dockerfile               # Container build configuration
 ```
 
 ## Core Interfaces
@@ -188,22 +194,58 @@ The service is built around well-defined interfaces:
    git clone https://github.com/your-username/acmg-amp-classifier-mcp.git
    cd acmg-amp-classifier-mcp
    
-   # Copy and edit configuration
-   cp config.example.yaml config.yaml
+   # Copy and edit environment configuration
    cp .env.example .env
-   # Edit .env with your database and API credentials
    ```
 
-2. **Start the services**
+2. **Configure environment variables**
+   
+   Edit `.env` file with your secure credentials:
+   ```bash
+   # Required: Set secure passwords
+   POSTGRES_PASSWORD=your_secure_postgres_password_here
+   REDIS_PASSWORD=your_secure_redis_password_here
+   
+   # Optional: External database API keys (for production use)
+   CLINVAR_API_KEY=your_ncbi_api_key_here
+   GNOMAD_API_KEY=your_gnomad_api_key_here  
+   COSMIC_USERNAME=your_cosmic_username_here
+   COSMIC_PASSWORD=your_cosmic_password_here
+   
+   # Optional: Adjust ports if needed
+   POSTGRES_PORT=5432
+   REDIS_PORT=6379
+   MCP_HTTP_PORT=8080
+   ```
+
+3. **Start the services**
    ```bash
    # Start PostgreSQL, Redis, and MCP server
    docker-compose up -d
    
+   # Check all services are running
+   docker-compose ps
+   
    # Check server health
    curl http://localhost:8080/health
+   
+   # View logs (optional)
+   docker-compose logs -f mcp-server
    ```
 
-3. **Configure Claude Desktop**
+4. **Verify deployment**
+   ```bash
+   # Test database connection
+   docker-compose exec postgres psql -U mcpuser -d acmg_amp_mcp -c "SELECT version();"
+   
+   # Test Redis connection  
+   docker-compose exec redis redis-cli -a $REDIS_PASSWORD ping
+   
+   # Test MCP server tools
+   curl http://localhost:8080/tools/list
+   ```
+
+5. **Configure Claude Desktop**
    
    Add to your Claude Desktop MCP settings (`~/Library/Application Support/Claude/claude_desktop_config.json`):
    ```json
@@ -218,9 +260,87 @@ The service is built around well-defined interfaces:
    }
    ```
 
-4. **Test with Claude**
+6. **Test with Claude**
    
    Ask Claude: *"Can you classify the variant NM_000492.3:c.1521_1523delCTT using ACMG/AMP guidelines?"*
+
+### 🔧 Docker Compose Services
+
+The provided `docker-compose.yml` includes:
+
+**PostgreSQL Database (`postgres`)**
+- Image: `postgres:15-alpine`
+- Port: `5432` (configurable via `POSTGRES_PORT`)
+- Persistent storage with health checks
+- Automatic database initialization scripts
+- Resource limits for production use
+
+**Redis Cache (`redis`)**  
+- Image: `redis:7-alpine`
+- Port: `6379` (configurable via `REDIS_PORT`)
+- Password-protected with persistence enabled
+- Memory limit (512MB) with LRU eviction policy
+- Append-only file for data durability
+
+**MCP Server (`mcp-server`)**
+- Built from local Dockerfile
+- Port: `8080` (configurable via `MCP_HTTP_PORT`)  
+- Automatic database migrations on startup
+- Health checks and restart policies
+- Comprehensive logging and monitoring
+
+**Key Features:**
+- **Production-ready**: Resource limits, health checks, restart policies
+- **Secure**: Password-protected services, non-root users
+- **Persistent**: Data volumes for PostgreSQL and Redis
+- **Scalable**: Network isolation and configurable resources
+- **Monitored**: Health checks and logging integration
+
+### 🛠️ Environment Variables Reference
+
+The `.env` file supports comprehensive configuration:
+
+```bash
+# =============================================================================
+# Database Configuration
+# =============================================================================
+POSTGRES_DB=acmg_amp_mcp              # Database name
+POSTGRES_USER=mcpuser                 # Database username  
+POSTGRES_PASSWORD=secure_password     # Database password (REQUIRED)
+POSTGRES_PORT=5432                    # Database port
+
+# =============================================================================
+# Redis Configuration  
+# =============================================================================
+REDIS_PASSWORD=secure_redis_password  # Redis password (REQUIRED)
+REDIS_PORT=6379                       # Redis port
+
+# =============================================================================
+# MCP Server Configuration
+# =============================================================================
+MCP_TRANSPORT=http                    # Transport type (http/stdio)
+MCP_HTTP_PORT=8080                    # HTTP server port
+MCP_LOG_LEVEL=info                    # Log level (debug/info/warn/error)
+MCP_MAX_CONNECTIONS=1000              # Max concurrent connections
+MCP_CACHE_ENABLED=true                # Enable caching
+
+# =============================================================================
+# External Database APIs (Optional - for enhanced functionality)
+# =============================================================================
+CLINVAR_API_KEY=your_ncbi_key         # NCBI E-utilities API key
+GNOMAD_API_KEY=your_gnomad_key        # gnomAD API key  
+COSMIC_USERNAME=your_cosmic_user      # COSMIC database username
+COSMIC_PASSWORD=your_cosmic_pass      # COSMIC database password
+LOVD_API_KEY=your_lovd_key           # LOVD API key
+HGMD_API_KEY=your_hgmd_key           # HGMD API key
+
+# =============================================================================
+# Security Configuration (Production)
+# =============================================================================
+MCP_TLS_ENABLED=false                 # Enable HTTPS/TLS
+MCP_TLS_CERT_PATH=/app/certs/server.crt
+MCP_TLS_KEY_PATH=/app/certs/server.key
+```
 
 ### 🔧 Method 2: Local Development
 
@@ -239,15 +359,19 @@ The service is built around well-defined interfaces:
 
 2. **Configure and run**
    ```bash
-   # Copy and edit configuration
-   cp config.example.yaml config.yaml
-   # Edit database connection settings
+   # Copy and edit environment variables
+   cp .env.example .env
+   # Edit .env with your local database settings
    
-   # Run database migrations
-   go run cmd/migrate/main.go up
+   # Set environment variables for local development
+   export DATABASE_URL="postgres://mcpuser:password@localhost:5432/acmg_amp_dev"
+   export REDIS_URL="redis://localhost:6379/0"
+   
+   # Run database migrations (if migration command exists)
+   # go run cmd/migrate/main.go up
    
    # Start the MCP server
-   go run cmd/mcp-server/main.go
+   go run cmd/mcp-server/main.go --stdio
    ```
 
 3. **Connect to Claude Desktop**
@@ -257,10 +381,28 @@ The service is built around well-defined interfaces:
    {
      "mcpServers": {
        "acmg-amp-classifier": {
-         "command": "/path/to/your/acmg-amp-mcp-server",
-         "args": ["--transport=stdio"],
+         "command": "/path/to/your/built/mcp-server",
+         "args": ["--stdio"],
          "env": {
-           "DATABASE_URL": "postgres://localhost/acmg_amp_dev"
+           "DATABASE_URL": "postgres://mcpuser:password@localhost:5432/acmg_amp_dev",
+           "REDIS_URL": "redis://localhost:6379/0"
+         }
+       }
+     }
+   }
+   ```
+
+   Or use `go run` directly:
+   ```json
+   {
+     "mcpServers": {
+       "acmg-amp-classifier": {
+         "command": "go",
+         "args": ["run", "/path/to/acmg-amp-classifier-mcp/cmd/mcp-server/main.go", "--stdio"],
+         "cwd": "/path/to/acmg-amp-classifier-mcp",
+         "env": {
+           "DATABASE_URL": "postgres://mcpuser:password@localhost:5432/acmg_amp_dev",
+           "REDIS_URL": "redis://localhost:6379/0"
          }
        }
      }
@@ -272,12 +414,22 @@ The service is built around well-defined interfaces:
 ⚠️ **This is medical software handling genetic data. Security and compliance are critical:**
 
 **Security Requirements:**
-- Never commit `.env` files or secrets to version control
-- Use strong, unique passwords for all services
-- Enable TLS/HTTPS in production environments
-- Regularly rotate API keys and database passwords
-- Monitor audit logs for suspicious activity
+- **Never commit `.env` files** or secrets to version control (added to `.gitignore`)
+- **Use strong, unique passwords** for all services (minimum 16 characters)
+- **Enable TLS/HTTPS** in production environments (`MCP_TLS_ENABLED=true`)
+- **Regularly rotate API keys** and database passwords
+- **Monitor audit logs** for suspicious activity 
+- **Use environment variables** for all sensitive configuration
 - See [SECURITY.md](SECURITY.md) for complete security guidelines
+
+**Production Deployment Checklist:**
+- [ ] Set secure `POSTGRES_PASSWORD` and `REDIS_PASSWORD` in `.env`
+- [ ] Configure external database API keys for enhanced functionality  
+- [ ] Enable TLS/HTTPS for production (`MCP_TLS_ENABLED=true`)
+- [ ] Set appropriate resource limits in `docker-compose.yml`
+- [ ] Configure monitoring and log aggregation
+- [ ] Set up regular database backups
+- [ ] Review and apply security patches regularly
 
 **License Compliance:**
 - ✅ Ensure your use case complies with the Non-Commercial License
