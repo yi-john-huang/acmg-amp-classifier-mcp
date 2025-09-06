@@ -30,11 +30,11 @@ type UnifiedGeneAPIConfig struct {
 	HGNCConfig    HGNCConfig    `json:"hgnc"`
 	RefSeqConfig  RefSeqConfig  `json:"refseq"`
 	EnsemblConfig EnsemblConfig `json:"ensembl"`
-	CircuitBreaker CircuitBreakerConfig `json:"circuit_breaker"`
+	CircuitBreaker UnifiedCircuitBreakerConfig `json:"circuit_breaker"`
 }
 
-// CircuitBreakerConfig represents circuit breaker configuration
-type CircuitBreakerConfig struct {
+// UnifiedCircuitBreakerConfig represents circuit breaker configuration for UnifiedGeneAPIClient
+type UnifiedCircuitBreakerConfig struct {
 	MaxRequests      uint32        `json:"max_requests"`
 	Interval         time.Duration `json:"interval"`
 	Timeout          time.Duration `json:"timeout"`

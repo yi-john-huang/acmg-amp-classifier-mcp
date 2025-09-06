@@ -11,8 +11,6 @@ import (
 	"time"
 
 	"golang.org/x/time/rate"
-
-	"github.com/acmg-amp-mcp-server/internal/domain"
 )
 
 // HGNCClient handles interactions with the HUGO Gene Nomenclature Committee (HGNC) API

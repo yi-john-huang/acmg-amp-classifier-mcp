@@ -44,11 +44,11 @@ type ESearchResponse struct {
 // ESummaryResponse represents the XML response from E-utilities esummary
 type ESummaryResponse struct {
 	XMLName        xml.Name           `xml:"eSummaryResult"`
-	DocumentSummary []DocumentSummary `xml:"DocumentSummary"`
+	DocumentSummary []RefSeqDocumentSummary `xml:"DocumentSummary"`
 }
 
-// DocumentSummary represents a single record from RefSeq
-type DocumentSummary struct {
+// RefSeqDocumentSummary represents a single record from RefSeq
+type RefSeqDocumentSummary struct {
 	UID                string `xml:"uid,attr"`
 	Caption            string `xml:"Caption"`
 	Title              string `xml:"Title"`
@@ -132,7 +132,7 @@ func (r *RefSeqClient) GetCanonicalTranscript(ctx context.Context, geneSymbol st
 	}
 
 	// Find the best transcript (prefer NM_ accessions, then longest)
-	var bestTranscript *DocumentSummary
+	var bestTranscript *RefSeqDocumentSummary
 	var bestScore int
 
 	for i := range summaryResponse.DocumentSummary {
@@ -334,7 +334,7 @@ func (r *RefSeqClient) esummary(ctx context.Context, database string, ids []stri
 }
 
 // scoreTranscript assigns a score to prioritize transcripts
-func (r *RefSeqClient) scoreTranscript(doc *DocumentSummary) int {
+func (r *RefSeqClient) scoreTranscript(doc *RefSeqDocumentSummary) int {
 	score := 0
 
 	// Prefer NM_ (curated mRNA) over XM_ (predicted mRNA)
