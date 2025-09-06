@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "acmg-amp-classifier": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "--network", "host",
+        "--env-file", "/path/to/acmg-amp-classifier-mcp/.env",
+        "-e", "MCP_TRANSPORT=stdio",
+        "mcp-acmg-amp-server:latest",
+        "/app/bin/mcp-server",
+        "--config", "/app/config/production.yaml"
+      ]
+    }
+  }
+}

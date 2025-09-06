@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "acmg-amp-classifier": {
+      "command": "/path/to/acmg-amp-classifier-mcp/bin/mcp-server",
+      "args": ["--config", "/path/to/acmg-amp-classifier-mcp/config/development.yaml"],
+      "env": {
+        "ACMG_CONFIG_FILE": "/path/to/acmg-amp-classifier-mcp/config/development.yaml",
+        "ACMG_LOG_LEVEL": "info",
+        "ACMG_TRANSPORT": "stdio"
+      }
+    }
+  }
+}

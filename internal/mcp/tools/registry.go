@@ -1,0 +1,151 @@
+package tools
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/sirupsen/logrus"
+
+	"github.com/acmg-amp-mcp-server/internal/mcp/protocol"
+	"github.com/acmg-amp-mcp-server/internal/service"
+)
+
+// ToolRegistry manages registration of all MCP tools
+type ToolRegistry struct {
+	logger            *logrus.Logger
+	router            *protocol.MessageRouter
+	classifierService *service.ClassifierService
+}
+
+// NewToolRegistry creates a new tool registry
+func NewToolRegistry(logger *logrus.Logger, router *protocol.MessageRouter, classifierService *service.ClassifierService) *ToolRegistry {
+	return &ToolRegistry{
+		logger:            logger,
+		router:            router,
+		classifierService: classifierService,
+	}
+}
+
+// RegisterAllTools registers all ACMG/AMP tools with the MCP router
+func (tr *ToolRegistry) RegisterAllTools() error {
+	tr.logger.Info("Registering ACMG/AMP tools")
+
+	// Register classification tools
+	classifyTool := NewClassifyVariantTool(tr.logger, tr.classifierService)
+	tr.router.RegisterToolHandler("classify_variant", classifyTool)
+	tr.logger.Debug("Registered classify_variant tool")
+
+	validateTool := NewValidateHGVSTool(tr.logger, tr.classifierService)
+	tr.router.RegisterToolHandler("validate_hgvs", validateTool)
+	tr.logger.Debug("Registered validate_hgvs tool")
+
+	applyRuleTool := NewApplyRuleTool(tr.logger, tr.classifierService)
+	tr.router.RegisterToolHandler("apply_rule", applyRuleTool)
+	tr.logger.Debug("Registered apply_rule tool")
+
+	combineEvidenceTool := NewCombineEvidenceTool(tr.logger, tr.classifierService)
+	tr.router.RegisterToolHandler("combine_evidence", combineEvidenceTool)
+	tr.logger.Debug("Registered combine_evidence tool")
+
+	// Register evidence gathering tools
+	queryEvidenceTool := NewQueryEvidenceTool(tr.logger)
+	tr.router.RegisterToolHandler("query_evidence", queryEvidenceTool)
+	tr.logger.Debug("Registered query_evidence tool")
+
+	batchEvidenceTool := NewBatchEvidenceTool(tr.logger)
+	tr.router.RegisterToolHandler("batch_query_evidence", batchEvidenceTool)
+	tr.logger.Debug("Registered batch_query_evidence tool")
+
+	// Register database-specific tools
+	clinvarTool := NewQueryClinVarTool(tr.logger)
+	tr.router.RegisterToolHandler("query_clinvar", clinvarTool)
+	tr.logger.Debug("Registered query_clinvar tool")
+
+	gnomadTool := NewQueryGnomADTool(tr.logger)
+	tr.router.RegisterToolHandler("query_gnomad", gnomadTool)
+	tr.logger.Debug("Registered query_gnomad tool")
+
+	cosmicTool := NewQueryCOSMICTool(tr.logger)
+	tr.router.RegisterToolHandler("query_cosmic", cosmicTool)
+	tr.logger.Debug("Registered query_cosmic tool")
+
+	// Register report generation tools
+	generateReportTool := NewGenerateReportTool(tr.logger)
+	tr.router.RegisterToolHandler("generate_report", generateReportTool)
+	tr.logger.Debug("Registered generate_report tool")
+
+	formatReportTool := NewFormatReportTool(tr.logger)
+	tr.router.RegisterToolHandler("format_report", formatReportTool)
+	tr.logger.Debug("Registered format_report tool")
+
+	validateReportTool := NewValidateReportTool(tr.logger)
+	tr.router.RegisterToolHandler("validate_report", validateReportTool)
+	tr.logger.Debug("Registered validate_report tool")
+
+	tr.logger.Info("Successfully registered all ACMG/AMP tools")
+	return nil
+}
+
+// GetRegisteredToolsInfo returns information about all registered tools
+func (tr *ToolRegistry) GetRegisteredToolsInfo() []protocol.ToolInfo {
+	toolHandlers := tr.router.GetToolHandlers()
+	toolsInfo := make([]protocol.ToolInfo, 0, len(toolHandlers))
+
+	for _, handler := range toolHandlers {
+		toolsInfo = append(toolsInfo, handler.GetToolInfo())
+	}
+
+	return toolsInfo
+}
+
+// ValidateAllTools validates all registered tools can handle their schemas
+func (tr *ToolRegistry) ValidateAllTools() error {
+	tr.logger.Info("Validating all registered tools")
+
+	toolHandlers := tr.router.GetToolHandlers()
+	
+	for name, handler := range toolHandlers {
+		tr.logger.WithField("tool", name).Debug("Validating tool")
+		
+		// Basic validation - check if tool info is complete
+		toolInfo := handler.GetToolInfo()
+		if toolInfo.Name == "" {
+			tr.logger.WithField("tool", name).Error("Tool missing name")
+			continue
+		}
+		
+		if toolInfo.Description == "" {
+			tr.logger.WithField("tool", name).Warn("Tool missing description")
+		}
+		
+		if toolInfo.InputSchema == nil {
+			tr.logger.WithField("tool", name).Warn("Tool missing input schema")
+		}
+		
+		tr.logger.WithField("tool", name).Debug("Tool validation completed")
+	}
+
+	tr.logger.Info("Tool validation completed")
+	return nil
+}
+
+// ExecuteTool executes a tool by name using the registered handler
+func (tr *ToolRegistry) ExecuteTool(ctx context.Context, req *protocol.JSONRPC2Request) *protocol.JSONRPC2Response {
+	tr.logger.WithField("tool", req.Method).Debug("Executing tool")
+	
+	// Get the tool handler from the router
+	handler, exists := tr.router.GetToolHandler(req.Method)
+	if !exists {
+		return &protocol.JSONRPC2Response{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error: &protocol.RPCError{
+				Code:    protocol.MethodNotFound,
+				Message: fmt.Sprintf("Tool '%s' not found", req.Method),
+			},
+		}
+	}
+	
+	// Execute the tool using its handler
+	return handler.HandleTool(ctx, req)
+}

@@ -289,6 +289,26 @@ func (rc RuleCategory) IsValid() bool {
 	}
 }
 
+// String returns the string representation of the rule category
+func (rc RuleCategory) String() string {
+	return string(rc)
+}
+
+// String returns the string representation of the rule strength
+func (rs RuleStrength) String() string {
+	return string(rs)
+}
+
+// String returns the string representation of the confidence level
+func (cl ConfidenceLevel) String() string {
+	return string(cl)
+}
+
+// String returns the string representation of the variant type
+func (vt VariantType) String() string {
+	return string(vt)
+}
+
 // ExtendedClassificationMetadata provides additional audit and traceability features
 // that can be used alongside the existing ClassificationResult.
 type ExtendedClassificationMetadata struct {
@@ -307,4 +327,17 @@ func (ecm *ExtendedClassificationMetadata) Validate() error {
 	}
 
 	return nil
+}
+
+// ACMGAMPRuleResult represents the result of applying a single ACMG/AMP rule
+type ACMGAMPRuleResult struct {
+	Code        string       `json:"code"`         // e.g., "PVS1", "PS1"
+	Name        string       `json:"name"`         // e.g., "Null variant in a gene where LoF is a known mechanism"
+	Category    RuleCategory `json:"category"`     // PATHOGENIC_RULE or BENIGN_RULE
+	Strength    RuleStrength `json:"strength"`     // VERY_STRONG, STRONG, MODERATE, SUPPORTING
+	Applied     bool         `json:"applied"`      // Whether the rule was applied to this variant
+	Confidence  float64      `json:"confidence"`   // Confidence score (0.0-1.0)
+	Evidence    string       `json:"evidence"`     // Supporting evidence text
+	Reasoning   string       `json:"reasoning"`    // Reasoning for rule application/rejection
+	MetCriteria []string     `json:"met_criteria"` // Specific criteria that were met
 }

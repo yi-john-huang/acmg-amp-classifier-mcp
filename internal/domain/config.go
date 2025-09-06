@@ -35,6 +35,7 @@ type Config struct {
 	ExternalAPI ExternalAPIConfig `mapstructure:"external_api"`
 	Cache       CacheConfig       `mapstructure:"cache"`
 	Logging     LoggingConfig     `mapstructure:"logging"`
+	MCP         MCPConfig         `mapstructure:"mcp"`
 }
 
 // ServerConfig represents HTTP server configuration
@@ -67,6 +68,9 @@ type ExternalAPIConfig struct {
 	ClinVar ClinVarConfig `mapstructure:"clinvar"`
 	GnomAD  GnomADConfig  `mapstructure:"gnomad"`
 	COSMIC  COSMICConfig  `mapstructure:"cosmic"`
+	PubMed  PubMedConfig  `mapstructure:"pubmed"`
+	LOVD    LOVDConfig    `mapstructure:"lovd"`
+	HGMD    HGMDConfig    `mapstructure:"hgmd"`
 }
 
 // ClinVarConfig represents ClinVar API configuration
@@ -115,4 +119,49 @@ type LoggingConfig struct {
 	MaxBackups int    `mapstructure:"max_backups"`
 	MaxAge     int    `mapstructure:"max_age"`
 	Compress   bool   `mapstructure:"compress"`
+}
+
+// MCPConfig represents MCP server configuration
+type MCPConfig struct {
+	ServerName       string        `mapstructure:"server_name"`
+	ServerVersion    string        `mapstructure:"server_version"`
+	TransportType    string        `mapstructure:"transport_type"`    // "stdio", "http"
+	HTTPPort         int           `mapstructure:"http_port"`
+	HTTPHost         string        `mapstructure:"http_host"`
+	MaxClients       int           `mapstructure:"max_clients"`
+	RequestTimeout   time.Duration `mapstructure:"request_timeout"`
+	EnableMetrics    bool          `mapstructure:"enable_metrics"`
+	EnableCaching    bool          `mapstructure:"enable_caching"`
+	ToolCacheTTL     time.Duration `mapstructure:"tool_cache_ttl"`
+	ResourceCacheTTL time.Duration `mapstructure:"resource_cache_ttl"`
+}
+
+// PubMedConfig represents PubMed API configuration
+type PubMedConfig struct {
+	BaseURL    string        `mapstructure:"base_url"`
+	APIKey     string        `mapstructure:"api_key"`
+	Email      string        `mapstructure:"email"`      // Required by NCBI
+	Timeout    time.Duration `mapstructure:"timeout"`
+	RateLimit  int           `mapstructure:"rate_limit"`
+	RetryCount int           `mapstructure:"retry_count"`
+}
+
+// LOVDConfig represents LOVD API configuration
+type LOVDConfig struct {
+	BaseURL    string        `mapstructure:"base_url"`
+	APIKey     string        `mapstructure:"api_key"`
+	Timeout    time.Duration `mapstructure:"timeout"`
+	RateLimit  int           `mapstructure:"rate_limit"`
+	RetryCount int           `mapstructure:"retry_count"`
+}
+
+// HGMDConfig represents HGMD API configuration
+type HGMDConfig struct {
+	BaseURL        string        `mapstructure:"base_url"`
+	APIKey         string        `mapstructure:"api_key"`
+	License        string        `mapstructure:"license"`          // Professional license
+	IsProfessional bool          `mapstructure:"is_professional"`  // Use professional API
+	Timeout        time.Duration `mapstructure:"timeout"`
+	RateLimit      int           `mapstructure:"rate_limit"`
+	RetryCount     int           `mapstructure:"retry_count"`
 }
