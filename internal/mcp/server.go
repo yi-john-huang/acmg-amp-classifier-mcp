@@ -11,6 +11,9 @@ import (
 	"github.com/acmg-amp-mcp-server/internal/mcp/protocol"
 	"github.com/acmg-amp-mcp-server/internal/mcp/tools"
 	"github.com/acmg-amp-mcp-server/internal/mcp/transport"
+	"github.com/acmg-amp-mcp-server/internal/service"
+	"github.com/acmg-amp-mcp-server/pkg/external"
+	"github.com/acmg-amp-mcp-server/internal/domain"
 )
 
 // Server represents the ACMG-AMP MCP Server implementation
@@ -52,8 +55,30 @@ func NewServer(configManager *config.Manager) (*Server, error) {
 	// The protocol core will route messages through its built-in system handlers
 	// and the message router handles tool-specific routing
 
+	// Create external services for evidence gathering
+	// TODO: Extract individual configs from mcpConfig once available
+	// For now, create with default/empty configs
+	knowledgeBaseService, err := external.NewKnowledgeBaseService(
+		domain.ClinVarConfig{},
+		domain.GnomADConfig{},
+		domain.COSMICConfig{},
+		domain.PubMedConfig{},
+		domain.LOVDConfig{},
+		domain.HGMDConfig{},
+		domain.CacheConfig{},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create knowledge base service: %w", err)
+	}
+
+	// Create input parser for HGVS notation
+	inputParser := domain.NewStandardInputParser()
+
+	// Create classifier service
+	classifierService := service.NewClassifierService(logger, knowledgeBaseService, inputParser)
+
 	// Create tool registry and register tools
-	toolRegistry := tools.NewToolRegistry(logger, router)
+	toolRegistry := tools.NewToolRegistry(logger, router, classifierService)
 	if err := toolRegistry.RegisterAllTools(); err != nil {
 		return nil, fmt.Errorf("failed to register tools: %w", err)
 	}
@@ -69,9 +94,10 @@ func NewServer(configManager *config.Manager) (*Server, error) {
 		Version: "v0.1.0",
 	}
 
-	// Create MCP server
+	// Create MCP server with tool handlers
 	mcpServer := mcp.NewServer(serverInfo, nil)
-
+	
+	// Create server instance first
 	server := &Server{
 		config:       configManager,
 		mcpServer:    mcpServer,
@@ -81,12 +107,45 @@ func NewServer(configManager *config.Manager) (*Server, error) {
 		logger:       logger,
 	}
 
+	// Register MCP tools from our tool registry
+	if err := server.registerMCPTools(mcpServer, toolRegistry); err != nil {
+		return nil, fmt.Errorf("failed to register MCP tools: %w", err)
+	}
+
 	// Register capabilities
 	if err := server.registerCapabilities(); err != nil {
 		return nil, fmt.Errorf("failed to register capabilities: %w", err)
 	}
 
 	return server, nil
+}
+
+// registerMCPTools registers our tools with the MCP SDK
+func (s *Server) registerMCPTools(mcpServer *mcp.Server, toolRegistry *tools.ToolRegistry) error {
+	s.logger.Info("Registering tools with MCP SDK...")
+	
+	// Get all registered tool info from our registry
+	toolsInfo := toolRegistry.GetRegisteredToolsInfo()
+	
+	for _, toolInfo := range toolsInfo {
+		// Create MCP tool definition
+		toolDef := &mcp.Tool{
+			Name:        toolInfo.Name,
+			Description: toolInfo.Description,
+			// TODO: Add proper input schema from tool info
+		}
+		
+		// Create handler bridge
+		handler := NewMCPToolHandler(toolRegistry, toolInfo.Name, s.logger)
+		
+		// Register with MCP server
+		mcpServer.AddTool(toolDef, handler)
+		
+		s.logger.WithField("tool_name", toolInfo.Name).Debug("Registered MCP tool")
+	}
+	
+	s.logger.WithField("tool_count", len(toolsInfo)).Info("Successfully registered all tools with MCP SDK")
+	return nil
 }
 
 // Start starts the MCP server with the appropriate transport
@@ -102,19 +161,10 @@ func (s *Server) Start(ctx context.Context) error {
 	s.activeTransport = activeTransport
 	s.logger.WithField("transport_type", activeTransport.GetType()).Info("Transport initialized")
 
-	// For now, we'll use the MCP SDK's built-in transport
-	// TODO: Integrate our custom transport with the MCP SDK
-	var mcpTransport mcp.Transport
-	switch activeTransport.GetType() {
-	case "stdio":
-		mcpTransport = &mcp.StdioTransport{}
-	default:
-		// Fallback to stdio for unsupported transports
-		s.logger.Warn("Using fallback stdio transport for MCP SDK")
-		mcpTransport = &mcp.StdioTransport{}
-	}
-
-	// Run the MCP server
+	// Create bridge between our transport and MCP SDK
+	mcpTransport := NewMCPTransportBridge(activeTransport, s.logger)
+	
+	// Run the MCP server with our bridged transport
 	if err := s.mcpServer.Run(ctx, mcpTransport); err != nil {
 		s.activeTransport.Close()
 		return fmt.Errorf("MCP server failed: %w", err)

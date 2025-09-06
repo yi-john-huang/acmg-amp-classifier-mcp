@@ -4,19 +4,22 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/acmg-amp-mcp-server/internal/mcp/protocol"
+	"github.com/acmg-amp-mcp-server/internal/service"
 )
 
 // ToolRegistry manages registration of all MCP tools
 type ToolRegistry struct {
-	logger *logrus.Logger
-	router *protocol.MessageRouter
+	logger            *logrus.Logger
+	router            *protocol.MessageRouter
+	classifierService *service.ClassifierService
 }
 
 // NewToolRegistry creates a new tool registry
-func NewToolRegistry(logger *logrus.Logger, router *protocol.MessageRouter) *ToolRegistry {
+func NewToolRegistry(logger *logrus.Logger, router *protocol.MessageRouter, classifierService *service.ClassifierService) *ToolRegistry {
 	return &ToolRegistry{
-		logger: logger,
-		router: router,
+		logger:            logger,
+		router:            router,
+		classifierService: classifierService,
 	}
 }
 
@@ -25,19 +28,19 @@ func (tr *ToolRegistry) RegisterAllTools() error {
 	tr.logger.Info("Registering ACMG/AMP tools")
 
 	// Register classification tools
-	classifyTool := NewClassifyVariantTool(tr.logger)
+	classifyTool := NewClassifyVariantTool(tr.logger, tr.classifierService)
 	tr.router.RegisterToolHandler("classify_variant", classifyTool)
 	tr.logger.Debug("Registered classify_variant tool")
 
-	validateTool := NewValidateHGVSTool(tr.logger)
+	validateTool := NewValidateHGVSTool(tr.logger, tr.classifierService)
 	tr.router.RegisterToolHandler("validate_hgvs", validateTool)
 	tr.logger.Debug("Registered validate_hgvs tool")
 
-	applyRuleTool := NewApplyRuleTool(tr.logger)
+	applyRuleTool := NewApplyRuleTool(tr.logger, tr.classifierService)
 	tr.router.RegisterToolHandler("apply_rule", applyRuleTool)
 	tr.logger.Debug("Registered apply_rule tool")
 
-	combineEvidenceTool := NewCombineEvidenceTool(tr.logger)
+	combineEvidenceTool := NewCombineEvidenceTool(tr.logger, tr.classifierService)
 	tr.router.RegisterToolHandler("combine_evidence", combineEvidenceTool)
 	tr.logger.Debug("Registered combine_evidence tool")
 

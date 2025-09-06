@@ -8,11 +8,13 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/acmg-amp-mcp-server/internal/mcp/protocol"
+	"github.com/acmg-amp-mcp-server/internal/service"
 )
 
 // ApplyRuleTool implements the apply_rule MCP tool for individual ACMG/AMP criterion evaluation
 type ApplyRuleTool struct {
-	logger *logrus.Logger
+	logger            *logrus.Logger
+	classifierService *service.ClassifierService
 }
 
 // ApplyRuleParams defines parameters for the apply_rule tool
@@ -49,7 +51,8 @@ type ApplyRuleResult struct {
 
 // CombineEvidenceTool implements the combine_evidence MCP tool
 type CombineEvidenceTool struct {
-	logger *logrus.Logger
+	logger            *logrus.Logger
+	classifierService *service.ClassifierService
 }
 
 // CombineEvidenceParams defines parameters for the combine_evidence tool
@@ -184,9 +187,10 @@ type RuleDefinition struct {
 }
 
 // NewApplyRuleTool creates a new apply_rule tool
-func NewApplyRuleTool(logger *logrus.Logger) *ApplyRuleTool {
+func NewApplyRuleTool(logger *logrus.Logger, classifierService *service.ClassifierService) *ApplyRuleTool {
 	return &ApplyRuleTool{
-		logger: logger,
+		logger:            logger,
+		classifierService: classifierService,
 	}
 }
 
@@ -310,137 +314,42 @@ func (t *ApplyRuleTool) parseAndValidateParams(params interface{}, target *Apply
 
 // applyRule applies a specific ACMG/AMP rule
 func (t *ApplyRuleTool) applyRule(ctx context.Context, params *ApplyRuleParams) (*ApplyRuleResult, error) {
-	ruledef, exists := ACMGAMPRules[params.RuleCode]
-	if !exists {
-		return nil, fmt.Errorf("rule not found: %s", params.RuleCode)
+	// Convert MCP tool params to service params
+	serviceParams := &service.ApplyRuleParams{
+		RuleCode:     params.RuleCode,
+		HGVSNotation: params.VariantData.HGVSNotation,
+		Evidence:     nil, // TODO: Convert evidence data if needed
 	}
 
+	// Call the real rule evaluation service
+	serviceResult, err := t.classifierService.ApplyRule(ctx, serviceParams)
+	if err != nil {
+		return nil, fmt.Errorf("rule evaluation service failed: %w", err)
+	}
+
+	// Convert service result to MCP tool result
 	result := &ApplyRuleResult{
-		RuleCode:        ruledef.Code,
-		RuleName:        ruledef.Name,
-		Category:        ruledef.Category,
-		Strength:        ruledef.Strength,
-		Applied:         false,
-		Confidence:      0.0,
-		Evidence:        make(map[string]interface{}),
-		Requirements:    make([]string, 0),
-		Recommendations: make([]string, 0),
-	}
-
-	// Apply rule-specific logic
-	switch params.RuleCode {
-	case "PVS1":
-		t.applyPVS1(params, result)
-	case "PS1":
-		t.applyPS1(params, result)
-	case "PM2":
-		t.applyPM2(params, result) 
-	case "PP3":
-		t.applyPP3(params, result)
-	case "BA1":
-		t.applyBA1(params, result)
-	default:
-		// Generic rule application
-		t.applyGenericRule(params, result)
+		RuleCode:        serviceResult.RuleCode,
+		RuleName:        serviceResult.RuleName,
+		Category:        serviceResult.Category,
+		Strength:        serviceResult.Strength,
+		Applied:         serviceResult.Applied,
+		Confidence:      serviceResult.Confidence,
+		Evidence:        map[string]interface{}{"details": serviceResult.Evidence},
+		Reasoning:       serviceResult.Reasoning,
+		Requirements:    []string{}, // Could be enhanced with specific requirements
+		Recommendations: []string{}, // Could be enhanced with specific recommendations
 	}
 
 	return result, nil
 }
 
-// applyPVS1 applies the PVS1 rule (null variant)
-func (t *ApplyRuleTool) applyPVS1(params *ApplyRuleParams, result *ApplyRuleResult) {
-	// Check if variant is loss-of-function
-	isLOF := t.isLossOfFunction(params.VariantData)
-	
-	if isLOF {
-		result.Applied = true
-		result.Confidence = 0.8
-		result.Reasoning = "Variant predicted to result in loss of function in a gene where LOF is pathogenic mechanism"
-		result.Evidence["variant_type"] = params.VariantData.VariantType
-		result.Requirements = []string{
-			"Confirm variant results in loss of function",
-			"Verify gene has established LOF pathogenic mechanism",
-			"Rule out potential rescue by alternative transcripts",
-		}
-	} else {
-		result.Applied = false
-		result.Confidence = 0.2
-		result.Reasoning = "Variant does not clearly result in loss of function"
-		result.Recommendations = []string{
-			"Consider functional studies to assess impact",
-			"Evaluate alternative transcripts and isoforms",
-		}
-	}
-}
-
-// applyPS1 applies the PS1 rule (same amino acid change)
-func (t *ApplyRuleTool) applyPS1(params *ApplyRuleParams, result *ApplyRuleResult) {
-	// Mock implementation - would require database lookup
-	result.Applied = false
-	result.Confidence = 0.1
-	result.Reasoning = "No established pathogenic variants found at this amino acid position"
-	result.Requirements = []string{
-		"Search ClinVar for pathogenic variants at same amino acid position",
-		"Verify nucleotide change is different from reported variant",
-	}
-}
-
-// applyPM2 applies the PM2 rule (absent from population databases)
-func (t *ApplyRuleTool) applyPM2(params *ApplyRuleParams, result *ApplyRuleResult) {
-	// Mock implementation - would query population databases
-	result.Applied = true
-	result.Confidence = 0.9
-	result.Reasoning = "Variant absent from large population cohorts (gnomAD, 1000G)"
-	result.Evidence["gnomad_frequency"] = 0.0
-	result.Evidence["databases_checked"] = []string{"gnomAD", "1000 Genomes", "ESP"}
-}
-
-// applyPP3 applies the PP3 rule (computational evidence)
-func (t *ApplyRuleTool) applyPP3(params *ApplyRuleParams, result *ApplyRuleResult) {
-	// Mock computational predictions
-	result.Applied = true
-	result.Confidence = 0.7
-	result.Reasoning = "Multiple computational algorithms predict damaging effect"
-	result.Evidence["sift"] = "deleterious"
-	result.Evidence["polyphen"] = "probably_damaging"
-	result.Evidence["cadd_score"] = 25.3
-}
-
-// applyBA1 applies the BA1 rule (high population frequency)
-func (t *ApplyRuleTool) applyBA1(params *ApplyRuleParams, result *ApplyRuleResult) {
-	// Mock implementation
-	result.Applied = false
-	result.Confidence = 0.0
-	result.Reasoning = "Allele frequency below 5% threshold"
-	result.Evidence["max_population_frequency"] = 0.001
-}
-
-// applyGenericRule provides generic rule application logic
-func (t *ApplyRuleTool) applyGenericRule(params *ApplyRuleParams, result *ApplyRuleResult) {
-	result.Applied = false
-	result.Confidence = 0.0
-	result.Reasoning = fmt.Sprintf("Rule %s requires manual evaluation with specific evidence", params.RuleCode)
-	result.Recommendations = []string{
-		"Gather specific evidence required for this rule",
-		"Consult ACMG/AMP guidelines for detailed criteria",
-		"Consider expert consultation for complex cases",
-	}
-}
-
-// isLossOfFunction checks if variant is predicted loss-of-function
-func (t *ApplyRuleTool) isLossOfFunction(variant VariantData) bool {
-	// Simplified LOF prediction
-	if variant.VariantType == "deletion" || variant.VariantType == "insertion" {
-		return true
-	}
-	// In reality, this would be much more sophisticated
-	return false
-}
 
 // NewCombineEvidenceTool creates a new combine_evidence tool
-func NewCombineEvidenceTool(logger *logrus.Logger) *CombineEvidenceTool {
+func NewCombineEvidenceTool(logger *logrus.Logger, classifierService *service.ClassifierService) *CombineEvidenceTool {
 	return &CombineEvidenceTool{
-		logger: logger,
+		logger:            logger,
+		classifierService: classifierService,
 	}
 }
 
@@ -538,213 +447,86 @@ func (t *CombineEvidenceTool) parseAndValidateParams(params interface{}, target 
 
 // combineEvidence combines ACMG/AMP rules according to guidelines
 func (t *CombineEvidenceTool) combineEvidence(params *CombineEvidenceParams) *CombineEvidenceResult {
-	result := &CombineEvidenceResult{
-		CombinationLogic: CombinationLogicExplanation{
-			GuidelinesUsed: params.Guidelines,
-			DecisionTree:   make([]DecisionStep, 0),
-		},
-		Recommendations: make([]string, 0),
+	// Convert MCP rule results to service format
+	serviceRules := make([]service.RuleResult, len(params.AppliedRules))
+	for i, rule := range params.AppliedRules {
+		serviceRules[i] = service.RuleResult{
+			RuleCode:   rule.RuleCode,
+			RuleName:   rule.RuleName,
+			Category:   rule.Category,
+			Strength:   rule.Strength,
+			Applied:    rule.Applied,
+			Confidence: rule.Confidence,
+			Evidence:   rule.Evidence,
+			Reasoning:  rule.Reasoning,
+		}
 	}
 
-	// Separate pathogenic and benign rules
-	pathRules, benignRules := t.separateRules(params.AppliedRules)
-	result.CombinationLogic.PathogenicRules = pathRules
-	result.CombinationLogic.BenignRules = benignRules
+	// Call the real evidence combination service
+	serviceResult, err := t.classifierService.CombineEvidence(serviceRules)
+	if err != nil {
+		// Fallback to basic result in case of error
+		return &CombineEvidenceResult{
+			Classification: "VUS",
+			Confidence:     "Low",
+			CombinationLogic: CombinationLogicExplanation{
+				GuidelinesUsed: params.Guidelines,
+				DecisionTree:   []DecisionStep{},
+			},
+			Recommendations: []string{"Evidence combination failed - manual review required"},
+		}
+	}
 
-	// Apply combination logic according to ACMG 2015 guidelines
-	classification := t.applyCombinationLogic(pathRules, benignRules, &result.CombinationLogic.DecisionTree)
-	result.Classification = classification
-	result.Confidence = t.calculateCombinationConfidence(params.AppliedRules, classification)
-
-	// Generate recommendations
-	result.Recommendations = t.generateCombinationRecommendations(classification, pathRules, benignRules)
+	// Convert service result to MCP tool result
+	result := &CombineEvidenceResult{
+		Classification: serviceResult.Classification,
+		Confidence:     serviceResult.Confidence,
+		CombinationLogic: CombinationLogicExplanation{
+			GuidelinesUsed: params.Guidelines,
+			DecisionTree: []DecisionStep{{
+				Step:        1,
+				Condition:   serviceResult.CombinationRule,
+				Met:         true,
+				Result:      serviceResult.Classification,
+				Explanation: serviceResult.Summary,
+			}},
+		},
+		Recommendations: t.generateSimpleRecommendations(serviceResult.Classification),
+	}
 
 	return result
 }
 
-// separateRules separates applied rules into pathogenic and benign categories
-func (t *CombineEvidenceTool) separateRules(rules []ACMGAMPRuleResult) (RuleCombination, RuleCombination) {
-	pathRules := RuleCombination{}
-	benignRules := RuleCombination{}
-
-	for _, rule := range rules {
-		if !rule.Applied {
-			continue
-		}
-
-		code := rule.RuleCode
-		switch rule.Category {
-		case "pathogenic":
-			switch rule.Strength {
-			case "very_strong":
-				pathRules.VeryStrong = append(pathRules.VeryStrong, code)
-			case "strong":
-				pathRules.Strong = append(pathRules.Strong, code)
-			case "moderate":
-				pathRules.Moderate = append(pathRules.Moderate, code)
-			case "supporting":
-				pathRules.Supporting = append(pathRules.Supporting, code)
-			}
-		case "benign":
-			switch rule.Strength {
-			case "standalone":
-				benignRules.Standalone = append(benignRules.Standalone, code)
-			case "strong":
-				benignRules.Strong = append(benignRules.Strong, code)
-			case "supporting":
-				benignRules.Supporting = append(benignRules.Supporting, code)
-			}
-		}
-	}
-
-	return pathRules, benignRules
-}
-
-// applyCombinationLogic applies ACMG combination rules
-func (t *CombineEvidenceTool) applyCombinationLogic(pathRules, benignRules RuleCombination, decisionTree *[]DecisionStep) string {
-	step := 1
-
-	// Check for standalone benign evidence
-	if len(benignRules.Standalone) > 0 {
-		*decisionTree = append(*decisionTree, DecisionStep{
-			Step:        step,
-			Condition:   "BA1 (standalone benign evidence)",
-			Met:         true,
-			Result:      "Benign",
-			Explanation: fmt.Sprintf("Standalone benign evidence: %v", benignRules.Standalone),
-		})
-		return "Benign"
-	}
-	step++
-
-	// Check for pathogenic combinations
-	if len(pathRules.VeryStrong) >= 1 {
-		if len(pathRules.Strong) >= 1 || len(pathRules.Moderate) >= 2 || 
-		   len(pathRules.Moderate) >= 1 && len(pathRules.Supporting) >= 1 || 
-		   len(pathRules.Supporting) >= 2 {
-			*decisionTree = append(*decisionTree, DecisionStep{
-				Step:        step,
-				Condition:   "PVS1 + additional evidence",
-				Met:         true,
-				Result:      "Pathogenic",
-				Explanation: "Very strong evidence with supporting criteria met",
-			})
-			return "Pathogenic"
-		}
-	}
-	step++
-
-	// Check for likely pathogenic
-	if len(pathRules.Strong) >= 2 || 
-	   (len(pathRules.Strong) >= 1 && len(pathRules.Moderate) >= 1) ||
-	   (len(pathRules.Strong) >= 1 && len(pathRules.Supporting) >= 2) ||
-	   len(pathRules.Moderate) >= 3 {
-		*decisionTree = append(*decisionTree, DecisionStep{
-			Step:        step,
-			Condition:   "Likely pathogenic combination criteria",
-			Met:         true,
-			Result:      "Likely pathogenic",
-			Explanation: "Strong/moderate evidence combination meets threshold",
-		})
-		return "Likely pathogenic"
-	}
-	step++
-
-	// Check for likely benign
-	if len(benignRules.Strong) >= 1 && len(benignRules.Supporting) >= 1 ||
-	   len(benignRules.Supporting) >= 2 {
-		*decisionTree = append(*decisionTree, DecisionStep{
-			Step:        step,
-			Condition:   "Likely benign combination criteria",
-			Met:         true,
-			Result:      "Likely benign",
-			Explanation: "Benign evidence combination meets threshold",
-		})
-		return "Likely benign"
-	}
-	step++
-
-	// Default to VUS
-	*decisionTree = append(*decisionTree, DecisionStep{
-		Step:        step,
-		Condition:   "Insufficient evidence for definitive classification",
-		Met:         true,
-		Result:      "VUS",
-		Explanation: "Evidence does not meet criteria for pathogenic or benign classification",
-	})
-
-	return "Variant of uncertain significance (VUS)"
-}
-
-// calculateCombinationConfidence calculates confidence in the combined classification
-func (t *CombineEvidenceTool) calculateCombinationConfidence(rules []ACMGAMPRuleResult, classification string) string {
-	totalConfidence := 0.0
-	appliedCount := 0
-
-	for _, rule := range rules {
-		if rule.Applied {
-			totalConfidence += rule.Confidence
-			appliedCount++
-		}
-	}
-
-	if appliedCount == 0 {
-		return "Low"
-	}
-
-	avgConfidence := totalConfidence / float64(appliedCount)
-	
-	// Adjust confidence based on classification certainty
-	if classification == "Pathogenic" || classification == "Benign" {
-		avgConfidence += 0.1 // Boost for definitive classifications
-	} else if classification == "Variant of uncertain significance (VUS)" {
-		avgConfidence -= 0.1 // Reduce for uncertain classifications
-	}
-
-	if avgConfidence >= 0.8 {
-		return "High"
-	} else if avgConfidence >= 0.6 {
-		return "Moderate"
-	}
-	return "Low"
-}
-
-// generateCombinationRecommendations generates recommendations based on combination results
-func (t *CombineEvidenceTool) generateCombinationRecommendations(classification string, pathRules, benignRules RuleCombination) []string {
-	recommendations := make([]string, 0)
-
+// generateSimpleRecommendations creates basic recommendations based on classification
+func (t *CombineEvidenceTool) generateSimpleRecommendations(classification string) []string {
 	switch classification {
-	case "Pathogenic":
-		recommendations = append(recommendations,
+	case "PATHOGENIC":
+		return []string{
 			"Strong evidence supports pathogenic classification",
-			"Consider clinical action based on gene-disease association",
-			"Recommend genetic counseling and cascade testing",
-		)
-	case "Likely pathogenic":
-		recommendations = append(recommendations,
+			"Consider clinical action and genetic counseling",
+		}
+	case "LIKELY_PATHOGENIC":
+		return []string{
 			"Moderate evidence supports pathogenic classification",
-			"Consider additional functional or segregation studies",
-			"Exercise appropriate clinical caution",
-		)
-	case "Variant of uncertain significance (VUS)":
-		recommendations = append(recommendations,
-			"Insufficient evidence for classification",
-			"Gather additional evidence (segregation, functional studies)",
-			"Consider expert consultation",
-			"Re-evaluate periodically as new evidence emerges",
-		)
-	case "Likely benign":
-		recommendations = append(recommendations,
+			"Consider additional studies if clinically warranted",
+		}
+	case "VUS":
+		return []string{
+			"Insufficient evidence for definitive classification",
+			"Gather additional evidence and re-evaluate periodically",
+		}
+	case "LIKELY_BENIGN":
+		return []string{
 			"Evidence supports benign interpretation",
 			"Variant unlikely to be disease-causing",
-			"Continue standard clinical care",
-		)
-	case "Benign":
-		recommendations = append(recommendations,
+		}
+	case "BENIGN":
+		return []string{
 			"Strong evidence supports benign classification",
-			"Variant not expected to contribute to disease phenotype",
-		)
+			"Variant not expected to contribute to disease",
+		}
+	default:
+		return []string{"Classification uncertain - expert review recommended"}
 	}
-
-	return recommendations
 }
+

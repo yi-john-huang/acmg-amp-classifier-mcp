@@ -10,11 +10,13 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/acmg-amp-mcp-server/internal/mcp/protocol"
+	"github.com/acmg-amp-mcp-server/internal/service"
 )
 
 // ValidateHGVSTool implements the validate_hgvs MCP tool
 type ValidateHGVSTool struct {
-	logger *logrus.Logger
+	logger            *logrus.Logger
+	classifierService *service.ClassifierService
 }
 
 // ValidateHGVSParams defines parameters for the validate_hgvs tool
@@ -54,9 +56,10 @@ type HGVSComponents struct {
 }
 
 // NewValidateHGVSTool creates a new validate_hgvs tool
-func NewValidateHGVSTool(logger *logrus.Logger) *ValidateHGVSTool {
+func NewValidateHGVSTool(logger *logrus.Logger, classifierService *service.ClassifierService) *ValidateHGVSTool {
 	return &ValidateHGVSTool{
-		logger: logger,
+		logger:            logger,
+		classifierService: classifierService,
 	}
 }
 
@@ -146,37 +149,76 @@ func (t *ValidateHGVSTool) parseAndValidateParams(params interface{}, target *Va
 	return nil
 }
 
-// validateHGVS performs comprehensive HGVS validation
+// validateHGVS performs comprehensive HGVS validation using the classifier service
 func (t *ValidateHGVSTool) validateHGVS(params *ValidateHGVSParams) *ValidateHGVSResult {
 	hgvs := strings.TrimSpace(params.HGVSNotation)
 	
+	// Call the real validation service
+	serviceResult, err := t.classifierService.ValidateHGVS(hgvs)
+	if err != nil {
+		// If service validation fails, fall back to basic validation
+		return &ValidateHGVSResult{
+			IsValid:      false,
+			HGVSNotation: hgvs,
+			ValidationIssues: []ValidationIssue{{
+				Severity: "error",
+				Code:     "VALIDATION_SERVICE_ERROR",
+				Message:  fmt.Sprintf("Validation service error: %v", err),
+				Position: 0,
+			}},
+		}
+	}
+
+	// Convert service result to MCP tool result
 	result := &ValidateHGVSResult{
-		HGVSNotation:     hgvs,
+		IsValid:         serviceResult.IsValid,
+		HGVSNotation:    hgvs,
+		NormalizedHGVS:  serviceResult.NormalizedHGVS,
 		ValidationIssues: make([]ValidationIssue, 0),
+		ParsedComponents: HGVSComponents{
+			Reference:    extractReference(serviceResult.NormalizedHGVS),
+			Type:         serviceResult.VariantType,
+			Position:     extractPosition(serviceResult.GenomicPosition),
+			VariantType:  serviceResult.VariantType,
+			Description:  serviceResult.PredictedProtein,
+		},
 	}
 
-	// Parse HGVS components
-	components, parseErrors := t.parseHGVSComponents(hgvs)
-	result.ParsedComponents = components
-
-	// Add parse errors to validation issues
-	result.ValidationIssues = append(result.ValidationIssues, parseErrors...)
-
-	// Perform additional validations
-	if params.StrictMode {
-		strictIssues := t.performStrictValidation(hgvs, components)
-		result.ValidationIssues = append(result.ValidationIssues, strictIssues...)
-	}
-
-	// Determine if valid (no error-level issues)
-	result.IsValid = t.hasNoErrors(result.ValidationIssues)
-
-	// Generate normalized HGVS if valid
-	if result.IsValid {
-		result.NormalizedHGVS = t.normalizeHGVS(hgvs, components)
+	// Add validation issue if not valid
+	if !serviceResult.IsValid {
+		result.ValidationIssues = append(result.ValidationIssues, ValidationIssue{
+			Severity: "error",
+			Code:     "HGVS_INVALID",
+			Message:  serviceResult.ErrorMessage,
+			Position: 0,
+		})
 	}
 
 	return result
+}
+
+// Helper functions to extract information from service results
+func extractReference(normalizedHGVS string) string {
+	if normalizedHGVS == "" {
+		return ""
+	}
+	parts := strings.Split(normalizedHGVS, ":")
+	if len(parts) > 0 {
+		return parts[0]
+	}
+	return ""
+}
+
+func extractPosition(genomicPosition string) string {
+	if genomicPosition == "" {
+		return ""
+	}
+	// Extract position from format like "chr1:g.12345"
+	parts := strings.Split(genomicPosition, ".")
+	if len(parts) > 1 {
+		return parts[1]
+	}
+	return genomicPosition
 }
 
 // parseHGVSComponents parses HGVS string into components

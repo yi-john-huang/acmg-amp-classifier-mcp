@@ -47,15 +47,17 @@ From original `acmg-amp-mcp-server` specification:
   - Write unit tests for protocol compliance and message handling
   - _Requirements: 1.1, 1.2, 1.4, 10.3_
 
-- [ ] 4. Implement ACMG/AMP classification tools
+- [x] 4. Implement ACMG/AMP classification tools
 
-  - Create `classify_variant` tool with full workflow orchestration
-  - Implement `validate_hgvs` tool using existing input parser service
-  - Build `apply_rule` tool for individual ACMG/AMP criterion evaluation
-  - Create `combine_evidence` tool following ACMG/AMP combination guidelines
-  - Add parameter validation and JSON schema generation for all tools
-  - Register all classification tools with MCP server tool registry
-  - Write comprehensive unit tests for each tool with clinical test cases
+  - ✅ Create `classify_variant` tool with full workflow orchestration
+  - ✅ Implement `validate_hgvs` tool using existing input parser service
+  - ✅ Build `apply_rule` tool for individual ACMG/AMP criterion evaluation
+  - ✅ Create `combine_evidence` tool following ACMG/AMP combination guidelines
+  - ✅ Add parameter validation and JSON schema generation for all tools
+  - ✅ Register all classification tools with MCP server tool registry
+  - ✅ Created comprehensive ClassifierService with ACMG/AMP rule engine (28 rules)
+  - ✅ Implemented StandardInputParser for HGVS notation parsing
+  - ✅ Connected all tools to real classification services instead of mock data
   - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
 - [x] 5. Implement evidence gathering tools

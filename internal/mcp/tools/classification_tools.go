@@ -9,12 +9,13 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/acmg-amp-mcp-server/internal/mcp/protocol"
+	"github.com/acmg-amp-mcp-server/internal/service"
 )
 
 // ClassifyVariantTool implements the classify_variant MCP tool
 type ClassifyVariantTool struct {
-	logger *logrus.Logger
-	// TODO: Add classifier service dependency when available
+	logger            *logrus.Logger
+	classifierService *service.ClassifierService
 }
 
 // ClassifyVariantParams defines parameters for the classify_variant tool
@@ -51,9 +52,10 @@ type ACMGAMPRuleResult struct {
 }
 
 // NewClassifyVariantTool creates a new classify_variant tool
-func NewClassifyVariantTool(logger *logrus.Logger) *ClassifyVariantTool {
+func NewClassifyVariantTool(logger *logrus.Logger, classifierService *service.ClassifierService) *ClassifyVariantTool {
 	return &ClassifyVariantTool{
-		logger: logger,
+		logger:            logger,
+		classifierService: classifierService,
 	}
 }
 
@@ -200,212 +202,51 @@ func (t *ClassifyVariantTool) isValidHGVSFormat(hgvs string) bool {
 func (t *ClassifyVariantTool) classifyVariant(ctx context.Context, params *ClassifyVariantParams) (*ClassifyVariantResult, error) {
 	t.logger.WithField("hgvs", params.HGVSNotation).Debug("Starting variant classification")
 
-	// TODO: Integrate with actual classification service
-	// For now, return a mock classification result
-	
-	// Generate variant ID
-	variantID := t.generateVariantID(params.HGVSNotation)
+	// Convert MCP tool params to service params
+	serviceParams := &service.ClassifyVariantParams{
+		HGVSNotation:    params.HGVSNotation,
+		VariantType:     params.VariantType,
+		GeneSymbol:      params.GeneSymbol,
+		TranscriptID:    params.TranscriptID,
+		ClinicalContext: params.ClinicalContext,
+		IncludeEvidence: params.IncludeEvidence,
+	}
 
-	// Mock classification logic
-	appliedRules := t.mockACMGAMPRules(params)
-	classification := t.determineClassification(appliedRules)
-	confidence := t.calculateConfidence(appliedRules)
+	// Call the real classification service
+	serviceResult, err := t.classifierService.ClassifyVariant(ctx, serviceParams)
+	if err != nil {
+		return nil, fmt.Errorf("classification service failed: %w", err)
+	}
 
+	// Convert service result to MCP tool result
 	result := &ClassifyVariantResult{
-		VariantID:      variantID,
-		Classification: classification,
-		Confidence:     confidence,
-		AppliedRules:   appliedRules,
-		EvidenceSummary: t.generateEvidenceSummary(appliedRules),
-		Recommendations: t.generateRecommendations(classification, confidence),
+		VariantID:       serviceResult.VariantID,
+		Classification:  serviceResult.Classification,
+		Confidence:      serviceResult.Confidence,
+		AppliedRules:    t.convertRuleResults(serviceResult.AppliedRules),
+		EvidenceSummary: serviceResult.EvidenceSummary,
+		Recommendations: serviceResult.Recommendations,
+		ProcessingTime:  serviceResult.ProcessingTime.String(),
 	}
 
 	return result, nil
 }
 
-// generateVariantID creates a unique variant identifier
-func (t *ClassifyVariantTool) generateVariantID(hgvs string) string {
-	// Simple hash-based ID generation - in production, use proper variant normalization
-	return fmt.Sprintf("VAR_%d", time.Now().Unix())
-}
-
-// mockACMGAMPRules generates mock ACMG/AMP rule evaluations
-func (t *ClassifyVariantTool) mockACMGAMPRules(params *ClassifyVariantParams) []ACMGAMPRuleResult {
-	// Mock some common ACMG/AMP rules
-	rules := []ACMGAMPRuleResult{
-		{
-			RuleCode:    "PVS1",
-			RuleName:    "Null variant in a gene where LOF is a known mechanism",
-			Category:    "pathogenic",
-			Strength:    "very_strong",
-			Applied:     false,
-			Confidence:  0.3,
-			Reasoning:   "Variant does not clearly result in loss of function",
-		},
-		{
-			RuleCode:    "PS1",
-			RuleName:    "Same amino acid change as established pathogenic variant",
-			Category:    "pathogenic", 
-			Strength:    "strong",
-			Applied:     false,
-			Confidence:  0.1,
-			Reasoning:   "No known pathogenic variants at this position",
-		},
-		{
-			RuleCode:    "PM2",
-			RuleName:    "Absent from population databases",
-			Category:    "pathogenic",
-			Strength:    "moderate", 
-			Applied:     true,
-			Confidence:  0.8,
-			Evidence:    "Absent from gnomAD v3.1.2",
-			Reasoning:   "Not observed in large population cohorts",
-		},
-		{
-			RuleCode:    "PP3",
-			RuleName:    "In silico evidence supports deleterious effect",
-			Category:    "pathogenic",
-			Strength:    "supporting",
-			Applied:     true,
-			Confidence:  0.7,
-			Evidence:    "CADD: 25.3, SIFT: deleterious, PolyPhen: probably damaging",
-			Reasoning:   "Multiple algorithms predict damaging effect",
-		},
-		{
-			RuleCode:    "BA1",
-			RuleName:    "Allele frequency >5% in population database",
-			Category:    "benign",
-			Strength:    "standalone",
-			Applied:     false,
-			Confidence:  0.0,
-			Reasoning:   "Variant frequency below threshold",
-		},
-	}
-
-	return rules
-}
-
-// determineClassification determines final classification based on applied rules
-func (t *ClassifyVariantTool) determineClassification(rules []ACMGAMPRuleResult) string {
-	pathogenicScore := 0.0
-	benignScore := 0.0
-
-	for _, rule := range rules {
-		if !rule.Applied {
-			continue
-		}
-
-		weight := t.getRuleWeight(rule.Strength)
-		if rule.Category == "pathogenic" {
-			pathogenicScore += weight * rule.Confidence
-		} else if rule.Category == "benign" {
-			benignScore += weight * rule.Confidence
+// convertRuleResults converts service rule results to MCP tool format
+func (t *ClassifyVariantTool) convertRuleResults(serviceRules []service.ACMGAMPRuleResult) []ACMGAMPRuleResult {
+	results := make([]ACMGAMPRuleResult, len(serviceRules))
+	for i, rule := range serviceRules {
+		results[i] = ACMGAMPRuleResult{
+			RuleCode:   rule.RuleCode,
+			RuleName:   rule.RuleName,
+			Category:   rule.Category,
+			Strength:   rule.Strength,
+			Applied:    rule.Applied,
+			Confidence: rule.Confidence,
+			Evidence:   rule.Evidence,
+			Reasoning:  rule.Reasoning,
 		}
 	}
-
-	// Simplified classification logic
-	if pathogenicScore >= 5.0 {
-		return "Pathogenic"
-	} else if pathogenicScore >= 3.0 {
-		return "Likely pathogenic"
-	} else if benignScore >= 3.0 {
-		return "Likely benign"
-	} else if benignScore >= 5.0 {
-		return "Benign"
-	}
-
-	return "Variant of uncertain significance (VUS)"
+	return results
 }
 
-// getRuleWeight returns numeric weight for rule strength
-func (t *ClassifyVariantTool) getRuleWeight(strength string) float64 {
-	switch strength {
-	case "very_strong":
-		return 4.0
-	case "strong":
-		return 3.0
-	case "moderate":
-		return 2.0
-	case "supporting":
-		return 1.0
-	case "standalone":
-		return 5.0
-	default:
-		return 0.0
-	}
-}
-
-// calculateConfidence calculates overall confidence in classification
-func (t *ClassifyVariantTool) calculateConfidence(rules []ACMGAMPRuleResult) string {
-	totalConfidence := 0.0
-	appliedRules := 0
-
-	for _, rule := range rules {
-		if rule.Applied {
-			totalConfidence += rule.Confidence
-			appliedRules++
-		}
-	}
-
-	if appliedRules == 0 {
-		return "Low"
-	}
-
-	avgConfidence := totalConfidence / float64(appliedRules)
-	if avgConfidence >= 0.8 {
-		return "High"
-	} else if avgConfidence >= 0.6 {
-		return "Moderate"
-	}
-	return "Low"
-}
-
-// generateEvidenceSummary creates a human-readable evidence summary
-func (t *ClassifyVariantTool) generateEvidenceSummary(rules []ACMGAMPRuleResult) string {
-	appliedRules := make([]string, 0)
-	for _, rule := range rules {
-		if rule.Applied {
-			appliedRules = append(appliedRules, rule.RuleCode)
-		}
-	}
-
-	if len(appliedRules) == 0 {
-		return "No ACMG/AMP criteria met"
-	}
-
-	return fmt.Sprintf("Applied ACMG/AMP criteria: %v", appliedRules)
-}
-
-// generateRecommendations creates actionable recommendations
-func (t *ClassifyVariantTool) generateRecommendations(classification, confidence string) []string {
-	recommendations := make([]string, 0)
-
-	switch classification {
-	case "Pathogenic", "Likely pathogenic":
-		recommendations = append(recommendations, 
-			"Consider genetic counseling",
-			"Evaluate family history and consider cascade screening",
-			"Review clinical management guidelines for this gene",
-		)
-	case "Variant of uncertain significance (VUS)":
-		recommendations = append(recommendations,
-			"Gather additional family history and segregation data",
-			"Consider functional studies if available",
-			"Re-evaluate as new evidence becomes available",
-		)
-	case "Likely benign", "Benign":
-		recommendations = append(recommendations,
-			"Variant unlikely to contribute to disease phenotype",
-			"Continue standard clinical care",
-		)
-	}
-
-	if confidence == "Low" {
-		recommendations = append(recommendations,
-			"Low confidence classification - seek expert consultation",
-			"Consider additional evidence gathering",
-		)
-	}
-
-	return recommendations
-}

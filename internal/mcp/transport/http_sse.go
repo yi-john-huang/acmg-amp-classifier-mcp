@@ -202,20 +202,10 @@ func (h *HTTPSSETransport) handleMessage(c *gin.Context) {
 
 // processMessages processes incoming HTTP messages
 func (h *HTTPSSETransport) processMessages(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case msg := <-h.messagesCh:
-			h.logger.WithFields(logrus.Fields{
-				"client_id":      msg.ClientID,
-				"message_length": len(msg.Data),
-			}).Debug("Processing HTTP message")
-			
-			// TODO: Route message to MCP handler
-			// For now, just log it
-		}
-	}
+	// This function is no longer needed since ReadMessage handles the messages directly
+	// Keep it as a placeholder that just logs that the HTTP transport is ready
+	h.logger.Info("HTTP SSE transport message processor ready")
+	<-ctx.Done()
 }
 
 // ReadMessage reads a message from the HTTP transport

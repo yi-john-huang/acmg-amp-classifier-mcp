@@ -66,11 +66,11 @@ type PubMedSearchResponse struct {
 // PubMedSummaryResponse represents the XML response from PubMed summary
 type PubMedSummaryResponse struct {
 	XMLName        xml.Name           `xml:"eSummaryResult"`
-	DocumentSummary []DocumentSummary `xml:"DocSum"`
+	DocumentSummary []PubMedDocumentSummary `xml:"DocSum"`
 }
 
-// DocumentSummary represents a single publication summary from PubMed
-type DocumentSummary struct {
+// PubMedDocumentSummary represents a single publication summary from PubMed
+type PubMedDocumentSummary struct {
 	UID   string `xml:"Id"`
 	Items []Item `xml:"Item"`
 }
@@ -221,7 +221,7 @@ func (p *PubMedClient) searchArticles(ctx context.Context, query string) ([]stri
 }
 
 // getArticleSummaries retrieves summaries for given PMIDs
-func (p *PubMedClient) getArticleSummaries(ctx context.Context, pmids []string) ([]DocumentSummary, error) {
+func (p *PubMedClient) getArticleSummaries(ctx context.Context, pmids []string) ([]PubMedDocumentSummary, error) {
 	// Rate limiting for the second request
 	select {
 	case <-time.After(p.rateLimit):
@@ -317,7 +317,7 @@ func (p *PubMedClient) buildSearchQuery(variant *domain.StandardizedVariant) str
 }
 
 // convertToCitations converts PubMed summaries to domain citations
-func (p *PubMedClient) convertToCitations(summaries []DocumentSummary) []domain.Citation {
+func (p *PubMedClient) convertToCitations(summaries []PubMedDocumentSummary) []domain.Citation {
 	var citations []domain.Citation
 
 	for _, summary := range summaries {
