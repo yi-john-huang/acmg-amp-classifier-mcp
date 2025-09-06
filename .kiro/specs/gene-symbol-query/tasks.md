@@ -47,43 +47,43 @@ Implementation of gene symbol-based variant classification through a structured 
 - [x] Integration tests pass with real external APIs (can be disabled for CI)
 
 ### Task 2: Transcript Resolution Service Implementation
-**Status:** ❌ Not Started  
+**Status:** ✅ Completed  
 **Estimated:** 4 days  
 **Dependencies:** Task 1  
 **Requirements Traceability:** 2.1-2.5 (Transcript Resolution and Mapping)
 
 #### Subtasks:
-- [ ] 2.1: Design transcript resolver interface (`internal/service/transcript_resolver.go`)
-  - Define `TranscriptResolver` interface with context support
-  - Create `TranscriptInfo`, `GeneValidationResult` data structures
-  - Design caching strategy integration points
-  - Plan concurrent resolution logic for batch processing
-- [ ] 2.2: Implement cached transcript resolver
-  - Create `CachedTranscriptResolver` struct with multi-level caching
-  - Integrate with existing Redis cache (`internal/mcp/caching/tool_result_cache.go`)
-  - Add in-memory LRU cache for hot data (1000 entries, 15 min TTL)
-  - Implement cache invalidation and refresh logic
-  - Add cache hit/miss metrics collection
-- [ ] 2.3: Implement canonical transcript selection logic
-  - Define canonical transcript selection rules (HGNC → RefSeq → Ensembl priority)
-  - Handle multiple isoform scenarios with clear selection criteria
-  - Add user preference override capability via `PreferredIsoform` parameter
-  - Create transcript prioritization algorithm based on usage frequency
-  - Add logging for transcript selection decisions
-- [ ] 2.4: Add batch processing support
-  - Implement `BatchResolve` method with controlled concurrency (max 5 concurrent)
-  - Add semaphore-based rate limiting to prevent API overwhelming
-  - Create partial success handling for batch requests
-  - Add batch result aggregation with error tracking
-  - Implement timeout handling for long-running batch operations
+- [x] 2.1: Design transcript resolver interface (`internal/service/transcript_resolver.go`)
+  - ✅ Define `TranscriptResolver` interface with context support
+  - ✅ Create `TranscriptInfo`, `GeneValidationResult` data structures (in external package)
+  - ✅ Design caching strategy integration points
+  - ✅ Plan concurrent resolution logic for batch processing
+- [x] 2.2: Implement cached transcript resolver
+  - ✅ Create `CachedTranscriptResolver` struct with multi-level caching
+  - ✅ Integrate with existing Redis cache (`internal/mcp/caching/tool_result_cache.go`)
+  - ✅ Add in-memory LRU cache for hot data (1000 entries, 15 min TTL)
+  - ✅ Implement cache invalidation and refresh logic
+  - ✅ Add cache hit/miss metrics collection
+- [x] 2.3: Implement canonical transcript selection logic
+  - ✅ Define canonical transcript selection rules (HGNC → RefSeq → Ensembl priority)
+  - ✅ Handle multiple isoform scenarios with clear selection criteria
+  - ✅ Add user preference override capability via `PreferredIsoform` parameter
+  - ✅ Create transcript prioritization algorithm based on usage frequency
+  - ✅ Add logging for transcript selection decisions
+- [x] 2.4: Add batch processing support
+  - ✅ Implement `BatchResolve` method with controlled concurrency (max 5 concurrent)
+  - ✅ Add semaphore-based rate limiting to prevent API overwhelming
+  - ✅ Create partial success handling for batch requests
+  - ✅ Add batch result aggregation with error tracking
+  - ✅ Implement timeout handling for long-running batch operations
 
 #### Acceptance Criteria:
-- [ ] Single gene symbol resolution completes within 2 seconds (95th percentile)
-- [ ] Cache hit ratio exceeds 90% for common gene symbols after warmup
-- [ ] Batch processing handles 100+ gene symbols efficiently with partial success
-- [ ] Circuit breaker prevents external service overload during high traffic
-- [ ] Comprehensive error handling provides actionable error messages
-- [ ] Performance metrics are collected for monitoring and alerting
+- [x] Single gene symbol resolution completes within 2 seconds (95th percentile)
+- [x] Cache hit ratio exceeds 90% for common gene symbols after warmup
+- [x] Batch processing handles 100+ gene symbols efficiently with partial success
+- [x] Circuit breaker prevents external service overload during high traffic
+- [x] Comprehensive error handling provides actionable error messages
+- [x] Performance metrics are collected for monitoring and alerting
 
 ### Task 3: Enhanced Input Parser Development
 **Status:** ❌ Not Started  
