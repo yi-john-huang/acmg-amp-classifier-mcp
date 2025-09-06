@@ -1,92 +1,135 @@
-# MCP Service: AI-Powered Variant Interpretation Assistant
+# ACMG-AMP MCP Server: AI-Powered Variant Classification
 
-**(Project Status: Active Development - Database Layer Complete)**
+**(Project Status: Production Ready - MCP Integration Complete)**
 
 🔬 **Research & Educational Use Only** | ⚖️ **Non-Commercial License** | 🏥 **Not for Clinical Use**
 
 ## Overview
 
-The Medical Classification Platform (MCP) Service is a backend system designed to assist physicians, clinical geneticists, and researchers in interpreting somatic and germline genetic variants. It leverages the standardized **ACMG/AMP guidelines** for variant classification to provide consistent and evidence-based interpretations.
+The ACMG-AMP MCP Server is a **Model Context Protocol (MCP)** compliant service that provides AI agents like Claude with direct access to professional-grade genetic variant classification tools. It implements the complete **ACMG/AMP 2015 guidelines** with all 28 evidence criteria, enabling AI assistants to perform standardized variant interpretation through natural language interactions.
 
-A key feature of this service is its designed integration capability with popular large language model (LLM) based AI agents such as **ChatGPT, Claude, and Gemini**. This allows clinicians to interact with the service using a natural language interface, simply providing the variant details and receiving the interpretation report back through the AI agent.
+**🚀 Key Features:**
+- **Native MCP Integration**: Direct tool access for Claude, ChatGPT, and other MCP-compatible AI agents
+- **Complete ACMG/AMP Implementation**: All 28 rules (PVS1-BP7) with evidence combination logic
+- **6 External Database Sources**: ClinVar, gnomAD, COSMIC, PubMed, LOVD, HGMD integration
+- **Real-time Classification**: Full workflow from HGVS input to clinical recommendations
+- **Production-grade Architecture**: PostgreSQL database, Redis caching, comprehensive logging
 
 ## Purpose
 
-The goal of the MCP Service is to:
+The ACMG-AMP MCP Server enables:
 
-1.  Standardize the application of ACMG/AMP guidelines for variant interpretation.
-2.  Reduce the manual effort and time required for evidence gathering and classification.
-3.  Provide a seamless user experience for clinicians through integration with familiar AI tools.
-4.  Facilitate accurate and reproducible variant classification in clinical and research settings.
+1. **AI-Native Genetic Analysis**: Claude and other AI agents can directly access professional genetic tools
+2. **Standardized ACMG/AMP Classification**: All 28 evidence criteria implemented with proper combination logic
+3. **Evidence-Based Interpretation**: Automated evidence gathering from 6 major databases (ClinVar, gnomAD, etc.)
+4. **Natural Language Interface**: Ask Claude about variants in plain English and get structured clinical reports
+5. **Reproducible Results**: Consistent application of ACMG/AMP guidelines across all analyses
 
-## Implementation Status
+## 🎯 Implementation Status: **PRODUCTION READY**
 
-### ✅ Completed Components
-- **Database Layer**: Complete PostgreSQL implementation with pgx v5 driver, advanced connection pooling, and health monitoring
-- **Repository Pattern**: Full CRUD operations for variants and interpretations with comprehensive JSONB handling
-- **Domain Models**: Complete type definitions with medical validation for variants, classifications, and ACMG/AMP rules
-- **Database Schema**: Production-ready schema with optimized indexing, constraints, and audit triggers
-- **Integration Testing**: Comprehensive test suite using testcontainers for isolated database testing
-- **Migration System**: Automated database migrations with up/down support and version tracking
+### ✅ **MCP Core (100% Complete)**
+- **MCP Protocol Integration**: Full JSON-RPC 2.0 compliance with Go SDK
+- **Transport Layer**: Stdio and HTTP-SSE transport for AI agent connectivity
+- **Tool Registry**: All ACMG/AMP tools registered and functional
+- **Session Management**: Client tracking, rate limiting, and graceful shutdown
 
-### ✅ Recently Completed
-- **Input Parser**: HGVS notation validation and variant normalization with medical-grade gene validation
+### ✅ **ACMG/AMP Classification Engine (100% Complete)**
+- **All 28 ACMG/AMP Rules**: PVS1, PS1-PS4, PM1-PM6, PP1-PP5, BA1, BS1-BS4, BP1-BP7
+- **Evidence Combination Logic**: Complete 2015 ACMG/AMP guidelines implementation
+- **Classification Service**: Full workflow orchestration with confidence assessment
+- **HGVS Parser**: Medical-grade variant notation validation and normalization
 
-### 🚧 In Development
-- **External API Integration**: ClinVar, gnomAD, and COSMIC client implementations
-- **ACMG/AMP Rule Engine**: 28 evidence criteria implementation
-- **HTTP API Layer**: REST endpoints with Gin framework
+### ✅ **External Database Integration (100% Complete)**
+- **6 Major Databases**: ClinVar, gnomAD, COSMIC, PubMed, LOVD, HGMD clients
+- **Resilient Architecture**: Circuit breakers, retry logic, fallback mechanisms
+- **Evidence Aggregation**: Automated gathering and quality scoring
+- **Caching Layer**: Optimized response times with intelligent cache invalidation
 
-### 📋 Planned Features
-- **Report Generation**: Structured clinical reports with recommendations
-- **Caching Layer**: Redis integration for external API response caching
-- **Authentication**: API key validation and rate limiting
-- **Monitoring**: Comprehensive logging and metrics collection
+### ✅ **Production Infrastructure (100% Complete)**
+- **PostgreSQL Database**: Advanced schema with JSONB support and audit trails
+- **Comprehensive Logging**: Structured logging with correlation IDs
+- **Health Monitoring**: Service and dependency health checks
+- **Container Support**: Docker and Kubernetes deployment ready
 
-## Features
+## 🛠️ Available MCP Tools
 
-* **ACMG/AMP Guideline Engine:** Implements the core logic for classifying variants based on evidence criteria.
-* **Somatic & Germline Support:** Designed to handle both types of mutations (Note: Specific guideline sets like AMP/ASCO/CAP for somatic variants might require distinct implementation paths).
-* **AI Agent Ready API:** A defined API layer allows straightforward integration with platforms like ChatGPT, Claude, Gemini, etc.
-* **Evidence Aggregation:** Connects to essential public databases (e.g., ClinVar, gnomAD, COSMIC) and potentially internal institutional databases.
-* **Structured Reporting:** Outputs clear classification results (Pathogenic, Likely Pathogenic, VUS, Likely Benign, Benign) along with the specific ACMG/AMP evidence codes met.
-* **Clinical Database**: PostgreSQL-based storage with full audit trails and JSONB support for flexible evidence storage.
+The server provides these tools that AI agents can access directly:
 
-## Architecture
+### **Core Classification Tools**
+- **`classify_variant`**: Complete ACMG/AMP workflow - input HGVS notation, get full classification report
+- **`validate_hgvs`**: Validate and normalize HGVS variant notation
+- **`apply_rule`**: Apply specific ACMG/AMP rules (e.g., PVS1, PS1) to a variant
+- **`combine_evidence`**: Combine multiple rule results using ACMG/AMP guidelines
 
-The service follows a modular microservice-oriented architecture:
+### **Evidence Gathering Tools**
+- **`query_evidence`**: Gather evidence from all 6 external databases
+- **`query_clinvar`**: Search ClinVar for variant clinical significance
+- **`query_gnomad`**: Get population frequency data from gnomAD
+- **`query_cosmic`**: Search COSMIC for somatic mutation data
 
-* **API Gateway:** Entry point for requests from AI agents.
-* **MCP Service Backend:** Orchestrates the interpretation workflow.
-* **Input Parser:** Validates and standardizes variant nomenclature.
-* **Variant Interpretation Engine:** Applies guideline logic using aggregated evidence.
-* **Knowledge Base Access:** Interfaces with various data sources.
-* **Reporting Module:** Formats the final interpretation output.
+### **Report Generation Tools**
+- **`generate_report`**: Create structured clinical interpretation reports
+- **`format_report`**: Export reports in multiple formats (JSON, text, PDF)
+- **`validate_report`**: Quality assurance for generated reports
+
+## 🏗️ MCP Architecture
+
+The server implements the **Model Context Protocol (MCP)** for direct AI agent integration:
 
 ```mermaid
 graph TD
-    subgraph "User Interaction Layer"
-        User[Physician] -- Interacts via --> AI_Agent(AI Agent e.g., ChatGPT, Claude, Gemini)
+    subgraph "AI Agent Layer"
+        Claude[Claude Desktop/API] 
+        ChatGPT[ChatGPT with MCP]
+        CustomAI[Custom MCP Client]
     end
 
-    subgraph "MCP Service"
-        API_Gateway(API Gateway) -- Routes requests --> MCP_Backend(MCP Service Backend)
-        MCP_Backend -- Uses --> Input_Parser(Input Parser)
-        MCP_Backend -- Uses --> Variant_Engine(Variant Interpretation Engine)
-        MCP_Backend -- Uses --> Reporting(Reporting Module)
-        Variant_Engine -- Implements --> ACMG_AMP_Logic(ACMG/AMP Guideline Logic)
-        Variant_Engine -- Queries --> KB_Access(Knowledge Base Access Layer)
+    subgraph "MCP Server Layer"
+        Transport[MCP Transport<br/>stdio/HTTP-SSE]
+        Protocol[JSON-RPC 2.0<br/>Protocol Handler]
+        ToolRegistry[MCP Tool Registry]
+    end
+
+    subgraph "Classification Engine"
+        ClassifierService[ACMG/AMP<br/>Classifier Service]
+        RuleEngine[28 ACMG/AMP Rules<br/>PVS1-BP7]
+        EvidenceCombiner[Evidence Combination<br/>Logic]
+    end
+
+    subgraph "Evidence Layer"
+        ClinVar[ClinVar API]
+        gnomAD[gnomAD API]
+        COSMIC[COSMIC API]
+        PubMed[PubMed API]
+        LOVD[LOVD API]
+        HGMD[HGMD API]
     end
 
     subgraph "Data Layer"
-        KB_Access -- Accesses --> Ext_DBs(External Databases e.g., ClinVar, gnomAD, COSMIC)
-        KB_Access -- Accesses --> Int_DB(Internal Database e.g., Local Annotations, History)
+        PostgreSQL[(PostgreSQL<br/>Variants & Results)]
+        Redis[(Redis<br/>API Cache)]
     end
 
-    AI_Agent -- Sends mutation data / Receives interpretation --> API_Gateway
-    Input_Parser -- Parses & Validates --> MCP_Backend
-    Reporting -- Formats output --> MCP_Backend
-    MCP_Backend -- Sends result back --> API_Gateway
+    Claude --> Transport
+    ChatGPT --> Transport
+    CustomAI --> Transport
+    
+    Transport --> Protocol
+    Protocol --> ToolRegistry
+    
+    ToolRegistry --> ClassifierService
+    ClassifierService --> RuleEngine
+    ClassifierService --> EvidenceCombiner
+    
+    ClassifierService --> ClinVar
+    ClassifierService --> gnomAD
+    ClassifierService --> COSMIC
+    ClassifierService --> PubMed
+    ClassifierService --> LOVD
+    ClassifierService --> HGMD
+    
+    ClassifierService --> PostgreSQL
+    ClassifierService --> Redis
 ```
 
 ## Target Audience
@@ -131,52 +174,97 @@ The service is built around well-defined interfaces:
 - **KnowledgeBaseAccess**: External database integration
 - **ReportGenerator**: Structured report generation
 
-## Getting Started
+## 🚀 Quick Start Guide
 
 ### Prerequisites
-- Go 1.21+
-- PostgreSQL 15+
-- Redis 7+ (for caching)
+- **Go 1.21+** - For building the MCP server
+- **PostgreSQL 15+** - For variant and results storage  
+- **Docker & Docker Compose** - For easy deployment
 
-### Quick Start with Docker
+### 📦 Method 1: Docker Deployment (Recommended)
 
-1. **Clone the repository**
+1. **Clone and configure**
    ```bash
-   git clone <repository-url>
-   cd acmg-amp-mcp-server
-   ```
-
-2. **Set up environment variables (IMPORTANT)**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your actual values - NEVER commit this file!
-   ```
-
-3. **Copy configuration**
-   ```bash
+   git clone https://github.com/your-username/acmg-amp-classifier-mcp.git
+   cd acmg-amp-classifier-mcp
+   
+   # Copy and edit configuration
    cp config.example.yaml config.yaml
-   # Configuration will automatically use environment variables
+   cp .env.example .env
+   # Edit .env with your database and API credentials
    ```
 
-4. **Run with Docker Compose**
+2. **Start the services**
    ```bash
-   # Development (uses .env file)
+   # Start PostgreSQL, Redis, and MCP server
    docker-compose up -d
    
-   # Production (uses Docker secrets - recommended)
-   ./scripts/setup-secrets.sh
-   docker-compose -f docker-compose.prod.yml up -d
-   ```
-
-5. **Run database migrations**
-   ```bash
-   # Migrations are automatically applied on startup
-   # Or run manually: go run cmd/migrate/main.go up
-   ```
-
-6. **Check health**
-   ```bash
+   # Check server health
    curl http://localhost:8080/health
+   ```
+
+3. **Configure Claude Desktop**
+   
+   Add to your Claude Desktop MCP settings (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+   ```json
+   {
+     "mcpServers": {
+       "acmg-amp-classifier": {
+         "command": "docker",
+         "args": ["exec", "acmg-amp-mcp-server", "/app/mcp-server"],
+         "env": {}
+       }
+     }
+   }
+   ```
+
+4. **Test with Claude**
+   
+   Ask Claude: *"Can you classify the variant NM_000492.3:c.1521_1523delCTT using ACMG/AMP guidelines?"*
+
+### 🔧 Method 2: Local Development
+
+1. **Setup dependencies**
+   ```bash
+   # Install Go dependencies
+   go mod download
+   
+   # Start local PostgreSQL and Redis
+   brew install postgresql redis
+   brew services start postgresql redis
+   
+   # Create database
+   createdb acmg_amp_dev
+   ```
+
+2. **Configure and run**
+   ```bash
+   # Copy and edit configuration
+   cp config.example.yaml config.yaml
+   # Edit database connection settings
+   
+   # Run database migrations
+   go run cmd/migrate/main.go up
+   
+   # Start the MCP server
+   go run cmd/mcp-server/main.go
+   ```
+
+3. **Connect to Claude Desktop**
+   
+   Configure Claude Desktop to use stdio transport:
+   ```json
+   {
+     "mcpServers": {
+       "acmg-amp-classifier": {
+         "command": "/path/to/your/acmg-amp-mcp-server",
+         "args": ["--transport=stdio"],
+         "env": {
+           "DATABASE_URL": "postgres://localhost/acmg_amp_dev"
+         }
+       }
+     }
+   }
    ```
 
 ### Security & Compliance Notice
@@ -197,27 +285,36 @@ The service is built around well-defined interfaces:
 - 🏥 Clinical use is prohibited without regulatory approval
 - 📚 Keep this README and LICENSE files with any distribution
 
-### Local Development
+## 💬 Example Usage with Claude
 
-```bash
-# Install dependencies
-go mod download
+Once configured, you can ask Claude to perform genetic variant analysis:
 
-# Set up local PostgreSQL database
-createdb acmg_amp_dev
+### **Basic Variant Classification**
+```
+"Can you classify the variant NM_000492.3:c.1521_1523delCTT and explain the ACMG/AMP rules that apply?"
+```
 
-# Copy and configure environment
-cp config.example.yaml config.yaml
-# Edit database connection settings
+### **Evidence Gathering**
+```
+"What evidence is available for the BRCA1 variant chr17:g.43094692G>A from ClinVar and gnomAD?"
+```
 
-# Run database migrations
-go run cmd/migrate/main.go up
+### **Rule-Specific Analysis**  
+```
+"Apply the PVS1 rule to the variant NM_000492.3:c.1521_1523delCTT and explain whether it meets the criteria."
+```
 
-# Run the server
-go run cmd/server/main.go
+### **Batch Analysis**
+```
+"Can you classify these variants and compare their pathogenicity:
+1. NM_000492.3:c.1521_1523delCTT
+2. NC_000017.11:g.43094692G>A
+3. NM_007294.4:c.68_69delAG"
+```
 
-# Run tests (requires test database)
-go test ./...
+### **Report Generation**
+```
+"Generate a clinical interpretation report for NM_000492.3:c.1521_1523delCTT including recommendations for genetic counseling."
 ```
 
 ## Configuration
@@ -266,74 +363,56 @@ Production-ready schema with two core tables:
 - Up/down migration support for rollbacks
 - Comprehensive indexing strategy for performance
 
-## API Endpoints
+## 🔧 MCP Tool Reference
 
-### Health and Status
-- `GET /health` - Service health check with database connectivity
-- `GET /metrics` - Prometheus metrics endpoint
-- `GET /version` - Service version information
+### **classify_variant**
+Complete ACMG/AMP variant classification workflow.
 
-### Variant Management
-- `POST /api/v1/variants` - Create or retrieve variant by HGVS
-- `GET /api/v1/variants/:id` - Get variant details by UUID
-- `GET /api/v1/variants/hgvs/:notation` - Get variant by HGVS notation
-- `GET /api/v1/variants/gene/:symbol` - List variants by gene symbol
+**Parameters:**
+- `hgvs_notation` (required): HGVS variant notation (e.g., "NM_000492.3:c.1521_1523delCTT")
+- `gene_symbol` (optional): HGNC gene symbol
+- `variant_type` (optional): "SNV", "indel", "CNV", "SV"
+- `clinical_context` (optional): Clinical context information
 
-### Interpretation Services
-- `POST /api/v1/interpret` - Perform variant interpretation with ACMG/AMP rules
-- `GET /api/v1/interpretations/:id` - Get interpretation results by UUID
-- `GET /api/v1/interpretations/variant/:variant_id` - Get interpretations for a variant
-- `GET /api/v1/interpretations/classification/:type` - Filter by classification type
+**Example Claude Request:**
+*"Use classify_variant to analyze NM_000492.3:c.1521_1523delCTT"*
 
-### Request/Response Format
+---
 
-#### Variant Interpretation Request
-```json
-{
-  "hgvs": "NC_000017.11:g.43094692G>A",
-  "gene_symbol": "BRCA1",
-  "transcript": "NM_007294.4",
-  "client_id": "clinical_lab_001",
-  "request_id": "req_12345",
-  "metadata": {
-    "patient_age": "45",
-    "indication": "breast_cancer_risk"
-  }
-}
-```
+### **apply_rule**
+Apply a specific ACMG/AMP rule to a variant.
 
-#### Interpretation Response
-```json
-{
-  "request_id": "req_12345",
-  "variant": {
-    "id": "uuid-here",
-    "hgvs_genomic": "NC_000017.11:g.43094692G>A",
-    "chromosome": "17",
-    "position": 43094692,
-    "gene_symbol": "BRCA1",
-    "variant_type": "GERMLINE"
-  },
-  "classification": "PATHOGENIC",
-  "confidence": "HIGH",
-  "report": {
-    "applied_rules": [
-      {
-        "code": "PVS1",
-        "category": "PATHOGENIC",
-        "strength": "VERY_STRONG",
-        "met": true,
-        "evidence": "Null variant in critical domain",
-        "rationale": "Frameshift variant in BRCA1 exon 11"
-      }
-    ],
-    "summary": "This variant is classified as Pathogenic based on strong evidence...",
-    "recommendations": ["Genetic counseling recommended", "Consider cascade testing"]
-  },
-  "processing_time": "1.2s",
-  "processed_at": "2025-01-19T10:30:00Z"
-}
-```
+**Parameters:**
+- `rule_code` (required): ACMG/AMP rule (e.g., "PVS1", "PS1", "PM2", "PP3")
+- `variant_data` (required): Variant information object
+- `evidence_data` (optional): Additional evidence
+
+**Example Claude Request:**
+*"Apply the PVS1 rule to variant NM_000492.3:c.1521_1523delCTT"*
+
+---
+
+### **validate_hgvs**
+Validate and normalize HGVS notation.
+
+**Parameters:**
+- `hgvs_notation` (required): HGVS string to validate
+- `strict_mode` (optional): Enable strict validation
+
+**Example Claude Request:**
+*"Validate this HGVS notation: NM_000492.3:c.1521_1523delCTT"*
+
+---
+
+### **combine_evidence**
+Combine multiple ACMG/AMP rules according to guidelines.
+
+**Parameters:**
+- `applied_rules` (required): Array of rule evaluation results
+- `guidelines` (optional): Guidelines version ("ACMG2015")
+
+**Example Claude Request:**
+*"Combine these ACMG/AMP rule results into a final classification"*
 
 ## License
 
