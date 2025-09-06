@@ -427,7 +427,10 @@ func TestToolRegistry(t *testing.T) {
 
 	// Test getting tool info
 	toolsInfo := registry.GetRegisteredToolsInfo()
-	expectedTools := []string{"classify_variant", "validate_hgvs", "apply_rule", "combine_evidence"}
+	expectedTools := []string{
+		"classify_variant", "validate_hgvs", "apply_rule", "combine_evidence",
+		"query_evidence", "batch_query_evidence", "query_clinvar", "query_gnomad", "query_cosmic",
+	}
 
 	if len(toolsInfo) != len(expectedTools) {
 		t.Errorf("Expected %d tools, got %d", len(expectedTools), len(toolsInfo))

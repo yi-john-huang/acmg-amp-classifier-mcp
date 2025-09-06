@@ -20,31 +20,50 @@ func NewToolRegistry(logger *logrus.Logger, router *protocol.MessageRouter) *Too
 	}
 }
 
-// RegisterAllTools registers all ACMG/AMP classification tools with the MCP router
+// RegisterAllTools registers all ACMG/AMP tools with the MCP router
 func (tr *ToolRegistry) RegisterAllTools() error {
-	tr.logger.Info("Registering ACMG/AMP classification tools")
+	tr.logger.Info("Registering ACMG/AMP tools")
 
-	// Register classify_variant tool
+	// Register classification tools
 	classifyTool := NewClassifyVariantTool(tr.logger)
 	tr.router.RegisterToolHandler("classify_variant", classifyTool)
 	tr.logger.Debug("Registered classify_variant tool")
 
-	// Register validate_hgvs tool
 	validateTool := NewValidateHGVSTool(tr.logger)
 	tr.router.RegisterToolHandler("validate_hgvs", validateTool)
 	tr.logger.Debug("Registered validate_hgvs tool")
 
-	// Register apply_rule tool
 	applyRuleTool := NewApplyRuleTool(tr.logger)
 	tr.router.RegisterToolHandler("apply_rule", applyRuleTool)
 	tr.logger.Debug("Registered apply_rule tool")
 
-	// Register combine_evidence tool
 	combineEvidenceTool := NewCombineEvidenceTool(tr.logger)
 	tr.router.RegisterToolHandler("combine_evidence", combineEvidenceTool)
 	tr.logger.Debug("Registered combine_evidence tool")
 
-	tr.logger.Info("Successfully registered all ACMG/AMP classification tools")
+	// Register evidence gathering tools
+	queryEvidenceTool := NewQueryEvidenceTool(tr.logger)
+	tr.router.RegisterToolHandler("query_evidence", queryEvidenceTool)
+	tr.logger.Debug("Registered query_evidence tool")
+
+	batchEvidenceTool := NewBatchEvidenceTool(tr.logger)
+	tr.router.RegisterToolHandler("batch_query_evidence", batchEvidenceTool)
+	tr.logger.Debug("Registered batch_query_evidence tool")
+
+	// Register database-specific tools
+	clinvarTool := NewQueryClinVarTool(tr.logger)
+	tr.router.RegisterToolHandler("query_clinvar", clinvarTool)
+	tr.logger.Debug("Registered query_clinvar tool")
+
+	gnomadTool := NewQueryGnomADTool(tr.logger)
+	tr.router.RegisterToolHandler("query_gnomad", gnomadTool)
+	tr.logger.Debug("Registered query_gnomad tool")
+
+	cosmicTool := NewQueryCOSMICTool(tr.logger)
+	tr.router.RegisterToolHandler("query_cosmic", cosmicTool)
+	tr.logger.Debug("Registered query_cosmic tool")
+
+	tr.logger.Info("Successfully registered all ACMG/AMP tools")
 	return nil
 }
 

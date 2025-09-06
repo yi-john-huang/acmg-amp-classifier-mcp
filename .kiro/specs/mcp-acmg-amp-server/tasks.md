@@ -58,7 +58,7 @@ From original `acmg-amp-mcp-server` specification:
   - Write comprehensive unit tests for each tool with clinical test cases
   - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
-- [ ] 5. Implement evidence gathering tools
+- [x] 5. Implement evidence gathering tools
 
   - Create `query_evidence` tool integrating with existing external API layer
   - Build database-specific tools (query_clinvar, query_gnomad, query_cosmic)
