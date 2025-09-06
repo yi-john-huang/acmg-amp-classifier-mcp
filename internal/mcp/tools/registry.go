@@ -63,6 +63,19 @@ func (tr *ToolRegistry) RegisterAllTools() error {
 	tr.router.RegisterToolHandler("query_cosmic", cosmicTool)
 	tr.logger.Debug("Registered query_cosmic tool")
 
+	// Register report generation tools
+	generateReportTool := NewGenerateReportTool(tr.logger)
+	tr.router.RegisterToolHandler("generate_report", generateReportTool)
+	tr.logger.Debug("Registered generate_report tool")
+
+	formatReportTool := NewFormatReportTool(tr.logger)
+	tr.router.RegisterToolHandler("format_report", formatReportTool)
+	tr.logger.Debug("Registered format_report tool")
+
+	validateReportTool := NewValidateReportTool(tr.logger)
+	tr.router.RegisterToolHandler("validate_report", validateReportTool)
+	tr.logger.Debug("Registered validate_report tool")
+
 	tr.logger.Info("Successfully registered all ACMG/AMP tools")
 	return nil
 }

@@ -69,7 +69,7 @@ From original `acmg-amp-mcp-server` specification:
   - Write integration tests with external API mocking and real API validation
   - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
-- [ ] 6. Build report generation tools
+- [x] 6. Build report generation tools
 
   - Implement `generate_report` tool with customizable report templates
   - Create `format_report` tool supporting multiple output formats (JSON, text, PDF)

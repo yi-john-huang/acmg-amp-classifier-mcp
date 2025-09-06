@@ -430,6 +430,7 @@ func TestToolRegistry(t *testing.T) {
 	expectedTools := []string{
 		"classify_variant", "validate_hgvs", "apply_rule", "combine_evidence",
 		"query_evidence", "batch_query_evidence", "query_clinvar", "query_gnomad", "query_cosmic",
+		"generate_report", "format_report", "validate_report",
 	}
 
 	if len(toolsInfo) != len(expectedTools) {
