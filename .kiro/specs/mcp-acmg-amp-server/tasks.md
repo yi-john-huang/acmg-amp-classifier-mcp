@@ -157,15 +157,15 @@ From original `acmg-amp-mcp-server` specification:
   - ✅ Write deployment validation tests ensuring MCP client connectivity
   - _Requirements: 2.4, 10.3_
 
-- [ ] 14. Develop AI agent integration examples
+- [x] 14. Develop AI agent integration examples
 
-  - Create Claude Desktop MCP server configuration examples
-  - Build ChatGPT MCP client integration documentation and examples
-  - Implement custom MCP client examples for testing and development
-  - Add example clinical workflows using MCP tools and prompts
-  - Create troubleshooting guides for common AI agent integration issues
-  - Build demonstration scenarios showcasing ACMG/AMP workflow through MCP
-  - Write integration guides for other MCP-compatible AI systems
+  - ✅ Create Claude Desktop MCP server configuration examples
+  - ✅ Build ChatGPT MCP client integration documentation and examples
+  - ✅ Implement custom MCP client examples for testing and development
+  - ✅ Add example clinical workflows using MCP tools and prompts
+  - ✅ Create troubleshooting guides for common AI agent integration issues
+  - ✅ Build demonstration scenarios showcasing ACMG/AMP workflow through MCP
+  - ✅ Write integration guides for other MCP-compatible AI systems
   - _Requirements: 1.1, 2.1, 7.1_
 
 - [ ] 15. Final validation and documentation

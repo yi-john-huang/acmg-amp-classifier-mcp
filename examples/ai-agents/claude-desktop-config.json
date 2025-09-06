@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "acmg-amp-classifier": {
+      "command": "node",
+      "args": ["/path/to/acmg-amp-classifier-mcp/cmd/mcp-server/main.js"],
+      "env": {
+        "NODE_ENV": "development",
+        "LOG_LEVEL": "info",
+        "DATABASE_URL": "postgresql://mcpuser:mcppass@localhost:5432/acmg_amp_mcp",
+        "REDIS_URL": "redis://localhost:6379",
+        "MCP_TRANSPORT": "stdio",
+        "CLINVAR_API_KEY": "your-clinvar-api-key",
+        "GNOMAD_API_KEY": "your-gnomad-api-key",
+        "COSMIC_API_KEY": "your-cosmic-api-key"
+      }
+    }
+  }
+}
