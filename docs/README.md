@@ -4,20 +4,18 @@ Complete documentation for the ACMG/AMP Model Context Protocol (MCP) Server - a 
 
 ## Quick Start
 
-### For Clinicians
-- **[User Guide](./user-guide.md)** - Complete guide for clinical users
-- **[Clinical Workflows](../examples/ai-agents/workflows/README.md)** - Step-by-step clinical processes
-- **[Claude Desktop Setup](../examples/ai-agents/README.md)** - Quick integration with Claude
+### For Users
+- **[User Guide](./USER_GUIDE.md)** - Complete installation and usage guide
+- **[Clinical Guide](./user-guide.md)** - Clinical workflow guidance
 
-### For Developers  
+### For Developers
 - **[API Documentation](./api-documentation.md)** - Complete MCP tools, resources, and prompts reference
-- **[Integration Guide](../examples/ai-agents/custom-clients/README.md)** - Custom client development
-- **[Deployment Guide](../scripts/deployment/README.md)** - Production deployment instructions
+- **[Architecture](./architecture.md)** - Technical architecture overview
+- **[Database](./database.md)** - Database schema and migrations
 
 ### For System Administrators
-- **[Security & Compliance](./security-compliance.md)** - Clinical security requirements
+- **[Security & Compliance](./security-compliance.md)** - Security requirements
 - **[Maintenance Guide](./maintenance-troubleshooting.md)** - Operations and troubleshooting
-- **[Validation Guide](../validation/README.md)** - System validation procedures
 
 ## What is the ACMG/AMP MCP Server?
 
@@ -63,10 +61,10 @@ The ACMG/AMP MCP Server is a specialized implementation of the Model Context Pro
                                     │
                   ┌─────────────────┼─────────────────┐
                   │                 │                 │
-              ┌───▼────┐        ┌───▼────┐        ┌───▼────┐
-              │ stdio  │        │  HTTP  │        │   WS   │
-              │Transport│        │Transport│        │Transport│
-              └───┬────┘        └───┬────┘        └───┬────┘
+              ┌───▼────┐        ┌───▼────┐            │
+              │ stdio  │        │HTTP-SSE│            │
+              │Transport│        │Transport│            │
+              └───┬────┘        └───┬────┘            │
                   │                 │                 │
                   └─────────────────┼─────────────────┘
                                     │
@@ -273,23 +271,14 @@ python3 tests/load-testing.py --clients 10 --duration 300
 
 ```
 docs/
-├── README.md                    # This file - overview and quick start
-├── user-guide.md               # Complete user guide for clinicians
-├── api-documentation.md        # Full MCP API reference
-├── security-compliance.md      # Security and regulatory compliance
-├── maintenance-troubleshooting.md # Operations and troubleshooting
-├── deployment/                 # Deployment guides
-│   ├── docker-deployment.md    # Docker setup guide
-│   ├── kubernetes-deployment.md # Kubernetes deployment
-│   └── cloud-deployment.md     # Cloud provider guides
-├── development/                # Developer documentation
-│   ├── contributing.md         # Contribution guidelines
-│   ├── testing.md             # Testing procedures
-│   └── architecture.md        # Technical architecture
-└── tutorials/                  # Step-by-step tutorials
-    ├── first-classification.md # Your first variant classification
-    ├── batch-processing.md     # Bulk variant analysis
-    └── custom-integration.md   # Building custom integrations
+├── README.md                      # This file - overview and quick start
+├── USER_GUIDE.md                  # Complete user guide with installation
+├── user-guide.md                  # Clinical user guide
+├── api-documentation.md           # Full MCP API reference
+├── architecture.md                # Technical architecture
+├── database.md                    # Database schema and migrations
+├── security-compliance.md         # Security and regulatory compliance
+└── maintenance-troubleshooting.md # Operations and troubleshooting
 ```
 
 ## Community & Support
@@ -314,10 +303,23 @@ docs/
 
 ## License & Legal
 
-This project is licensed under the MIT License. See [LICENSE](../LICENSE) for details.
+This project is licensed under a **Non-Commercial License**. See [LICENSE](../LICENSE) for details.
+
+### Permitted Uses (Non-Commercial)
+- Academic research and education
+- Personal experimentation and learning
+- Non-profit organization internal research
+- Open source contributions and improvements
+
+### Prohibited Uses (Commercial)
+- Clinical practice and patient care
+- Integration into commercial products or services
+- Paid consulting, analysis, or reporting services
+
+For commercial licensing inquiries, contact: yi.john.huang@me.com
 
 ### Clinical Use Disclaimer
-This software is provided for research and educational purposes. While designed to clinical standards, users are responsible for validation in their specific clinical environment and compliance with applicable regulations.
+This software is for research and educational purposes only. It is NOT approved for clinical use. Any clinical application requires appropriate medical oversight, validation studies, and regulatory compliance.
 
 ### Third-Party Data Sources
 - ClinVar: Public domain (NCBI)

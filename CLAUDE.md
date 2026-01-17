@@ -1,281 +1,167 @@
 # AI Agents Integration Guide
 
 ## Purpose
-This document defines how AI agents should interact with the SDD workflow and provides guidelines for effective agent collaboration in spec-driven development.
+This document defines how AI agents should interact with the ACMG-AMP MCP Server and provides guidelines for effective variant classification workflows.
 
-## Agent Types and Roles
+## ACMG-AMP Classifier Skills
 
-### Development Agents
-AI agents that assist with code implementation, testing, and documentation.
+The ACMG-AMP MCP Server provides Claude Code skills for streamlined variant classification workflows. Skills orchestrate multi-step workflows, while MCP tools are self-sufficient for single operations.
 
-**Primary Tools**: Claude Code, Cursor, GitHub Copilot, and similar AI development assistants.
+### Architecture Philosophy
 
-**Responsibilities**:
-- Follow SDD workflow phases strictly
-- Generate code based on approved specifications
-- Maintain consistency with project steering documents
-- Ensure quality through automated testing
+This project follows a lean architecture based on YAGNI (You Aren't Gonna Need It):
+- **Skills are for multi-step workflows** requiring orchestration
+- **MCP tools are self-sufficient** with enhanced outputs (gene info, quality scores, ACMG hints)
+- **No 1:1 wrapper skills** - use MCP tools directly for single operations
 
-### Review Agents
-AI agents specialized in code review, quality analysis, and security validation.
+### Available Skills
 
-**Primary Focus**:
-- Apply Linus-style code review principles
-- Validate implementation against requirements
-- Check for security vulnerabilities
-- Ensure performance standards
+| Skill | Command | Description |
+|-------|---------|-------------|
+| **Classify** | `/classify <variant>` | Full ACMG/AMP classification workflow |
+| **Batch** | `/batch <variants>` | Process multiple variants with progress tracking |
 
-### Planning Agents
-AI agents that help with requirements gathering, design decisions, and task breakdown.
+### Quick Start Examples
 
-**Primary Activities**:
-- Analyze project requirements using EARS format
-- Generate technical design documents
-- Create implementation task breakdowns
-- Validate workflow phase transitions
+```bash
+# Multi-step classification workflow
+/classify NM_000492.3:c.1521_1523delCTT
+/classify BRCA1:c.5266dupC
+/classify TP53:p.R273H --report
 
-## Agent Communication Protocol
-
-### Context Sharing
-All agents must:
-1. Load project steering documents at interaction start:
-   - `product.md` - Product context and business objectives
-   - `tech.md` - Technology stack and architectural decisions
-   - `structure.md` - File organization and code patterns
-   - `linus-review.md` - Code quality review principles
-   - `commit.md` - Commit message standards
-   - **`owasp-top10-check.md` - OWASP Top 10 security checklist (REQUIRED for code generation and review)**
-   - **`tdd-guideline.md` - Test-Driven Development workflow (REQUIRED for all new features)**
-   - **`principles.md` - Core coding principles (SOLID, DRY, KISS, YAGNI, Separation of Concerns, Modularity)**
-2. Check current workflow phase before proceeding
-3. Validate approvals before phase transitions
-4. Update spec.json with progress tracking
-
-### Information Flow
-```
-User Request → Agent Analysis → SDD Tool Invocation → Result Validation → User Response
+# Batch processing multiple variants
+/batch CFTR:c.1521_1523del, BRCA1:c.5266dupC, TP53:p.R273H
 ```
 
-### State Management
-- Agents must maintain awareness of current project state
-- Phase transitions require explicit approval tracking
-- All changes must be logged in spec.json metadata
+### Skills vs MCP Tools
 
-## Agent Tool Usage
+| Aspect | MCP Tools | Skills |
+|--------|-----------|--------|
+| **Invocation** | JSON-RPC protocol | Slash commands (`/classify`) |
+| **Target** | AI agents (Claude API) | Claude Code CLI users |
+| **Purpose** | Self-sufficient operations | Multi-step workflows |
+| **Format** | Structured JSON with enhanced fields | Natural language + guidance |
 
-### Required Tools for All Agents
-- `sdd-status`: Check current workflow state
-- `sdd-context-load`: Load project context
-- `sdd-quality-check`: Validate code quality
+**Use MCP Tools Directly For:**
+- Single validation: `validate_hgvs` returns gene_info, transcript_info, suggestions
+- Single evidence query: `query_evidence` returns acmg_criteria_hints, synthesis, source_quality
+- Single report: `generate_report` provides complete output
 
-### Phase-Specific Tools
+### Available MCP Tools (17 total)
 
-**Initialization Phase**:
-- `sdd-init`: Create new project structure
-- `sdd-steering`: Generate steering documents
+**Core Classification:** `classify_variant`, `validate_hgvs`, `apply_rule`, `combine_evidence`
 
-**Requirements Phase**:
-- `sdd-requirements`: Generate requirements document
-- `sdd-validate-gap`: Analyze implementation gaps
+**Evidence Gathering:** `query_evidence`, `batch_query_evidence`, `query_clinvar`, `query_gnomad`, `query_cosmic`
 
-**Design Phase**:
-- `sdd-design`: Create technical design
-- `sdd-validate-design`: Review design quality
+**Report Generation:** `generate_report`, `format_report`, `validate_report`
 
-**Tasks Phase**:
-- `sdd-tasks`: Generate task breakdown
-- `sdd-spec-impl`: Execute tasks with TDD
+**Feedback:** `submit_feedback`, `query_feedback`, `list_feedback`, `export_feedback`, `import_feedback`
 
-**Implementation Phase**:
-- `sdd-implement`: Get implementation guidelines
-- `sdd-quality-check`: Continuous quality validation
+### Skill Documentation
 
-## Agent Collaboration Patterns
+Full documentation for each skill is available in `.claude/skills/`:
+- `.claude/skills/classify/SKILL.md` - Classification workflow
+- `.claude/skills/batch/SKILL.md` - Batch processing
 
-### Sequential Collaboration
-Agents work in sequence through workflow phases:
+### Shared Resources
+
+Reference materials in `.claude/skills/_shared/`:
+- `acmg-guidelines.md` - ACMG/AMP rules quick reference
+- `error-handling.md` - Error handling guide
+- `clinical-context.md` - Clinical interpretation guidance
+
+---
+
+## Best Practices for AI Agents
+
+### 1. Variant Classification Workflow
+
+When classifying variants, follow this recommended workflow:
+
 ```
-Planning Agent → Design Agent → Implementation Agent → Review Agent
+1. Validate Input → validate_hgvs
+2. Gather Evidence → query_evidence (or individual database tools)
+3. Apply Rules → apply_rule (for specific criteria)
+4. Combine Evidence → combine_evidence
+5. Generate Report → generate_report
 ```
 
-### Parallel Collaboration
-Multiple agents work on different aspects simultaneously:
-- Frontend Agent handles UI tasks
-- Backend Agent handles API tasks
-- Test Agent creates test suites
-- Documentation Agent updates docs
+Or use the `/classify` skill which orchestrates all steps automatically.
 
-### Feedback Loops
-Agents provide feedback to improve specifications:
-- Implementation issues feed back to design
-- Test failures inform requirement updates
-- Performance problems trigger architecture reviews
+### 2. Input Formats
 
-## Quality Standards for Agents
+The classifier accepts multiple input formats:
+- **HGVS notation**: `NM_000492.3:c.1521_1523delCTT`
+- **Gene symbol + variant**: `BRCA1:c.5266dupC`
+- **Protein change**: `TP53:p.R273H`
+- **Genomic coordinates**: `chr17:g.43094692G>A`
 
-### Code Generation Standards
-- Follow project coding conventions from structure.md
-- Implement comprehensive error handling
-- Include appropriate logging and monitoring
-- Write self-documenting code with clear naming
+### 3. Error Handling
+
+- Always validate input before classification
+- Check for suggestions when validation fails
+- Handle database connectivity issues gracefully
+- Provide meaningful error messages to users
+
+### 4. User Feedback
+
+Collect user feedback to improve future classifications:
+- Use `submit_feedback` when users agree or disagree with classifications
+- Query previous feedback with `query_feedback` for consistency
+- Export feedback regularly for backup with `export_feedback`
+
+---
+
+## Code Quality Standards
 
 ### Testing Requirements
 - Generate unit tests for all new functions
 - Create integration tests for workflows
-- Implement performance benchmarks
 - Ensure test coverage meets project standards
 
-### Documentation Expectations
-- Update relevant documentation with changes
-- Maintain clear commit messages following commit.md
-- Document design decisions and trade-offs
-- Keep README and API docs current
-
-## Agent Configuration
-
-### Environment Setup
-Agents should configure their environment with:
-```bash
-# Load SDD MCP server
-npx sdd-mcp-server
-
-# Initialize project context
-sdd-context-load [feature-name]
-
-# Check current status
-sdd-status [feature-name]
-```
-
-### Steering Document Loading
-Agents must respect steering document modes:
-- **Always**: Load for every interaction
-- **Conditional**: Load based on file patterns
-- **Manual**: Load when explicitly requested
-
-### Tool Invocation Patterns
-```javascript
-// Check phase before proceeding
-const status = await sdd-status(featureName);
-
-// Validate requirements exist
-if (!status.requirements.generated) {
-  await sdd-requirements(featureName);
-}
-
-// Proceed with implementation
-await sdd-implement(featureName);
-```
-
-## Best Practices for AI Agents
-
-### 1. Context Awareness
-- Always load full project context before making changes
-- Understand the current workflow phase and requirements
-- Check for existing implementations before creating new ones
-
-### 2. Incremental Progress
-- Complete one task fully before moving to the next
-- Update task checkboxes in tasks.md as work progresses
-- Commit changes frequently with clear messages
-
-### 3. Quality Focus
-- Run quality checks after each significant change
-- Address issues immediately rather than accumulating debt
-- **Follow TDD principles strictly: Red → Green → Refactor**
-  - **RED**: Write failing tests BEFORE any implementation
-  - **GREEN**: Write minimal code to make tests pass
-  - **REFACTOR**: Improve code quality while keeping tests green
-  - Refer to `.spec/steering/tdd-guideline.md` for complete TDD workflow
-
-### 4. Communication Clarity
-- Provide clear explanations for design decisions
-- Document assumptions and constraints
-- Report blockers and issues promptly
-
-### 5. Workflow Compliance
-- Never skip workflow phases
-- Ensure approvals are in place before proceeding
-- Maintain traceability from requirements to implementation
-
-## Error Handling for Agents
-
-### Common Issues and Solutions
-
-**Phase Violation**: Attempting to skip workflow phases
-- Solution: Follow the prescribed phase sequence
-- Use `sdd-status` to check current phase
-
-**Missing Context**: Operating without project understanding
-- Solution: Load context with `sdd-context-load`
-- Review steering documents before proceeding
-
-**Quality Failures**: Code doesn't meet standards
-- Solution: Run `sdd-quality-check` regularly
-- Apply Linus-style review principles
-
-**Integration Conflicts**: Changes break existing functionality
-- Solution: Run comprehensive tests before committing
-- Ensure backward compatibility
-
-## Performance Guidelines
-
-### Efficiency Standards
-- Minimize redundant tool invocations
-- Cache project context when possible
-- Batch related operations together
-
-### Resource Management
-- Clean up temporary files after operations
-- Limit concurrent file operations
-- Optimize for large codebases
-
-## Security Considerations
-
-### Code Review Security
-- Check for credential exposure
-- Validate input sanitization
-- Review authentication/authorization logic
-- Identify potential injection vulnerabilities
-
-### Data Handling
-- Never commit sensitive data
+### Security Considerations
+- Never commit sensitive data (API keys, credentials)
+- Validate all user input
+- Follow OWASP Top 10 guidelines
 - Use environment variables for configuration
-- Implement proper encryption for sensitive operations
-- Follow least privilege principles
 
-## Integration with CI/CD
+### Documentation
+- Update relevant documentation with changes
+- Maintain clear commit messages
+- Document design decisions and trade-offs
 
-### Automated Workflows
-Agents should support CI/CD integration:
-- Trigger quality checks on commits
-- Validate phase requirements in pipelines
-- Generate reports for review processes
-- Update documentation automatically
+---
 
-### Deployment Readiness
-Before deployment, agents must ensure:
-- All tests pass successfully
-- Documentation is complete and current
-- Quality standards are met
-- Security scans show no critical issues
+## Server Configurations
 
-## Continuous Improvement
+### Lite Server (Recommended for most users)
+- No external dependencies
+- SQLite for feedback storage
+- In-memory caching
+- Single binary deployment
 
-### Learning from Feedback
-- Analyze failed implementations
-- Update patterns based on successes
-- Refine task estimation accuracy
-- Improve requirement interpretation
+### Full Server (Production deployments)
+- PostgreSQL for all data storage
+- Redis for distributed caching
+- Docker/Kubernetes ready
+- Health monitoring and metrics
 
-### Metrics and Monitoring
-Track agent performance metrics:
-- Task completion accuracy
-- Code quality scores
-- Time to implementation
-- Defect rates post-deployment
+---
 
-## Conclusion
+## Disclaimers
 
-AI agents are integral to the SDD workflow, providing automation and intelligence throughout the development lifecycle. By following these guidelines, agents can effectively collaborate to deliver high-quality, specification-compliant software while maintaining the rigor and discipline of spec-driven development.
+**IMPORTANT: Research and Educational Use Only**
 
-Remember: Agents augment human decision-making but don't replace it. Critical decisions, approvals, and architectural choices should always involve human oversight.
+- These tools are NOT approved for clinical diagnostic use
+- Results require professional interpretation
+- Should not be the sole basis for medical decisions
+- Clinical use requires regulatory approval
+
+---
+
+## Contact
+
+For issues or questions, refer to:
+1. Error handling guide: `.claude/skills/_shared/error-handling.md`
+2. ACMG guidelines: `.claude/skills/_shared/acmg-guidelines.md`
+3. Clinical context: `.claude/skills/_shared/clinical-context.md`

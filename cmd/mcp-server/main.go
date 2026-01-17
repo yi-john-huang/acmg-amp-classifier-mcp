@@ -9,9 +9,19 @@ import (
 
 	"github.com/acmg-amp-mcp-server/internal/config"
 	"github.com/acmg-amp-mcp-server/internal/mcp"
+	"github.com/acmg-amp-mcp-server/internal/setup"
 )
 
 func main() {
+	// Check for setup subcommand
+	if len(os.Args) > 1 && os.Args[1] == "setup" {
+		cli := setup.NewCLI("full")
+		if err := cli.Run(os.Args[2:]); err != nil {
+			log.Fatalf("Setup failed: %v", err)
+		}
+		return
+	}
+
 	// Load configuration
 	configManager, err := config.NewManager()
 	if err != nil {
@@ -30,6 +40,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create MCP server: %v", err)
 	}
+	defer mcpServer.Close()
 
 	// Setup graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
