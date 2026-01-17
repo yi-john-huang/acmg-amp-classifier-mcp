@@ -29,15 +29,33 @@ type QueryEvidenceParams struct {
 }
 
 // QueryEvidenceResult defines the comprehensive evidence result structure
+// Enhanced per REQ-MCP-002 to be self-sufficient with complete information
 type QueryEvidenceResult struct {
-	VariantID           string                 `json:"variant_id"`
-	HGVSNotation        string                 `json:"hgvs_notation"`
-	QueryTimestamp      string                 `json:"query_timestamp"`
-	DatabaseResults     map[string]interface{} `json:"database_results"`
-	AggregatedEvidence  AggregatedEvidence     `json:"aggregated_evidence"`
-	QualityScores       EvidenceQualityScores  `json:"quality_scores"`
-	RecommendedActions  []string               `json:"recommended_actions"`
-	DataFreshness       map[string]string      `json:"data_freshness"`
+	VariantID           string                    `json:"variant_id"`
+	HGVSNotation        string                    `json:"hgvs_notation"`
+	QueryTimestamp      string                    `json:"query_timestamp"`
+	DatabaseResults     map[string]interface{}    `json:"database_results"`
+	AggregatedEvidence  AggregatedEvidence        `json:"aggregated_evidence"`
+	QualityScores       EvidenceQualityScores     `json:"quality_scores"`
+	RecommendedActions  []string                  `json:"recommended_actions"`
+	DataFreshness       map[string]string         `json:"data_freshness"`
+	// Enhanced fields per REQ-MCP-002
+	SourceQuality       map[string]*SourceQuality `json:"source_quality,omitempty"`
+	ACMGCriteriaHints   map[string]*CriteriaHint  `json:"acmg_criteria_hints,omitempty"`
+	Synthesis           string                    `json:"synthesis,omitempty"`
+}
+
+// SourceQuality represents quality assessment for a single data source (REQ-MCP-002)
+type SourceQuality struct {
+	Quality    string `json:"quality"` // "high", "medium", "low"
+	DataSource string `json:"data_source"`
+	Notes      string `json:"notes,omitempty"`
+}
+
+// CriteriaHint represents an ACMG criteria mapping hint (REQ-MCP-002)
+type CriteriaHint struct {
+	Applicable bool   `json:"applicable"`
+	Note       string `json:"note"`
 }
 
 // AggregatedEvidence contains summarized evidence across databases
@@ -298,12 +316,15 @@ func (t *QueryEvidenceTool) cacheResult(params *QueryEvidenceParams, result *Que
 }
 
 // gatherEvidence orchestrates evidence gathering from multiple sources
+// Enhanced per REQ-MCP-002 to return self-sufficient results with quality assessment
 func (t *QueryEvidenceTool) gatherEvidence(ctx context.Context, params *QueryEvidenceParams) (*QueryEvidenceResult, error) {
 	result := &QueryEvidenceResult{
-		VariantID:       t.generateVariantID(params.HGVSNotation),
-		HGVSNotation:    params.HGVSNotation,
-		DatabaseResults: make(map[string]interface{}),
-		DataFreshness:   make(map[string]string),
+		VariantID:         t.generateVariantID(params.HGVSNotation),
+		HGVSNotation:      params.HGVSNotation,
+		DatabaseResults:   make(map[string]interface{}),
+		DataFreshness:     make(map[string]string),
+		SourceQuality:     make(map[string]*SourceQuality),
+		ACMGCriteriaHints: make(map[string]*CriteriaHint),
 	}
 
 	// Query each requested database
@@ -320,6 +341,9 @@ func (t *QueryEvidenceTool) gatherEvidence(ctx context.Context, params *QueryEvi
 
 		result.DatabaseResults[database] = dbResult
 		result.DataFreshness[database] = time.Now().Format(time.RFC3339)
+
+		// Populate per-source quality (REQ-MCP-002)
+		result.SourceQuality[database] = t.assessSourceQuality(database, dbResult)
 	}
 
 	// Aggregate evidence across databases
@@ -327,6 +351,12 @@ func (t *QueryEvidenceTool) gatherEvidence(ctx context.Context, params *QueryEvi
 
 	// Calculate quality scores
 	result.QualityScores = t.calculateQualityScores(result.DatabaseResults, result.AggregatedEvidence)
+
+	// Generate ACMG criteria hints (REQ-MCP-002)
+	result.ACMGCriteriaHints = t.generateACMGCriteriaHints(result.DatabaseResults, result.AggregatedEvidence)
+
+	// Generate evidence synthesis (REQ-MCP-002)
+	result.Synthesis = t.generateEvidenceSynthesis(result.AggregatedEvidence, result.QualityScores)
 
 	// Generate recommendations
 	result.RecommendedActions = t.generateRecommendations(result.AggregatedEvidence, result.QualityScores)
@@ -888,4 +918,221 @@ func (t *QueryEvidenceTool) generateRecommendations(evidence AggregatedEvidence,
 	}
 
 	return recommendations
+}
+
+// assessSourceQuality assesses quality for a single data source (REQ-MCP-002)
+func (t *QueryEvidenceTool) assessSourceQuality(database string, dbResult interface{}) *SourceQuality {
+	quality := &SourceQuality{
+		DataSource: database,
+	}
+
+	switch database {
+	case "clinvar":
+		// ClinVar quality based on review status
+		if clinvarData, ok := dbResult.(map[string]interface{}); ok {
+			if summary, ok := clinvarData["summary"].(map[string]interface{}); ok {
+				if total, ok := summary["total_entries"].(float64); ok && total > 0 {
+					quality.Quality = "high"
+					quality.Notes = fmt.Sprintf("Found %d entries with clinical assertions", int(total))
+				} else {
+					quality.Quality = "medium"
+					quality.Notes = "ClinVar data available"
+				}
+			} else {
+				quality.Quality = "medium"
+				quality.Notes = "ClinVar data returned"
+			}
+		} else {
+			quality.Quality = "low"
+			quality.Notes = "Limited ClinVar data"
+		}
+
+	case "gnomad":
+		// gnomAD quality based on data completeness
+		if gnomadData, ok := dbResult.(map[string]interface{}); ok {
+			if freqData, ok := gnomadData["frequency_data"].(map[string]interface{}); ok {
+				if _, hasAC := freqData["allele_count"]; hasAC {
+					quality.Quality = "high"
+					quality.Notes = "Population frequency data with allele counts"
+				} else {
+					quality.Quality = "medium"
+					quality.Notes = "Population frequency data available"
+				}
+			} else {
+				quality.Quality = "low"
+				quality.Notes = "Limited gnomAD data"
+			}
+		} else {
+			quality.Quality = "low"
+			quality.Notes = "No gnomAD data"
+		}
+
+	case "cosmic":
+		// COSMIC quality based on sample count
+		if cosmicData, ok := dbResult.(map[string]interface{}); ok {
+			if somaticData, ok := cosmicData["somatic_data"].(map[string]interface{}); ok {
+				if sampleCount, ok := somaticData["sample_count"].(float64); ok && sampleCount > 10 {
+					quality.Quality = "high"
+					quality.Notes = fmt.Sprintf("Found in %d somatic samples", int(sampleCount))
+				} else if sampleCount > 0 {
+					quality.Quality = "medium"
+					quality.Notes = "COSMIC somatic data available"
+				} else {
+					quality.Quality = "low"
+					quality.Notes = "Limited COSMIC data"
+				}
+			} else {
+				quality.Quality = "low"
+				quality.Notes = "No somatic data"
+			}
+		} else {
+			quality.Quality = "low"
+			quality.Notes = "No COSMIC data"
+		}
+
+	case "pubmed":
+		// PubMed quality based on citation count
+		if pubmedData, ok := dbResult.(map[string]interface{}); ok {
+			if searchSummary, ok := pubmedData["search_summary"].(map[string]interface{}); ok {
+				if totalResults, ok := searchSummary["total_results"].(float64); ok {
+					if totalResults > 10 {
+						quality.Quality = "high"
+						quality.Notes = fmt.Sprintf("Found %d publications", int(totalResults))
+					} else if totalResults > 0 {
+						quality.Quality = "medium"
+						quality.Notes = fmt.Sprintf("Found %d publications", int(totalResults))
+					} else {
+						quality.Quality = "low"
+						quality.Notes = "No relevant publications found"
+					}
+				}
+			}
+		}
+		if quality.Quality == "" {
+			quality.Quality = "low"
+			quality.Notes = "Limited literature data"
+		}
+
+	default:
+		quality.Quality = "medium"
+		quality.Notes = "Standard data quality"
+	}
+
+	return quality
+}
+
+// generateACMGCriteriaHints generates ACMG criteria mapping hints (REQ-MCP-002)
+func (t *QueryEvidenceTool) generateACMGCriteriaHints(dbResults map[string]interface{}, evidence AggregatedEvidence) map[string]*CriteriaHint {
+	hints := make(map[string]*CriteriaHint)
+
+	// PM2: Absent from controls or at extremely low frequency
+	if evidence.PopulationFrequency.MaxFrequency < 0.0001 {
+		hints["PM2"] = &CriteriaHint{
+			Applicable: true,
+			Note:       "Absent or extremely low frequency in gnomAD (<0.01%)",
+		}
+	} else if evidence.PopulationFrequency.MaxFrequency < 0.01 {
+		hints["PM2"] = &CriteriaHint{
+			Applicable: false,
+			Note:       fmt.Sprintf("Low but not absent from population databases (%.4f%%)", evidence.PopulationFrequency.MaxFrequency*100),
+		}
+	}
+
+	// BA1: Allele frequency > 5%
+	if evidence.PopulationFrequency.MaxFrequency > 0.05 {
+		hints["BA1"] = &CriteriaHint{
+			Applicable: true,
+			Note:       fmt.Sprintf("Allele frequency >5%% (%.2f%%) - stand-alone benign", evidence.PopulationFrequency.MaxFrequency*100),
+		}
+	}
+
+	// BS1: Allele frequency greater than expected for disorder
+	if evidence.PopulationFrequency.MaxFrequency > 0.01 && evidence.PopulationFrequency.MaxFrequency <= 0.05 {
+		hints["BS1"] = &CriteriaHint{
+			Applicable: true,
+			Note:       fmt.Sprintf("Allele frequency greater than expected (%.2f%%)", evidence.PopulationFrequency.MaxFrequency*100),
+		}
+	}
+
+	// PP5/BP6: Clinical assertions
+	if evidence.ClinicalEvidence.OverallSignificance != "" {
+		switch evidence.ClinicalEvidence.OverallSignificance {
+		case "Pathogenic", "Likely pathogenic":
+			hints["PP5"] = &CriteriaHint{
+				Applicable: true,
+				Note:       fmt.Sprintf("ClinVar: %s with %s", evidence.ClinicalEvidence.OverallSignificance, evidence.ClinicalEvidence.ReviewStatus),
+			}
+		case "Benign", "Likely benign":
+			hints["BP6"] = &CriteriaHint{
+				Applicable: true,
+				Note:       fmt.Sprintf("ClinVar: %s with %s", evidence.ClinicalEvidence.OverallSignificance, evidence.ClinicalEvidence.ReviewStatus),
+			}
+		}
+	}
+
+	// PP3/BP4: Computational predictions
+	if evidence.ComputationalData.ConsensusPrediction != "" {
+		if evidence.ComputationalData.ConsensusPrediction == "damaging" && evidence.ComputationalData.ConsensusScore > 0.8 {
+			hints["PP3"] = &CriteriaHint{
+				Applicable: true,
+				Note:       fmt.Sprintf("Multiple computational tools predict damaging effect (score: %.2f)", evidence.ComputationalData.ConsensusScore),
+			}
+		} else if evidence.ComputationalData.ConsensusPrediction == "tolerated" || evidence.ComputationalData.ConsensusScore < 0.3 {
+			hints["BP4"] = &CriteriaHint{
+				Applicable: true,
+				Note:       "Multiple computational tools predict benign/tolerated effect",
+			}
+		}
+	}
+
+	// PS4: Significantly increased prevalence in affected vs controls
+	if _, hasClinvar := dbResults["clinvar"]; hasClinvar {
+		if evidence.ClinicalEvidence.OverallSignificance == "Pathogenic" &&
+			strings.Contains(evidence.ClinicalEvidence.ReviewStatus, "multiple submitters") {
+			hints["PS4"] = &CriteriaHint{
+				Applicable: true,
+				Note:       "Significant case enrichment supported by multiple ClinVar submitters",
+			}
+		}
+	}
+
+	return hints
+}
+
+// generateEvidenceSynthesis generates a human-readable synthesis of evidence (REQ-MCP-002)
+func (t *QueryEvidenceTool) generateEvidenceSynthesis(evidence AggregatedEvidence, quality EvidenceQualityScores) string {
+	var parts []string
+
+	// Population frequency summary
+	if evidence.PopulationFrequency.FrequencyAssessment != "" {
+		parts = append(parts, fmt.Sprintf("Population frequency: %s", evidence.PopulationFrequency.FrequencyAssessment))
+	}
+
+	// Clinical significance summary
+	if evidence.ClinicalEvidence.OverallSignificance != "" {
+		conflictNote := ""
+		if evidence.ClinicalEvidence.ConflictingInterpretations {
+			conflictNote = " (conflicting interpretations exist)"
+		}
+		parts = append(parts, fmt.Sprintf("Clinical significance: %s%s", evidence.ClinicalEvidence.OverallSignificance, conflictNote))
+	}
+
+	// Computational predictions summary
+	if evidence.ComputationalData.ConsensusPrediction != "" {
+		parts = append(parts, fmt.Sprintf("Computational prediction: %s (score: %.2f)", evidence.ComputationalData.ConsensusPrediction, evidence.ComputationalData.ConsensusScore))
+	}
+
+	// Literature summary
+	if evidence.LiteratureEvidence.TotalCitations > 0 {
+		parts = append(parts, fmt.Sprintf("Literature: %d citations found", evidence.LiteratureEvidence.TotalCitations))
+	}
+
+	// Quality assessment
+	parts = append(parts, fmt.Sprintf("Evidence quality: %s (%.0f%% complete)", quality.OverallQuality, quality.DataCompleteness*100))
+
+	if len(parts) == 0 {
+		return "Limited evidence available for this variant."
+	}
+
+	return strings.Join(parts, ". ") + "."
 }

@@ -25,12 +25,31 @@ type ValidateHGVSParams struct {
 }
 
 // ValidateHGVSResult defines the result structure for validate_hgvs tool
+// Enhanced per REQ-MCP-001 to be self-sufficient with complete information
 type ValidateHGVSResult struct {
-	IsValid         bool              `json:"is_valid"`
-	HGVSNotation    string            `json:"hgvs_notation"`
-	NormalizedHGVS  string            `json:"normalized_hgvs,omitempty"`
+	IsValid          bool              `json:"is_valid"`
+	HGVSNotation     string            `json:"hgvs_notation"`
+	NormalizedHGVS   string            `json:"normalized_hgvs,omitempty"`
 	ValidationIssues []ValidationIssue `json:"validation_issues,omitempty"`
 	ParsedComponents HGVSComponents    `json:"parsed_components,omitempty"`
+	// Enhanced fields per REQ-MCP-001
+	GeneInfo         *GeneInfo         `json:"gene_info,omitempty"`
+	TranscriptInfo   *TranscriptInfo   `json:"transcript_info,omitempty"`
+	Suggestions      []string          `json:"suggestions,omitempty"`
+}
+
+// GeneInfo contains gene-related information (REQ-MCP-001)
+type GeneInfo struct {
+	Symbol string `json:"symbol"`
+	Name   string `json:"name"`
+	HGNCID string `json:"hgnc_id,omitempty"`
+}
+
+// TranscriptInfo contains transcript-related information (REQ-MCP-001)
+type TranscriptInfo struct {
+	RefSeq      string `json:"refseq"`
+	Ensembl     string `json:"ensembl,omitempty"`
+	IsCanonical bool   `json:"is_canonical"`
 }
 
 // ValidationIssue represents a validation problem
@@ -139,55 +158,65 @@ func (t *ValidateHGVSTool) parseAndValidateParams(params interface{}, target *Va
 }
 
 // validateHGVS performs comprehensive HGVS validation using the classifier service
+// Enhanced per REQ-MCP-001 to return self-sufficient results with gene and transcript info
 func (t *ValidateHGVSTool) validateHGVS(params *ValidateHGVSParams) *ValidateHGVSResult {
 	hgvs := strings.TrimSpace(params.HGVSNotation)
 
 	// Check if classifier service is available
 	if t.classifierService == nil {
-		return &ValidateHGVSResult{
-			IsValid:      false,
-			HGVSNotation: hgvs,
-			ValidationIssues: []ValidationIssue{{
-				Severity: "error",
-				Code:     "SERVICE_NOT_CONFIGURED",
-				Message:  "Validation service not configured",
-				Position: 0,
-			}},
-		}
+		// Fall back to basic parsing for enhanced output
+		return t.validateHGVSBasic(hgvs)
 	}
 
 	// Call the real validation service
 	serviceResult, err := t.classifierService.ValidateHGVS(hgvs)
 	if err != nil {
-		// If service validation fails, fall back to basic validation
-		return &ValidateHGVSResult{
-			IsValid:      false,
-			HGVSNotation: hgvs,
-			ValidationIssues: []ValidationIssue{{
-				Severity: "error",
-				Code:     "VALIDATION_SERVICE_ERROR",
-				Message:  fmt.Sprintf("Validation service error: %v", err),
-				Position: 0,
-			}},
+		// If service validation fails, fall back to basic validation with suggestions
+		result := t.validateHGVSBasic(hgvs)
+		result.ValidationIssues = append(result.ValidationIssues, ValidationIssue{
+			Severity: "error",
+			Code:     "VALIDATION_SERVICE_ERROR",
+			Message:  fmt.Sprintf("Validation service error: %v", err),
+			Position: 0,
+		})
+		return result
+	}
+
+	// Convert service result to MCP tool result with enhanced output
+	result := &ValidateHGVSResult{
+		IsValid:          serviceResult.IsValid,
+		HGVSNotation:     hgvs,
+		NormalizedHGVS:   serviceResult.NormalizedHGVS,
+		ValidationIssues: make([]ValidationIssue, 0),
+		ParsedComponents: HGVSComponents{
+			Reference:   extractReference(serviceResult.NormalizedHGVS),
+			Type:        serviceResult.VariantType,
+			Position:    extractPosition(serviceResult.GenomicPosition),
+			VariantType: serviceResult.VariantType,
+			Description: serviceResult.PredictedProtein,
+		},
+		Suggestions: make([]string, 0),
+	}
+
+	// Populate enhanced GeneInfo (REQ-MCP-001)
+	if serviceResult.GeneSymbol != "" {
+		result.GeneInfo = &GeneInfo{
+			Symbol: serviceResult.GeneSymbol,
+			Name:   t.getGeneName(serviceResult.GeneSymbol),
+			HGNCID: t.getHGNCID(serviceResult.GeneSymbol),
 		}
 	}
 
-	// Convert service result to MCP tool result
-	result := &ValidateHGVSResult{
-		IsValid:         serviceResult.IsValid,
-		HGVSNotation:    hgvs,
-		NormalizedHGVS:  serviceResult.NormalizedHGVS,
-		ValidationIssues: make([]ValidationIssue, 0),
-		ParsedComponents: HGVSComponents{
-			Reference:    extractReference(serviceResult.NormalizedHGVS),
-			Type:         serviceResult.VariantType,
-			Position:     extractPosition(serviceResult.GenomicPosition),
-			VariantType:  serviceResult.VariantType,
-			Description:  serviceResult.PredictedProtein,
-		},
+	// Populate enhanced TranscriptInfo (REQ-MCP-001)
+	if serviceResult.TranscriptID != "" {
+		result.TranscriptInfo = &TranscriptInfo{
+			RefSeq:      serviceResult.TranscriptID,
+			Ensembl:     t.getEnsemblID(serviceResult.TranscriptID),
+			IsCanonical: t.isCanonicalTranscript(serviceResult.TranscriptID, serviceResult.GeneSymbol),
+		}
 	}
 
-	// Add validation issue if not valid
+	// Add validation issue and suggestions if not valid
 	if !serviceResult.IsValid {
 		result.ValidationIssues = append(result.ValidationIssues, ValidationIssue{
 			Severity: "error",
@@ -195,9 +224,193 @@ func (t *ValidateHGVSTool) validateHGVS(params *ValidateHGVSParams) *ValidateHGV
 			Message:  serviceResult.ErrorMessage,
 			Position: 0,
 		})
+		// Generate suggestions for invalid input
+		result.Suggestions = t.generateSuggestions(hgvs, serviceResult.ErrorMessage)
 	}
 
 	return result
+}
+
+// validateHGVSBasic performs basic HGVS validation without the classifier service
+// Used as fallback when service is not available, still provides enhanced output
+func (t *ValidateHGVSTool) validateHGVSBasic(hgvs string) *ValidateHGVSResult {
+	result := &ValidateHGVSResult{
+		IsValid:          false,
+		HGVSNotation:     hgvs,
+		ValidationIssues: make([]ValidationIssue, 0),
+		Suggestions:      make([]string, 0),
+	}
+
+	// Try to parse components even without service
+	components, issues := t.parseHGVSComponents(hgvs)
+	result.ParsedComponents = components
+	result.ValidationIssues = issues
+
+	// Extract gene info from parsed components if available
+	if components.Reference != "" {
+		result.TranscriptInfo = &TranscriptInfo{
+			RefSeq: components.Reference + "." + components.Version,
+		}
+		// Try to get gene info from transcript
+		if geneSymbol := t.getGeneFromTranscript(components.Reference); geneSymbol != "" {
+			result.GeneInfo = &GeneInfo{
+				Symbol: geneSymbol,
+				Name:   t.getGeneName(geneSymbol),
+				HGNCID: t.getHGNCID(geneSymbol),
+			}
+		}
+	}
+
+	// Check if notation is a gene symbol format (e.g., "BRCA1:c.5266dup")
+	if strings.Contains(hgvs, ":") {
+		parts := strings.Split(hgvs, ":")
+		if len(parts) == 2 && !strings.HasPrefix(parts[0], "NM_") && !strings.HasPrefix(parts[0], "NC_") {
+			// Looks like gene symbol notation
+			geneSymbol := parts[0]
+			result.GeneInfo = &GeneInfo{
+				Symbol: geneSymbol,
+				Name:   t.getGeneName(geneSymbol),
+				HGNCID: t.getHGNCID(geneSymbol),
+			}
+			// Add suggestion to use transcript notation
+			result.Suggestions = append(result.Suggestions,
+				fmt.Sprintf("Consider using transcript notation: NM_XXXXX:c.%s", parts[1]),
+				"Use a specific transcript for precise variant representation",
+			)
+		}
+	}
+
+	// Set validity based on parsing results
+	result.IsValid = t.hasNoErrors(result.ValidationIssues)
+	if result.IsValid {
+		result.NormalizedHGVS = t.normalizeHGVS(hgvs, components)
+	}
+
+	return result
+}
+
+// getGeneName returns the full gene name for a symbol
+// In production, this would query a gene database
+func (t *ValidateHGVSTool) getGeneName(symbol string) string {
+	// Common gene name mappings (mock - would be database lookup in production)
+	geneNames := map[string]string{
+		"BRCA1": "BRCA1 DNA repair associated",
+		"BRCA2": "BRCA2 DNA repair associated",
+		"CFTR":  "CF transmembrane conductance regulator",
+		"TP53":  "tumor protein p53",
+		"KRAS":  "KRAS proto-oncogene, GTPase",
+		"EGFR":  "epidermal growth factor receptor",
+		"MLH1":  "mutL homolog 1",
+		"MSH2":  "mutS homolog 2",
+	}
+	if name, exists := geneNames[symbol]; exists {
+		return name
+	}
+	return ""
+}
+
+// getHGNCID returns the HGNC ID for a gene symbol
+// In production, this would query the HGNC database
+func (t *ValidateHGVSTool) getHGNCID(symbol string) string {
+	// Common HGNC ID mappings (mock - would be database lookup in production)
+	hgncIDs := map[string]string{
+		"BRCA1": "HGNC:1100",
+		"BRCA2": "HGNC:1101",
+		"CFTR":  "HGNC:1884",
+		"TP53":  "HGNC:11998",
+		"KRAS":  "HGNC:6407",
+		"EGFR":  "HGNC:3236",
+		"MLH1":  "HGNC:7127",
+		"MSH2":  "HGNC:7325",
+	}
+	if id, exists := hgncIDs[symbol]; exists {
+		return id
+	}
+	return ""
+}
+
+// getEnsemblID returns the Ensembl transcript ID for a RefSeq ID
+// In production, this would query the Ensembl database
+func (t *ValidateHGVSTool) getEnsemblID(refseqID string) string {
+	// Common RefSeq to Ensembl mappings (mock - would be database lookup in production)
+	ensemblIDs := map[string]string{
+		"NM_007294": "ENST00000357654",
+		"NM_000059": "ENST00000380152",
+		"NM_000492": "ENST00000003084",
+		"NM_000546": "ENST00000269305",
+	}
+	// Strip version number for lookup
+	base := strings.Split(refseqID, ".")[0]
+	if id, exists := ensemblIDs[base]; exists {
+		return id
+	}
+	return ""
+}
+
+// isCanonicalTranscript checks if a transcript is the canonical one for a gene
+// In production, this would query the transcript database
+func (t *ValidateHGVSTool) isCanonicalTranscript(transcriptID, geneSymbol string) bool {
+	// Common canonical transcript mappings (mock - would be database lookup in production)
+	canonicalTranscripts := map[string]string{
+		"BRCA1": "NM_007294",
+		"BRCA2": "NM_000059",
+		"CFTR":  "NM_000492",
+		"TP53":  "NM_000546",
+	}
+	if canonical, exists := canonicalTranscripts[geneSymbol]; exists {
+		base := strings.Split(transcriptID, ".")[0]
+		return base == canonical
+	}
+	return false
+}
+
+// getGeneFromTranscript returns the gene symbol for a transcript ID
+// In production, this would query the transcript database
+func (t *ValidateHGVSTool) getGeneFromTranscript(transcriptID string) string {
+	// Common transcript to gene mappings (mock - would be database lookup in production)
+	transcriptGenes := map[string]string{
+		"NM_007294": "BRCA1",
+		"NM_000059": "BRCA2",
+		"NM_000492": "CFTR",
+		"NM_000546": "TP53",
+	}
+	base := strings.Split(transcriptID, ".")[0]
+	if gene, exists := transcriptGenes[base]; exists {
+		return gene
+	}
+	return ""
+}
+
+// generateSuggestions generates helpful suggestions for invalid HGVS input
+func (t *ValidateHGVSTool) generateSuggestions(hgvs string, errorMessage string) []string {
+	suggestions := make([]string, 0)
+
+	// Check for common issues and suggest fixes
+	if strings.Contains(strings.ToLower(errorMessage), "invalid reference") ||
+		!strings.Contains(hgvs, "_") && !strings.HasPrefix(hgvs, "NM_") && !strings.HasPrefix(hgvs, "NC_") {
+		suggestions = append(suggestions, "Ensure notation starts with a valid RefSeq accession (e.g., NM_000492.3)")
+	}
+
+	if !strings.Contains(hgvs, ":") {
+		suggestions = append(suggestions, "HGVS notation requires a colon separator (e.g., NM_000492.3:c.1521_1523delCTT)")
+	}
+
+	if strings.Contains(hgvs, ":") {
+		parts := strings.Split(hgvs, ":")
+		if len(parts) == 2 && !strings.Contains(parts[0], ".") {
+			suggestions = append(suggestions, "Include version number in reference (e.g., NM_000492.3 instead of NM_000492)")
+		}
+	}
+
+	if strings.Contains(hgvs, " ") {
+		suggestions = append(suggestions, "Remove spaces from HGVS notation")
+	}
+
+	if len(suggestions) == 0 {
+		suggestions = append(suggestions, "Check HGVS format at: https://varnomen.hgvs.org/")
+	}
+
+	return suggestions
 }
 
 // Helper functions to extract information from service results

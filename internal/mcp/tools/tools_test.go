@@ -484,21 +484,21 @@ func TestToolInfo(t *testing.T) {
 }
 
 // TestHGVSValidation tests HGVS validation logic
+// Updated to reflect enhanced self-sufficient MCP tool behavior (REQ-MCP-001)
 func TestHGVSValidation(t *testing.T) {
 	logger, _ := test.NewNullLogger()
-	// Note: With nil classifier service, validation service is not available
-	// All validations will return IsValid: false with SERVICE_NOT_CONFIGURED error
+	// Note: With nil classifier service, basic validation is still performed
+	// Enhanced MCP tools provide useful results even without the full service
 	tool := NewValidateHGVSTool(logger, nil)
 
 	testCases := []struct {
 		hgvs     string
 		expected bool
 	}{
-		// With nil service, all validations return false
-		// These would be valid with a real service:
-		{"NM_000492.3:c.1521T>G", false},      // Returns false due to nil service
-		{"NC_000007.14:g.117199644del", false}, // Returns false due to nil service
-		{"NP_000483.3:p.Phe508del", false},     // Returns false due to nil service
+		// With enhanced basic validation, well-formed HGVS passes:
+		{"NM_000492.3:c.1521T>G", true},       // Valid substitution format
+		{"NC_000007.14:g.117199644del", true}, // Valid deletion format
+		{"NP_000483.3:p.Phe508del", true},     // Valid protein deletion format
 
 		// These are truly invalid regardless
 		{"invalid", false},
@@ -519,9 +519,18 @@ func TestHGVSValidation(t *testing.T) {
 				t.Errorf("HGVS %s: expected valid=%t, got %t", tc.hgvs, tc.expected, result.IsValid)
 			}
 
-			// With nil service, we should see SERVICE_NOT_CONFIGURED error
-			if len(result.ValidationIssues) > 0 && result.ValidationIssues[0].Code == "SERVICE_NOT_CONFIGURED" {
-				t.Logf("HGVS %s: validation service not configured (expected)", tc.hgvs)
+			// Enhanced output should provide useful information even without full service
+			if result.IsValid {
+				t.Logf("HGVS %s: valid, normalized=%s", tc.hgvs, result.NormalizedHGVS)
+				// Check for enhanced fields
+				if result.TranscriptInfo != nil {
+					t.Logf("  TranscriptInfo: RefSeq=%s", result.TranscriptInfo.RefSeq)
+				}
+				if result.GeneInfo != nil {
+					t.Logf("  GeneInfo: Symbol=%s", result.GeneInfo.Symbol)
+				}
+			} else if len(result.ValidationIssues) > 0 {
+				t.Logf("HGVS %s: invalid, issue=%s", tc.hgvs, result.ValidationIssues[0].Message)
 			}
 		})
 	}
