@@ -117,6 +117,8 @@ out/
 *.msi
 *.deb
 *.rpm
+/server
+/mcp-server
 
 # =============================================================================
 # IDE and Editor Files
@@ -277,6 +279,7 @@ ai-tool-logs/
 *chat*history*
 *ai*conversation*
 claude-code-history/
+.claude/settings.local.json
 
 # =============================================================================
 # Network and VPN Configuration

@@ -2,7 +2,6 @@ package tools
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/sirupsen/logrus"
@@ -109,17 +108,8 @@ func (t *QueryClinVarTool) ValidateParams(params interface{}) error {
 
 // parseAndValidateParams parses and validates ClinVar parameters
 func (t *QueryClinVarTool) parseAndValidateParams(params interface{}, target *QueryClinVarParams) error {
-	if params == nil {
-		return fmt.Errorf("missing required parameters")
-	}
-
-	paramsBytes, err := json.Marshal(params)
-	if err != nil {
-		return fmt.Errorf("failed to marshal parameters: %w", err)
-	}
-
-	if err := json.Unmarshal(paramsBytes, target); err != nil {
-		return fmt.Errorf("failed to parse parameters: %w", err)
+	if err := ParseParams(params, target); err != nil {
+		return err
 	}
 
 	if target.HGVSNotation == "" && target.VariationID == "" && target.GeneSymbol == "" {
@@ -273,17 +263,8 @@ func (t *QueryGnomADTool) ValidateParams(params interface{}) error {
 
 // parseAndValidateParams parses and validates gnomAD parameters
 func (t *QueryGnomADTool) parseAndValidateParams(params interface{}, target *QueryGnomADParams) error {
-	if params == nil {
-		return fmt.Errorf("missing required parameters")
-	}
-
-	paramsBytes, err := json.Marshal(params)
-	if err != nil {
-		return fmt.Errorf("failed to marshal parameters: %w", err)
-	}
-
-	if err := json.Unmarshal(paramsBytes, target); err != nil {
-		return fmt.Errorf("failed to parse parameters: %w", err)
+	if err := ParseParams(params, target); err != nil {
+		return err
 	}
 
 	if target.HGVSNotation == "" && target.GenomicPosition == "" && target.GeneSymbol == "" {
@@ -446,17 +427,8 @@ func (t *QueryCOSMICTool) ValidateParams(params interface{}) error {
 
 // parseAndValidateParams parses and validates COSMIC parameters
 func (t *QueryCOSMICTool) parseAndValidateParams(params interface{}, target *QueryCOSMICParams) error {
-	if params == nil {
-		return fmt.Errorf("missing required parameters")
-	}
-
-	paramsBytes, err := json.Marshal(params)
-	if err != nil {
-		return fmt.Errorf("failed to marshal parameters: %w", err)
-	}
-
-	if err := json.Unmarshal(paramsBytes, target); err != nil {
-		return fmt.Errorf("failed to parse parameters: %w", err)
+	if err := ParseParams(params, target); err != nil {
+		return err
 	}
 
 	if target.HGVSNotation == "" && target.GeneSymbol == "" && target.CosmicID == "" {
