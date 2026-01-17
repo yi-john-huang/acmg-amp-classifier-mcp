@@ -3,13 +3,10 @@ package testing
 import (
 	"context"
 	"fmt"
-	"net"
-	"net/http"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -195,11 +192,15 @@ func (suite *TransportIntegrationTestSuite) RunTransportIntegrationTests(ctx con
 	}
 
 	// Cross-transport comparison tests
-	t.Run("TransportComparison", suite.TestTransportComparison)
-	
+	t.Run("TransportComparison", func(t *testing.T) {
+		suite.TestTransportComparison(ctx, t)
+	})
+
 	// Network condition tests
 	if suite.config.ReliabilityTests {
-		t.Run("NetworkConditionTests", suite.TestNetworkConditions)
+		t.Run("NetworkConditionTests", func(t *testing.T) {
+			suite.TestNetworkConditions(ctx, t)
+		})
 	}
 	
 	// Generate comprehensive report

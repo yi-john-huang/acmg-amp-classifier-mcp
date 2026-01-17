@@ -19,13 +19,16 @@ type Client struct {
 type InterpretationRecord struct {
 	ID               string                 `json:"id"`
 	VariantID        string                 `json:"variant_id"`
+	ClientID         string                 `json:"client_id,omitempty"`
+	RequestID        string                 `json:"request_id,omitempty"`
 	Classification   Classification         `json:"classification"`
 	ConfidenceLevel  ConfidenceLevel        `json:"confidence_level"`
 	AppliedRules     []ACMGAMPRule          `json:"applied_rules"`
 	EvidenceSummary  AggregatedEvidence     `json:"evidence_summary"`
 	ReportData       map[string]interface{} `json:"report_data"` // Using map to avoid circular reference
-	ProcessingTimeMS int                    `json:"processing_time_ms"`
+	ProcessingTimeMs int                    `json:"processing_time_ms"`
 	CreatedAt        time.Time              `json:"created_at"`
+	UpdatedAt        time.Time              `json:"updated_at,omitempty"`
 }
 
 // Config represents the main application configuration

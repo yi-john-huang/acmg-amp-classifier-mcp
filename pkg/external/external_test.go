@@ -546,8 +546,26 @@ func TestKnowledgeBaseService_GatherEvidence(t *testing.T) {
 		PoolTimeout: 4 * time.Second,
 	}
 
+	pubMedConfig := domain.PubMedConfig{
+		BaseURL:   "https://eutils.ncbi.nlm.nih.gov/entrez/eutils",
+		Timeout:   5 * time.Second,
+		RateLimit: 100,
+	}
+
+	lovdConfig := domain.LOVDConfig{
+		BaseURL:   "https://www.lovd.nl/3.0/api",
+		Timeout:   5 * time.Second,
+		RateLimit: 100,
+	}
+
+	hgmdConfig := domain.HGMDConfig{
+		BaseURL:   "https://my.qiagendigitalinsights.com/bbp/view/hgmd",
+		Timeout:   5 * time.Second,
+		RateLimit: 100,
+	}
+
 	// Create knowledge base service
-	service, err := NewKnowledgeBaseService(clinVarConfig, gnomADConfig, cosmicConfig, cacheConfig)
+	service, err := NewKnowledgeBaseService(clinVarConfig, gnomADConfig, cosmicConfig, pubMedConfig, lovdConfig, hgmdConfig, cacheConfig)
 	if err != nil {
 		t.Skipf("Failed to create service (Redis may not be available): %v", err)
 	}

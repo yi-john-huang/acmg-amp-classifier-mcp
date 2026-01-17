@@ -5,13 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // ProtocolComplianceTestSuite validates MCP JSON-RPC 2.0 protocol compliance
@@ -621,8 +619,8 @@ func (suite *ProtocolComplianceTestSuite) TestNotifications(ctx context.Context,
 		"method":  "notifications/initialized",
 	}
 
-	response, err := suite.sendRawRequest(ctx, client, notification)
-	
+	response, _ := suite.sendRawRequest(ctx, client, notification)
+
 	// Notifications should not generate responses (unless it's an error)
 	if response != nil && !suite.isErrorResponse(response) {
 		result.Violations = append(result.Violations, ComplianceViolation{

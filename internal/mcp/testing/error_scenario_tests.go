@@ -439,7 +439,9 @@ func (suite *ErrorScenarioTestSuite) RunErrorScenarioTests(ctx context.Context, 
 
 	// Run recovery-specific tests
 	if suite.config.EnableRecoveryTests {
-		t.Run("RecoveryTests", suite.TestRecoveryBehavior)
+		t.Run("RecoveryTests", func(t *testing.T) {
+			suite.TestRecoveryBehavior(ctx, t)
+		})
 	}
 }
 

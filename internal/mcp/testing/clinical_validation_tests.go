@@ -728,10 +728,10 @@ func (suite *ClinicalValidationSuite) classificationMatches(expected, actual str
 	pathogenicClasses := []string{"pathogenic", "likely_pathogenic"}
 	benignClasses := []string{"benign", "likely_benign"}
 
-	expectedPathogenic := contains(pathogenicClasses, expected)
-	actualPathogenic := contains(pathogenicClasses, actual)
-	expectedBenign := contains(benignClasses, expected)
-	actualBenign := contains(benignClasses, actual)
+	expectedPathogenic := sliceContains(pathogenicClasses, expected)
+	actualPathogenic := sliceContains(pathogenicClasses, actual)
+	expectedBenign := sliceContains(benignClasses, expected)
+	actualBenign := sliceContains(benignClasses, actual)
 
 	// Allow pathogenic/likely_pathogenic interchange if tolerance threshold is met
 	if expectedPathogenic && actualPathogenic && suite.config.ToleranceThreshold > 0 {
@@ -771,13 +771,13 @@ func (suite *ClinicalValidationSuite) calculateEvidenceMatch(expected, actual AC
 	allActual := append(pathogenicActual, benignActual...)
 
 	for _, rule := range allExpected {
-		if !contains(allActual, rule) {
+		if !sliceContains(allActual, rule) {
 			result.MissingEvidence = append(result.MissingEvidence, rule)
 		}
 	}
 
 	for _, rule := range allActual {
-		if !contains(allExpected, rule) {
+		if !sliceContains(allExpected, rule) {
 			result.ExtraEvidence = append(result.ExtraEvidence, rule)
 		}
 	}
@@ -795,7 +795,7 @@ func (suite *ClinicalValidationSuite) calculateListMatch(expected, actual []stri
 
 	matches := 0
 	for _, item := range expected {
-		if contains(actual, item) {
+		if sliceContains(actual, item) {
 			matches++
 		}
 	}
@@ -974,7 +974,7 @@ func (suite *ClinicalValidationSuite) GetDatasets() map[string]ClinicalDataset {
 	return suite.datasets
 }
 
-func contains(slice []string, item string) bool {
+func sliceContains(slice []string, item string) bool {
 	for _, s := range slice {
 		if s == item {
 			return true

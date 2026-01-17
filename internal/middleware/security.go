@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -57,13 +58,34 @@ func CorrelationID() gin.HandlerFunc {
 
 // RequestTimeout sets a timeout for all requests to prevent resource exhaustion
 func RequestTimeout(timeout time.Duration) gin.HandlerFunc {
-	return gin.TimeoutWithHandler(timeout, func(c *gin.Context) {
-		c.JSON(408, gin.H{
-			"error":          "Request timeout",
-			"correlation_id": c.GetString("correlation_id"),
-			"timestamp":      time.Now().UTC().Format(time.RFC3339),
-		})
-	})
+	return func(c *gin.Context) {
+		// Create a context with timeout
+		ctx, cancel := context.WithTimeout(c.Request.Context(), timeout)
+		defer cancel()
+
+		// Replace the request context
+		c.Request = c.Request.WithContext(ctx)
+
+		// Channel to signal completion
+		done := make(chan struct{})
+
+		go func() {
+			c.Next()
+			close(done)
+		}()
+
+		select {
+		case <-done:
+			// Request completed normally
+		case <-ctx.Done():
+			// Timeout occurred
+			c.AbortWithStatusJSON(408, gin.H{
+				"error":          "Request timeout",
+				"correlation_id": c.GetString("correlation_id"),
+				"timestamp":      time.Now().UTC().Format(time.RFC3339),
+			})
+		}
+	}
 }
 
 // AuditLogger logs security-relevant events for medical compliance

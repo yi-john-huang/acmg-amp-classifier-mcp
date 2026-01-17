@@ -2,6 +2,7 @@ package caching
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -184,8 +185,8 @@ func TestResourceCacheInvalidation(t *testing.T) {
 	cache.Set(ctx, uri2, "test", "data2", nil, time.Millisecond)
 	
 	// Verify both are cached
-	cached1, found1 := cache.Get(ctx, uri1)
-	cached2, found2 := cache.Get(ctx, uri2)
+	_, found1 := cache.Get(ctx, uri1)
+	_, found2 := cache.Get(ctx, uri2)
 	assert.True(t, found1)
 	assert.True(t, found2)
 	

@@ -212,10 +212,18 @@ func (suite *PerformanceTestSuite) RunPerformanceTests(ctx context.Context, t *t
 	}
 
 	// Run specialized performance tests
-	t.Run("ConcurrencyStressTest", suite.TestConcurrencyStress)
-	t.Run("ThroughputBenchmark", suite.TestThroughputBenchmark)
-	t.Run("ResourceLeakTest", suite.TestResourceLeak)
-	t.Run("LatencyUnderLoad", suite.TestLatencyUnderLoad)
+	t.Run("ConcurrencyStressTest", func(t *testing.T) {
+		suite.TestConcurrencyStress(ctx, t)
+	})
+	t.Run("ThroughputBenchmark", func(t *testing.T) {
+		suite.TestThroughputBenchmark(ctx, t)
+	})
+	t.Run("ResourceLeakTest", func(t *testing.T) {
+		suite.TestResourceLeak(ctx, t)
+	})
+	t.Run("LatencyUnderLoad", func(t *testing.T) {
+		suite.TestLatencyUnderLoad(ctx, t)
+	})
 }
 
 func (suite *PerformanceTestSuite) runLoadTest(ctx context.Context, loadTest LoadTest) (*PerformanceResult, error) {
