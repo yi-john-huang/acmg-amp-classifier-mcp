@@ -2,7 +2,6 @@ package tools
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/sirupsen/logrus"
@@ -284,17 +283,8 @@ func (t *ApplyRuleTool) ValidateParams(params interface{}) error {
 
 // parseAndValidateParams parses and validates input parameters for apply_rule
 func (t *ApplyRuleTool) parseAndValidateParams(params interface{}, target *ApplyRuleParams) error {
-	if params == nil {
-		return fmt.Errorf("missing required parameters")
-	}
-
-	paramsBytes, err := json.Marshal(params)
-	if err != nil {
-		return fmt.Errorf("failed to marshal parameters: %w", err)
-	}
-
-	if err := json.Unmarshal(paramsBytes, target); err != nil {
-		return fmt.Errorf("failed to parse parameters: %w", err)
+	if err := ParseParams(params, target); err != nil {
+		return err
 	}
 
 	if target.RuleCode == "" {
@@ -425,17 +415,8 @@ func (t *CombineEvidenceTool) ValidateParams(params interface{}) error {
 
 // parseAndValidateParams parses and validates input parameters for combine_evidence
 func (t *CombineEvidenceTool) parseAndValidateParams(params interface{}, target *CombineEvidenceParams) error {
-	if params == nil {
-		return fmt.Errorf("missing required parameters")
-	}
-
-	paramsBytes, err := json.Marshal(params)
-	if err != nil {
-		return fmt.Errorf("failed to marshal parameters: %w", err)
-	}
-
-	if err := json.Unmarshal(paramsBytes, target); err != nil {
-		return fmt.Errorf("failed to parse parameters: %w", err)
+	if err := ParseParams(params, target); err != nil {
+		return err
 	}
 
 	if len(target.AppliedRules) == 0 {

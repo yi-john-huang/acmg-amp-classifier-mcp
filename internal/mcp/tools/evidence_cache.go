@@ -2,13 +2,12 @@ package tools
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
-	
+
 	"github.com/acmg-amp-mcp-server/internal/mcp/protocol"
 )
 
@@ -358,17 +357,8 @@ func (t *BatchEvidenceTool) ValidateParams(params interface{}) error {
 
 // parseAndValidateParams parses and validates batch parameters
 func (t *BatchEvidenceTool) parseAndValidateParams(params interface{}, target *BatchEvidenceParams) error {
-	if params == nil {
-		return fmt.Errorf("missing required parameters")
-	}
-
-	paramsBytes, err := json.Marshal(params)
-	if err != nil {
-		return fmt.Errorf("failed to marshal parameters: %w", err)
-	}
-
-	if err := json.Unmarshal(paramsBytes, target); err != nil {
-		return fmt.Errorf("failed to parse parameters: %w", err)
+	if err := ParseParams(params, target); err != nil {
+		return err
 	}
 
 	if len(target.Variants) == 0 {

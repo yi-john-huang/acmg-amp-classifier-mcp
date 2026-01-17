@@ -2,7 +2,6 @@ package tools
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -127,18 +126,8 @@ func (t *ValidateHGVSTool) ValidateParams(params interface{}) error {
 
 // parseAndValidateParams parses and validates input parameters
 func (t *ValidateHGVSTool) parseAndValidateParams(params interface{}, target *ValidateHGVSParams) error {
-	if params == nil {
-		return fmt.Errorf("missing required parameters")
-	}
-
-	// Convert params to JSON and back to properly parse
-	paramsBytes, err := json.Marshal(params)
-	if err != nil {
-		return fmt.Errorf("failed to marshal parameters: %w", err)
-	}
-
-	if err := json.Unmarshal(paramsBytes, target); err != nil {
-		return fmt.Errorf("failed to parse parameters: %w", err)
+	if err := ParseParams(params, target); err != nil {
+		return err
 	}
 
 	// Validate required fields
