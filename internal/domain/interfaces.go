@@ -16,6 +16,10 @@ type InputParser interface {
 	ParseVariant(input string) (*StandardizedVariant, error)
 	ValidateHGVS(hgvs string) error
 	NormalizeVariant(variant *StandardizedVariant) error
+	// Gene symbol parsing methods
+	ParseGeneSymbol(input string) (*StandardizedVariant, error)
+	ValidateGeneSymbol(symbol string) error
+	GenerateHGVSFromGeneSymbol(geneSymbol, variant string) (string, error)
 }
 
 // InterpretationEngine applies ACMG/AMP guidelines for variant classification

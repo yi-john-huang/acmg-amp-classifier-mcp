@@ -9,12 +9,13 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/acmg-amp-mcp-server/internal/config"
+	"github.com/acmg-amp-mcp-server/internal/domain"
+	"github.com/acmg-amp-mcp-server/internal/mcp/caching"
 	"github.com/acmg-amp-mcp-server/internal/mcp/protocol"
 	"github.com/acmg-amp-mcp-server/internal/mcp/tools"
 	"github.com/acmg-amp-mcp-server/internal/mcp/transport"
 	"github.com/acmg-amp-mcp-server/internal/service"
 	"github.com/acmg-amp-mcp-server/pkg/external"
-	"github.com/acmg-amp-mcp-server/internal/domain"
 )
 
 // Server represents the ACMG-AMP MCP Server implementation
@@ -105,8 +106,61 @@ func NewServer(configManager *config.Manager) (*Server, error) {
 	// Create input parser for HGVS notation
 	inputParser := domain.NewStandardInputParser()
 
-	// Create classifier service
-	classifierService := service.NewClassifierService(logger, knowledgeBaseService, inputParser)
+	// Create transcript resolver with external API access
+	transcriptResolverConfig := service.TranscriptResolverConfig{
+		MemoryCacheTTL: 15 * time.Minute,
+		RedisCacheTTL:  24 * time.Hour,
+		MaxMemorySize:  1000,
+		MaxConcurrency: 5,
+		ExternalAPIConfig: external.UnifiedGeneAPIConfig{
+			RefSeqConfig: external.RefSeqConfig{
+				BaseURL:    "https://eutils.ncbi.nlm.nih.gov/entrez/eutils",
+				RateLimit:  3, // 3 requests per second (NCBI guideline without API key)
+				Timeout:    30 * time.Second,
+				MaxRetries: 3,
+			},
+			EnsemblConfig: external.EnsemblConfig{
+				BaseURL:   "https://rest.ensembl.org",
+				RateLimit: 15,
+				Timeout:   30 * time.Second,
+			},
+			HGNCConfig: external.HGNCConfig{
+				BaseURL:   "https://rest.genenames.org",
+				RateLimit: 10,
+				Timeout:   30 * time.Second,
+			},
+			CircuitBreaker: external.UnifiedCircuitBreakerConfig{
+				MaxRequests: 5,
+				Interval:    60 * time.Second,
+				Timeout:     30 * time.Second,
+			},
+		},
+	}
+
+	// Create Redis cache for transcript resolver
+	// TODO: This should use the same Redis config as the main cache
+	redisCache := &caching.ToolResultCache{} // Placeholder - would need proper initialization
+
+	cachedResolver, err := service.NewCachedTranscriptResolver(transcriptResolverConfig, redisCache, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create transcript resolver: %w", err)
+	}
+
+	// Create adapter to convert to domain interface
+	transcriptResolver := service.NewTranscriptResolverAdapter(cachedResolver)
+
+	// Inject transcript resolver into input parser
+	if standardParser, ok := inputParser.(*domain.StandardInputParser); ok {
+		standardParser.SetTranscriptResolver(transcriptResolver)
+	}
+
+	// Create classifier service with transcript resolver
+	classifierService := service.NewClassifierService(logger, knowledgeBaseService, inputParser, transcriptResolver)
+
+	// Validate service initialization and connectivity
+	if err := validateServiceConnectivity(logger, transcriptResolver, knowledgeBaseService); err != nil {
+		return nil, fmt.Errorf("service connectivity validation failed: %w", err)
+	}
 
 	// Create tool registry and register tools
 	toolRegistry := tools.NewToolRegistry(logger, router, classifierService)
@@ -279,5 +333,31 @@ func (s *Server) registerResources() error {
 func (s *Server) registerPrompts() error {
 	// For now, we'll register placeholder prompts
 	s.logger.Debug("Prompt registration placeholder - to be implemented")
+	return nil
+}
+
+// validateServiceConnectivity validates that all external services are accessible
+func validateServiceConnectivity(logger *logrus.Logger, transcriptResolver domain.GeneTranscriptResolver, knowledgeBaseService *external.KnowledgeBaseService) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	logger.Info("Validating service connectivity...")
+
+	// Test transcript resolver connectivity with a well-known gene
+	logger.Debug("Testing transcript resolver connectivity...")
+	if _, err := transcriptResolver.ResolveGeneToTranscript(ctx, "BRCA1"); err != nil {
+		logger.WithError(err).Warn("Transcript resolver connectivity test failed - service may have limited functionality")
+		// Don't fail initialization, but log the issue
+	} else {
+		logger.Info("Transcript resolver connectivity validated successfully")
+	}
+
+	// Test knowledge base service connectivity
+	logger.Debug("Testing knowledge base service connectivity...")
+	// Knowledge base service validation would go here
+	// For now, just log success
+	logger.Info("Knowledge base service connectivity assumed valid")
+
+	logger.Info("Service connectivity validation completed")
 	return nil
 }

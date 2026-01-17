@@ -9,6 +9,7 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.18.3
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
+	github.com/hashicorp/golang-lru v1.0.2
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/modelcontextprotocol/go-sdk v0.3.1
 	github.com/redis/go-redis/v9 v9.12.0
@@ -18,6 +19,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.38.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.38.0
+	golang.org/x/time v0.8.0
 )
 
 require (

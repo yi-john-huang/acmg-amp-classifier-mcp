@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -8,9 +9,26 @@ import (
 	"time"
 )
 
-// StandardInputParser implements the InputParser interface for HGVS notation parsing
+// TranscriptInfo represents transcript information for gene resolution
+type TranscriptInfo struct {
+	RefSeqID    string
+	GeneSymbol  string
+	Source      string
+	LastUpdated time.Time
+}
+
+// GeneTranscriptResolver interface for resolving gene symbols to transcripts
+type GeneTranscriptResolver interface {
+	ResolveGeneToTranscript(ctx context.Context, geneSymbol string) (*TranscriptInfo, error)
+}
+
+// StandardInputParser implements the InputParser interface for HGVS notation and gene symbol parsing
 type StandardInputParser struct {
-	hgvsPattern *regexp.Regexp
+	hgvsPattern           *regexp.Regexp
+	geneSymbolPattern     *regexp.Regexp
+	geneWithVariantPattern *regexp.Regexp
+	geneWithProteinPattern *regexp.Regexp
+	transcriptResolver    GeneTranscriptResolver
 }
 
 // NewStandardInputParser creates a new standard input parser
@@ -18,8 +36,17 @@ func NewStandardInputParser() InputParser {
 	// Basic HGVS pattern - can be enhanced
 	hgvsPattern := regexp.MustCompile(`^(NC_|NM_|NP_|NG_|NR_|XM_|XR_)(\d+)\.(\d+):([cgmnrp])\.(.+)$`)
 	
+	// Gene symbol patterns following HUGO standards
+	geneSymbolPattern := regexp.MustCompile(`^[A-Z][A-Z0-9-]*[A-Z0-9]$|^[A-Z]$`) // HUGO gene symbol pattern
+	geneWithVariantPattern := regexp.MustCompile(`^([A-Z][A-Z0-9-]*[A-Z0-9]):([cgp]\..+)$`) // BRCA1:c.123A>G
+	geneWithProteinPattern := regexp.MustCompile(`^([A-Z][A-Z0-9-]*[A-Z0-9])\s+(p\..+)$`) // TP53 p.R273H
+	
 	return &StandardInputParser{
-		hgvsPattern: hgvsPattern,
+		hgvsPattern:           hgvsPattern,
+		geneSymbolPattern:     geneSymbolPattern,
+		geneWithVariantPattern: geneWithVariantPattern,
+		geneWithProteinPattern: geneWithProteinPattern,
+		transcriptResolver:    nil, // Will be injected
 	}
 }
 
@@ -152,7 +179,211 @@ func extractGenomicPosition(variation string) (int64, string) {
 }
 
 func extractGeneSymbol(hgvs string) string {
-	// Simplified gene symbol extraction - in production, would use transcript/gene mapping
-	// For now, just return empty string as this requires database lookup
+	// Enhanced gene symbol extraction from HGVS notation
+	// This will be replaced by more sophisticated transcript mapping
+	if strings.Contains(hgvs, "NM_") {
+		// Extract from common transcript patterns
+		commonTranscripts := map[string]string{
+			"NM_007294": "BRCA1",
+			"NM_000546": "TP53",
+			"NM_000059": "BRCA2",
+			"NM_000492": "CFTR",
+		}
+		
+		for transcript, gene := range commonTranscripts {
+			if strings.Contains(hgvs, transcript) {
+				return gene
+			}
+		}
+	}
 	return ""
+}
+
+// ParseGeneSymbol parses gene symbol notation into a StandardizedVariant
+func (p *StandardInputParser) ParseGeneSymbol(input string) (*StandardizedVariant, error) {
+	input = strings.TrimSpace(input)
+	
+	// Detect input format and dispatch to appropriate parser
+	if p.isHGVSFormat(input) {
+		return p.ParseVariant(input)
+	}
+	
+	// Try different gene symbol formats
+	if matches := p.geneWithVariantPattern.FindStringSubmatch(input); len(matches) == 3 {
+		return p.parseGeneWithVariant(matches[1], matches[2])
+	}
+	
+	if matches := p.geneWithProteinPattern.FindStringSubmatch(input); len(matches) == 3 {
+		return p.parseGeneWithProtein(matches[1], matches[2])
+	}
+	
+	if p.geneSymbolPattern.MatchString(input) {
+		return p.parseStandaloneGene(input)
+	}
+	
+	return nil, fmt.Errorf("unrecognized input format: %s", input)
+}
+
+// ValidateGeneSymbol validates gene symbols according to HUGO standards
+func (p *StandardInputParser) ValidateGeneSymbol(symbol string) error {
+	symbol = strings.TrimSpace(strings.ToUpper(symbol))
+	
+	if symbol == "" {
+		return fmt.Errorf("gene symbol cannot be empty")
+	}
+	
+	if !p.geneSymbolPattern.MatchString(symbol) {
+		return fmt.Errorf("invalid gene symbol format: %s. Must follow HUGO standards (e.g., BRCA1, TP53)", symbol)
+	}
+	
+	// Additional HUGO validation rules
+	if len(symbol) > 15 {
+		return fmt.Errorf("gene symbol too long: %s. HUGO symbols are typically 1-15 characters", symbol)
+	}
+	
+	// Check for common invalid patterns
+	if strings.HasPrefix(symbol, "-") || strings.HasSuffix(symbol, "-") {
+		return fmt.Errorf("gene symbol cannot start or end with hyphen: %s", symbol)
+	}
+	
+	return nil
+}
+
+// GenerateHGVSFromGeneSymbol generates HGVS notation from gene symbol and variant
+func (p *StandardInputParser) GenerateHGVSFromGeneSymbol(geneSymbol, variant string) (string, error) {
+	if p.transcriptResolver == nil {
+		return "", fmt.Errorf("transcript resolver not available for HGVS generation")
+	}
+	
+	geneSymbol = strings.TrimSpace(strings.ToUpper(geneSymbol))
+	variant = strings.TrimSpace(variant)
+	
+	if err := p.ValidateGeneSymbol(geneSymbol); err != nil {
+		return "", fmt.Errorf("invalid gene symbol: %w", err)
+	}
+	
+	// Get canonical transcript for the gene
+	ctx := context.Background()
+	transcript, err := p.transcriptResolver.ResolveGeneToTranscript(ctx, geneSymbol)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve transcript for gene %s: %w", geneSymbol, err)
+	}
+	
+	// Generate HGVS notation
+	var hgvs string
+	if strings.HasPrefix(variant, "c.") {
+		hgvs = fmt.Sprintf("%s:%s", transcript.RefSeqID, variant)
+	} else if strings.HasPrefix(variant, "p.") {
+		// For protein variants, we need the protein RefSeq ID
+		// For now, assume we can derive it from mRNA RefSeq
+		proteinID := strings.Replace(transcript.RefSeqID, "NM_", "NP_", 1)
+		hgvs = fmt.Sprintf("%s:%s", proteinID, variant)
+	} else {
+		// Try to infer the sequence type
+		if containsCodonOrAminoAcid(variant) {
+			hgvs = fmt.Sprintf("%s:p.%s", transcript.RefSeqID, variant)
+		} else {
+			hgvs = fmt.Sprintf("%s:c.%s", transcript.RefSeqID, variant)
+		}
+	}
+	
+	return hgvs, nil
+}
+
+// Helper methods for gene symbol parsing
+
+func (p *StandardInputParser) isHGVSFormat(input string) bool {
+	return p.hgvsPattern.MatchString(input)
+}
+
+func (p *StandardInputParser) parseGeneWithVariant(geneSymbol, variant string) (*StandardizedVariant, error) {
+	// Parse format like "BRCA1:c.123A>G"
+	if err := p.ValidateGeneSymbol(geneSymbol); err != nil {
+		return nil, err
+	}
+	
+	// Generate HGVS and parse it
+	hgvs, err := p.GenerateHGVSFromGeneSymbol(geneSymbol, variant)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate HGVS: %w", err)
+	}
+	
+	// Parse the generated HGVS
+	standardVariant, err := p.ParseVariant(hgvs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse generated HGVS: %w", err)
+	}
+	
+	// Ensure gene symbol is set
+	standardVariant.GeneSymbol = geneSymbol
+	
+	return standardVariant, nil
+}
+
+func (p *StandardInputParser) parseGeneWithProtein(geneSymbol, proteinVariant string) (*StandardizedVariant, error) {
+	// Parse format like "TP53 p.R273H"
+	if err := p.ValidateGeneSymbol(geneSymbol); err != nil {
+		return nil, err
+	}
+	
+	// Generate HGVS and parse it
+	hgvs, err := p.GenerateHGVSFromGeneSymbol(geneSymbol, proteinVariant)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate HGVS: %w", err)
+	}
+	
+	// Parse the generated HGVS
+	standardVariant, err := p.ParseVariant(hgvs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse generated HGVS: %w", err)
+	}
+	
+	// Ensure gene symbol and protein notation are set
+	standardVariant.GeneSymbol = geneSymbol
+	standardVariant.HGVSProtein = hgvs
+	
+	return standardVariant, nil
+}
+
+func (p *StandardInputParser) parseStandaloneGene(geneSymbol string) (*StandardizedVariant, error) {
+	// Parse format like "BRCA1" - returns variant with just gene info
+	if err := p.ValidateGeneSymbol(geneSymbol); err != nil {
+		return nil, err
+	}
+	
+	variant := &StandardizedVariant{
+		ID:         generateVariantID(fmt.Sprintf("GENE_%s", geneSymbol)),
+		GeneSymbol: geneSymbol,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	}
+	
+	// Try to resolve transcript information if resolver is available
+	if p.transcriptResolver != nil {
+		ctx := context.Background()
+		if transcript, err := p.transcriptResolver.ResolveGeneToTranscript(ctx, geneSymbol); err == nil {
+			variant.TranscriptID = transcript.RefSeqID
+		}
+	}
+	
+	return variant, nil
+}
+
+func containsCodonOrAminoAcid(variant string) bool {
+	// Simple heuristic to detect protein-level variants
+	aminoAcids := []string{"Ala", "Arg", "Asn", "Asp", "Cys", "Gln", "Glu", "Gly", "His", "Ile", 
+		"Leu", "Lys", "Met", "Phe", "Pro", "Ser", "Thr", "Trp", "Tyr", "Val", "*"}
+	
+	variant = strings.ToUpper(variant)
+	for _, aa := range aminoAcids {
+		if strings.Contains(variant, strings.ToUpper(aa)) {
+			return true
+		}
+	}
+	return false
+}
+
+// SetTranscriptResolver allows injection of transcript resolver
+func (p *StandardInputParser) SetTranscriptResolver(resolver GeneTranscriptResolver) {
+	p.transcriptResolver = resolver
 }

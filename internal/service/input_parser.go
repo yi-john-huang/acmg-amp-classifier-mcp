@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/acmg-amp-mcp-server/internal/domain"
 	"github.com/acmg-amp-mcp-server/pkg/hgvs"
@@ -10,17 +11,38 @@ import (
 
 // InputParserService implements the domain.InputParser interface
 type InputParserService struct {
-	parser        *hgvs.Parser
-	validator     *hgvs.Validator
-	geneValidator *hgvs.GeneValidator
+	parser             *hgvs.Parser
+	validator          *hgvs.Validator
+	geneValidator      *hgvs.GeneValidator
+	domainParser       *domain.StandardInputParser
+	transcriptResolver *CachedTranscriptResolver
 }
 
 // NewInputParserService creates a new input parser service
 func NewInputParserService() *InputParserService {
+	domainParser := domain.NewStandardInputParser().(*domain.StandardInputParser)
+	
 	return &InputParserService{
-		parser:        hgvs.NewParser(),
-		validator:     hgvs.NewValidator(),
-		geneValidator: hgvs.NewGeneValidator(),
+		parser:             hgvs.NewParser(),
+		validator:          hgvs.NewValidator(),
+		geneValidator:      hgvs.NewGeneValidator(),
+		domainParser:       domainParser,
+		transcriptResolver: nil, // Will be injected
+	}
+}
+
+// NewInputParserServiceWithTranscriptResolver creates a new input parser service with transcript resolver
+func NewInputParserServiceWithTranscriptResolver(transcriptResolver *CachedTranscriptResolver) *InputParserService {
+	domainParser := domain.NewStandardInputParser().(*domain.StandardInputParser)
+	adapter := NewTranscriptResolverAdapter(transcriptResolver)
+	domainParser.SetTranscriptResolver(adapter)
+	
+	return &InputParserService{
+		parser:             hgvs.NewParser(),
+		validator:          hgvs.NewValidator(),
+		geneValidator:      hgvs.NewGeneValidator(),
+		domainParser:       domainParser,
+		transcriptResolver: transcriptResolver,
 	}
 }
 
@@ -135,8 +157,8 @@ func (ips *InputParserService) GetSupportedHGVSFormats() []string {
 	}
 }
 
-// ValidateGeneSymbol validates gene symbols according to HUGO standards
-func (ips *InputParserService) ValidateGeneSymbol(symbol string) error {
+// ValidateGeneSymbolLegacy validates gene symbols using legacy hgvs.GeneValidator
+func (ips *InputParserService) ValidateGeneSymbolLegacy(symbol string) error {
 	return ips.geneValidator.ValidateGeneSymbol(symbol)
 }
 
@@ -162,4 +184,46 @@ func (ips *InputParserService) AddKnownTranscripts(transcripts []string) {
 	for _, transcript := range transcripts {
 		ips.geneValidator.AddKnownTranscript(transcript)
 	}
+}
+
+// ParseGeneSymbol parses gene symbol notation into a StandardizedVariant
+func (ips *InputParserService) ParseGeneSymbol(input string) (*domain.StandardizedVariant, error) {
+	return ips.domainParser.ParseGeneSymbol(input)
+}
+
+// ValidateGeneSymbol validates gene symbols according to HUGO standards
+func (ips *InputParserService) ValidateGeneSymbol(symbol string) error {
+	return ips.domainParser.ValidateGeneSymbol(symbol)
+}
+
+// GenerateHGVSFromGeneSymbol generates HGVS notation from gene symbol and variant
+func (ips *InputParserService) GenerateHGVSFromGeneSymbol(geneSymbol, variant string) (string, error) {
+	return ips.domainParser.GenerateHGVSFromGeneSymbol(geneSymbol, variant)
+}
+
+// SetTranscriptResolver allows injection of transcript resolver after creation
+func (ips *InputParserService) SetTranscriptResolver(resolver *CachedTranscriptResolver) {
+	ips.transcriptResolver = resolver
+	if ips.domainParser != nil {
+		adapter := NewTranscriptResolverAdapter(resolver)
+		ips.domainParser.SetTranscriptResolver(adapter)
+	}
+}
+
+// ParseVariantWithGeneSymbolSupport parses input that could be HGVS or gene symbol format
+func (ips *InputParserService) ParseVariantWithGeneSymbolSupport(input string) (*domain.StandardizedVariant, error) {
+	input = strings.TrimSpace(input)
+	
+	if input == "" {
+		return nil, fmt.Errorf("parsing variant: %w", 
+			domain.NewValidationError("input", "Input cannot be empty", input))
+	}
+	
+	// Try parsing as gene symbol first (broader format support)
+	if variant, err := ips.ParseGeneSymbol(input); err == nil {
+		return variant, nil
+	}
+	
+	// Fallback to standard HGVS parsing
+	return ips.ParseVariant(input)
 }

@@ -15,6 +15,7 @@ type ToolRegistry struct {
 	logger            *logrus.Logger
 	router            *protocol.MessageRouter
 	classifierService *service.ClassifierService
+	inputParser       *service.InputParserService
 }
 
 // NewToolRegistry creates a new tool registry
@@ -23,6 +24,7 @@ func NewToolRegistry(logger *logrus.Logger, router *protocol.MessageRouter, clas
 		logger:            logger,
 		router:            router,
 		classifierService: classifierService,
+		inputParser:       service.NewInputParserService(),
 	}
 }
 
@@ -31,7 +33,7 @@ func (tr *ToolRegistry) RegisterAllTools() error {
 	tr.logger.Info("Registering ACMG/AMP tools")
 
 	// Register classification tools
-	classifyTool := NewClassifyVariantTool(tr.logger, tr.classifierService)
+	classifyTool := NewClassifyVariantTool(tr.logger, tr.classifierService, tr.inputParser)
 	tr.router.RegisterToolHandler("classify_variant", classifyTool)
 	tr.logger.Debug("Registered classify_variant tool")
 

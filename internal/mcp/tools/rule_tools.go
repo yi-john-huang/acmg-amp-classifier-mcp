@@ -314,6 +314,11 @@ func (t *ApplyRuleTool) parseAndValidateParams(params interface{}, target *Apply
 
 // applyRule applies a specific ACMG/AMP rule
 func (t *ApplyRuleTool) applyRule(ctx context.Context, params *ApplyRuleParams) (*ApplyRuleResult, error) {
+	// Validate that classifier service is available
+	if t.classifierService == nil {
+		return nil, fmt.Errorf("classification service not configured")
+	}
+
 	// Convert MCP tool params to service params
 	serviceParams := &service.ApplyRuleParams{
 		RuleCode:     params.RuleCode,
@@ -447,6 +452,24 @@ func (t *CombineEvidenceTool) parseAndValidateParams(params interface{}, target 
 
 // combineEvidence combines ACMG/AMP rules according to guidelines
 func (t *CombineEvidenceTool) combineEvidence(params *CombineEvidenceParams) *CombineEvidenceResult {
+	// Check if classifier service is available
+	if t.classifierService == nil {
+		return &CombineEvidenceResult{
+			Classification: "VUS",
+			Confidence:     "Low",
+			CombinationLogic: CombinationLogicExplanation{
+				GuidelinesUsed: params.Guidelines,
+				DecisionTree: []DecisionStep{{
+					Step:        1,
+					Condition:   "Service availability check",
+					Met:         false,
+					Result:      "VUS",
+					Explanation: "Classification service not configured - unable to combine evidence",
+				}},
+			},
+		}
+	}
+
 	// Convert MCP rule results to service format
 	serviceRules := make([]service.RuleResult, len(params.AppliedRules))
 	for i, rule := range params.AppliedRules {

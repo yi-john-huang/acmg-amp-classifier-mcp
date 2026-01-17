@@ -152,7 +152,21 @@ func (t *ValidateHGVSTool) parseAndValidateParams(params interface{}, target *Va
 // validateHGVS performs comprehensive HGVS validation using the classifier service
 func (t *ValidateHGVSTool) validateHGVS(params *ValidateHGVSParams) *ValidateHGVSResult {
 	hgvs := strings.TrimSpace(params.HGVSNotation)
-	
+
+	// Check if classifier service is available
+	if t.classifierService == nil {
+		return &ValidateHGVSResult{
+			IsValid:      false,
+			HGVSNotation: hgvs,
+			ValidationIssues: []ValidationIssue{{
+				Severity: "error",
+				Code:     "SERVICE_NOT_CONFIGURED",
+				Message:  "Validation service not configured",
+				Position: 0,
+			}},
+		}
+	}
+
 	// Call the real validation service
 	serviceResult, err := t.classifierService.ValidateHGVS(hgvs)
 	if err != nil {
