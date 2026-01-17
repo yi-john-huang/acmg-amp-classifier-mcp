@@ -48,7 +48,7 @@ Tools are active functions that AI agents can invoke to perform specific operati
 
 #### classify_variant
 
-**Description**: Complete ACMG/AMP variant classification workflow including evidence gathering, criteria application, and confidence scoring.
+**Description**: Complete ACMG/AMP variant classification workflow including evidence gathering, criteria application, and confidence scoring. Supports both HGVS notation and gene symbol notation for flexible input.
 
 **Input Schema**:
 ```json
@@ -60,12 +60,21 @@ Tools are active functions that AI agents can invoke to perform specific operati
       "properties": {
         "hgvs": {
           "type": "string",
-          "description": "HGVS notation of the variant",
+          "description": "HGVS notation of the variant (optional if gene_symbol_notation provided)",
           "pattern": "^N[MR]_\\d+\\.\\d+:[cgmnpr]\\."
         },
+        "gene_symbol_notation": {
+          "type": "string",
+          "description": "Gene symbol with variant notation (e.g., 'BRCA1:c.123A>G', 'TP53 p.R273H')",
+          "examples": ["BRCA1:c.5266dupC", "TP53 p.R273H", "CFTR"]
+        },
+        "preferred_isoform": {
+          "type": "string",
+          "description": "Preferred transcript isoform when multiple exist"
+        },
         "gene": {
-          "type": "string", 
-          "description": "Gene symbol (optional but recommended)"
+          "type": "string",
+          "description": "Gene symbol (optional, for additional context)"
         },
         "chromosome": {
           "type": "string",
@@ -80,7 +89,7 @@ Tools are active functions that AI agents can invoke to perform specific operati
           "description": "Reference allele"
         },
         "alt": {
-          "type": "string", 
+          "type": "string",
           "description": "Alternative allele"
         },
         "transcript": {
@@ -88,7 +97,10 @@ Tools are active functions that AI agents can invoke to perform specific operati
           "description": "Specific transcript identifier"
         }
       },
-      "required": ["hgvs"]
+      "oneOf": [
+        {"required": ["hgvs"]},
+        {"required": ["gene_symbol_notation"]}
+      ]
     },
     "options": {
       "type": "object",
@@ -174,7 +186,7 @@ Tools are active functions that AI agents can invoke to perform specific operati
 }
 ```
 
-**Example Usage**:
+**Example Usage (HGVS)**:
 ```json
 {
   "tool": "classify_variant",
@@ -187,6 +199,39 @@ Tools are active functions that AI agents can invoke to perform specific operati
       "include_evidence": true,
       "confidence_threshold": 0.9,
       "clinical_context": ["cystic_fibrosis"]
+    }
+  }
+}
+```
+
+**Example Usage (Gene Symbol)**:
+```json
+{
+  "tool": "classify_variant",
+  "arguments": {
+    "variant_data": {
+      "gene_symbol_notation": "BRCA1:c.5266dupC"
+    },
+    "options": {
+      "include_evidence": true,
+      "confidence_threshold": 0.9,
+      "clinical_context": ["breast_cancer"]
+    }
+  }
+}
+```
+
+**Example Usage (Gene Symbol with Preferred Isoform)**:
+```json
+{
+  "tool": "classify_variant",
+  "arguments": {
+    "variant_data": {
+      "gene_symbol_notation": "TP53 p.R273H",
+      "preferred_isoform": "NM_000546.6"
+    },
+    "options": {
+      "include_evidence": true
     }
   }
 }

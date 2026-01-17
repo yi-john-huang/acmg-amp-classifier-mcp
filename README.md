@@ -11,8 +11,10 @@ The ACMG-AMP MCP Server is a **Model Context Protocol (MCP)** compliant service 
 **🚀 Key Features:**
 - **Native MCP Integration**: Direct tool access for Claude, ChatGPT, and other MCP-compatible AI agents
 - **Complete ACMG/AMP Implementation**: All 28 rules (PVS1-BP7) with evidence combination logic
+- **Gene Symbol Query Support**: Input variants using gene symbols (e.g., "BRCA1:c.123A>G") with automatic transcript resolution
 - **6 External Database Sources**: ClinVar, gnomAD, COSMIC, PubMed, LOVD, HGMD integration
-- **Real-time Classification**: Full workflow from HGVS input to clinical recommendations
+- **9 Gene Database APIs**: HGNC, RefSeq, Ensembl for gene symbol validation and transcript mapping
+- **Real-time Classification**: Full workflow from HGVS or gene symbol input to clinical recommendations
 - **Production-grade Architecture**: PostgreSQL database, Redis caching, comprehensive logging
 
 ## Purpose
@@ -441,9 +443,18 @@ MCP_TLS_KEY_PATH=/app/certs/server.key
 
 Once configured, you can ask Claude to perform genetic variant analysis:
 
-### **Basic Variant Classification**
+### **Basic Variant Classification (HGVS)**
 ```
 "Can you classify the variant NM_000492.3:c.1521_1523delCTT and explain the ACMG/AMP rules that apply?"
+```
+
+### **Gene Symbol Classification (NEW)**
+```
+"Classify the BRCA1:c.5266dupC variant and explain the pathogenicity."
+```
+
+```
+"What is the ACMG/AMP classification for TP53 p.R273H?"
 ```
 
 ### **Evidence Gathering**
@@ -451,7 +462,7 @@ Once configured, you can ask Claude to perform genetic variant analysis:
 "What evidence is available for the BRCA1 variant chr17:g.43094692G>A from ClinVar and gnomAD?"
 ```
 
-### **Rule-Specific Analysis**  
+### **Rule-Specific Analysis**
 ```
 "Apply the PVS1 rule to the variant NM_000492.3:c.1521_1523delCTT and explain whether it meets the criteria."
 ```
@@ -460,13 +471,13 @@ Once configured, you can ask Claude to perform genetic variant analysis:
 ```
 "Can you classify these variants and compare their pathogenicity:
 1. NM_000492.3:c.1521_1523delCTT
-2. NC_000017.11:g.43094692G>A
-3. NM_007294.4:c.68_69delAG"
+2. BRCA1:c.5266dupC
+3. TP53 p.R273H"
 ```
 
 ### **Report Generation**
 ```
-"Generate a clinical interpretation report for NM_000492.3:c.1521_1523delCTT including recommendations for genetic counseling."
+"Generate a clinical interpretation report for CFTR:c.1521_1523delCTT including recommendations for genetic counseling."
 ```
 
 ## Configuration
@@ -518,16 +529,27 @@ Production-ready schema with two core tables:
 ## 🔧 MCP Tool Reference
 
 ### **classify_variant**
-Complete ACMG/AMP variant classification workflow.
+Complete ACMG/AMP variant classification workflow with support for both HGVS and gene symbol input.
 
 **Parameters:**
-- `hgvs_notation` (required): HGVS variant notation (e.g., "NM_000492.3:c.1521_1523delCTT")
-- `gene_symbol` (optional): HGNC gene symbol
+- `hgvs_notation` (optional*): HGVS variant notation (e.g., "NM_000492.3:c.1521_1523delCTT")
+- `gene_symbol_notation` (optional*): Gene symbol with variant (e.g., "BRCA1:c.123A>G", "TP53 p.R273H")
+- `preferred_isoform` (optional): Preferred transcript isoform when multiple exist
+- `gene_symbol` (optional): HGNC gene symbol for additional context
 - `variant_type` (optional): "SNV", "indel", "CNV", "SV"
 - `clinical_context` (optional): Clinical context information
 
-**Example Claude Request:**
-*"Use classify_variant to analyze NM_000492.3:c.1521_1523delCTT"*
+*At least one of `hgvs_notation` or `gene_symbol_notation` is required.
+
+**Supported Gene Symbol Formats:**
+- `BRCA1:c.123A>G` - Gene symbol with coding variant
+- `TP53 p.R273H` - Gene symbol with protein change
+- `CFTR` - Standalone gene symbol (for gene-level queries)
+
+**Example Claude Requests:**
+- *"Use classify_variant to analyze NM_000492.3:c.1521_1523delCTT"*
+- *"Classify the BRCA1:c.5266dupC variant using ACMG/AMP guidelines"*
+- *"What is the classification for TP53 p.R273H?"*
 
 ---
 
@@ -604,4 +626,4 @@ If you wish to use the MCP Service for commercial purposes, please contact:
 **[yi.john.huang@me.com]**
 
 ---
-*This README was generated on: 2025-04-12*
+*This README was last updated on: 2026-01-17*
