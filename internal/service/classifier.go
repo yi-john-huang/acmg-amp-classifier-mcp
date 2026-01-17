@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -16,6 +17,7 @@ type ClassifierService struct {
 	logger              *logrus.Logger
 	knowledgeBaseService *external.KnowledgeBaseService
 	inputParser         domain.InputParser
+	transcriptResolver  domain.GeneTranscriptResolver
 	ruleEngine          *ACMGAMPRuleEngine
 }
 
@@ -24,11 +26,13 @@ func NewClassifierService(
 	logger *logrus.Logger,
 	knowledgeBaseService *external.KnowledgeBaseService,
 	inputParser domain.InputParser,
+	transcriptResolver domain.GeneTranscriptResolver,
 ) *ClassifierService {
 	return &ClassifierService{
 		logger:              logger,
 		knowledgeBaseService: knowledgeBaseService,
 		inputParser:         inputParser,
+		transcriptResolver:  transcriptResolver,
 		ruleEngine:          NewACMGAMPRuleEngine(logger),
 	}
 }
@@ -37,12 +41,22 @@ func NewClassifierService(
 func (c *ClassifierService) ClassifyVariant(ctx context.Context, params *ClassifyVariantParams) (*ClassifyVariantResult, error) {
 	startTime := time.Now()
 	
-	c.logger.WithField("hgvs_notation", params.HGVSNotation).Info("Starting variant classification")
+	// Validate that at least one notation format is provided
+	if err := c.validateNotationInput(params); err != nil {
+		return nil, fmt.Errorf("invalid input parameters: %w", err)
+	}
+	
+	// Determine input type and log accordingly
+	inputType, inputValue := c.determineInputType(params)
+	c.logger.WithFields(logrus.Fields{
+		"input_type":  inputType,
+		"input_value": inputValue,
+	}).Info("Starting variant classification")
 
-	// Step 1: Parse and validate HGVS notation
-	variant, err := c.inputParser.ParseVariant(params.HGVSNotation)
+	// Step 1: Parse and standardize input notation to HGVS format
+	variant, hgvsNotation, err := c.prepareVariantForClassification(ctx, params)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse HGVS notation: %w", err)
+		return nil, fmt.Errorf("failed to prepare variant for classification: %w", err)
 	}
 
 	// Step 2: Gather evidence from external databases
@@ -76,6 +90,7 @@ func (c *ClassifierService) ClassifyVariant(ctx context.Context, params *Classif
 		EvidenceSummary: evidenceSummary,
 		Recommendations: recommendations,
 		ProcessingTime:  time.Since(startTime),
+		InputNotation:   hgvsNotation, // Store the final HGVS notation used
 	}
 
 	c.logger.WithFields(logrus.Fields{
@@ -84,6 +99,7 @@ func (c *ClassifierService) ClassifyVariant(ctx context.Context, params *Classif
 		"confidence":      result.Confidence,
 		"processing_time": result.ProcessingTime,
 		"rules_applied":   len(result.AppliedRules),
+		"input_type":      inputType,
 	}).Info("Variant classification completed")
 
 	return result, nil
@@ -320,12 +336,17 @@ func convertRuleResults(results []domain.ACMGAMPRuleResult) []ACMGAMPRuleResult 
 
 // ClassifyVariantParams parameters for variant classification
 type ClassifyVariantParams struct {
-	HGVSNotation    string `json:"hgvs_notation" validate:"required"`
-	VariantType     string `json:"variant_type,omitempty"`
-	GeneSymbol      string `json:"gene_symbol,omitempty"`
-	TranscriptID    string `json:"transcript_id,omitempty"`
-	ClinicalContext string `json:"clinical_context,omitempty"`
-	IncludeEvidence bool   `json:"include_evidence,omitempty"`
+	// Either HGVS notation OR gene symbol notation is required
+	HGVSNotation        string `json:"hgvs_notation,omitempty"`
+	GeneSymbolNotation  string `json:"gene_symbol_notation,omitempty"`
+	
+	// Optional parameters
+	VariantType        string `json:"variant_type,omitempty"`
+	GeneSymbol         string `json:"gene_symbol,omitempty"`         // Legacy field for backward compatibility
+	TranscriptID       string `json:"transcript_id,omitempty"`
+	PreferredIsoform   string `json:"preferred_isoform,omitempty"`   // Override transcript selection
+	ClinicalContext    string `json:"clinical_context,omitempty"`
+	IncludeEvidence    bool   `json:"include_evidence,omitempty"`
 }
 
 // ClassifyVariantResult result of variant classification
@@ -337,6 +358,7 @@ type ClassifyVariantResult struct {
 	EvidenceSummary string                 `json:"evidence_summary"`
 	Recommendations []string               `json:"recommendations"`
 	ProcessingTime  time.Duration          `json:"processing_time"`
+	InputNotation   string                 `json:"input_notation,omitempty"` // Final HGVS notation used
 }
 
 // HGVSValidationResult result of HGVS validation
@@ -401,4 +423,106 @@ type ACMGAMPRuleResult struct {
 	Confidence  float64 `json:"confidence"`
 	Evidence    string  `json:"evidence,omitempty"`
 	Reasoning   string  `json:"reasoning,omitempty"`
+}
+
+// Helper methods for enhanced ClassifyVariant functionality
+
+// validateNotationInput ensures at least one notation format is provided
+func (c *ClassifierService) validateNotationInput(params *ClassifyVariantParams) error {
+	hasHGVS := params.HGVSNotation != ""
+	hasGeneSymbol := params.GeneSymbolNotation != ""
+	hasLegacyGene := params.GeneSymbol != ""
+
+	if !hasHGVS && !hasGeneSymbol && !hasLegacyGene {
+		return fmt.Errorf("either HGVS notation or gene symbol notation is required. Examples: 'NM_000492.3:c.1521T>G' or 'BRCA1:c.273G>A'")
+	}
+
+	return nil
+}
+
+// determineInputType identifies the type of input notation provided
+func (c *ClassifierService) determineInputType(params *ClassifyVariantParams) (string, string) {
+	if params.HGVSNotation != "" {
+		return "hgvs", params.HGVSNotation
+	}
+	if params.GeneSymbolNotation != "" {
+		return "gene_symbol", params.GeneSymbolNotation
+	}
+	if params.GeneSymbol != "" {
+		return "legacy_gene_symbol", params.GeneSymbol
+	}
+	return "unknown", ""
+}
+
+// prepareVariantForClassification handles both HGVS and gene symbol inputs
+func (c *ClassifierService) prepareVariantForClassification(ctx context.Context, params *ClassifyVariantParams) (*domain.StandardizedVariant, string, error) {
+	// If HGVS notation is provided, use it directly (takes priority)
+	if params.HGVSNotation != "" {
+		c.logger.WithField("hgvs_notation", params.HGVSNotation).Debug("Processing HGVS notation input")
+		
+		variant, err := c.inputParser.ParseVariant(params.HGVSNotation)
+		if err != nil {
+			return nil, "", fmt.Errorf("failed to parse HGVS notation: %w", err)
+		}
+		
+		return variant, params.HGVSNotation, nil
+	}
+
+	// Handle gene symbol notation
+	var geneSymbolInput string
+	if params.GeneSymbolNotation != "" {
+		geneSymbolInput = params.GeneSymbolNotation
+	} else if params.GeneSymbol != "" {
+		// Legacy support
+		geneSymbolInput = params.GeneSymbol
+	}
+
+	c.logger.WithField("gene_symbol_input", geneSymbolInput).Debug("Processing gene symbol notation input")
+
+	// Use InputParser to handle gene symbol parsing
+	variant, err := c.inputParser.ParseGeneSymbol(geneSymbolInput)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to parse gene symbol notation: %w", err)
+	}
+
+	// Generate HGVS notation if possible and if it's a variant (not just gene)
+	var finalHGVS string
+	if variant.HGVSCoding != "" {
+		finalHGVS = variant.HGVSCoding
+	} else if variant.HGVSGenomic != "" {
+		finalHGVS = variant.HGVSGenomic
+	} else {
+		// For standalone gene symbols, try to resolve to a canonical transcript
+		if c.transcriptResolver != nil && variant.GeneSymbol != "" {
+			if transcript, err := c.transcriptResolver.ResolveGeneToTranscript(ctx, variant.GeneSymbol); err == nil {
+				variant.TranscriptID = transcript.RefSeqID
+				finalHGVS = fmt.Sprintf("%s:c.?", transcript.RefSeqID) // Placeholder for unknown variant
+				
+				c.logger.WithFields(logrus.Fields{
+					"gene_symbol": variant.GeneSymbol,
+					"transcript_id": transcript.RefSeqID,
+				}).Debug("Resolved gene symbol to transcript")
+			}
+		}
+		
+		if finalHGVS == "" {
+			finalHGVS = geneSymbolInput // Fallback to original input
+		}
+	}
+
+	// Apply preferred isoform override if specified
+	if params.PreferredIsoform != "" {
+		c.logger.WithField("preferred_isoform", params.PreferredIsoform).Debug("Applying preferred isoform override")
+		variant.TranscriptID = params.PreferredIsoform
+		
+		// Update HGVS notation if we have variant information
+		if strings.Contains(geneSymbolInput, ":") && strings.Contains(geneSymbolInput, ".") {
+			parts := strings.Split(geneSymbolInput, ":")
+			if len(parts) == 2 {
+				finalHGVS = fmt.Sprintf("%s:%s", params.PreferredIsoform, parts[1])
+			}
+		}
+	}
+
+	return variant, finalHGVS, nil
 }

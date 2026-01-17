@@ -127,72 +127,72 @@ Implementation of gene symbol-based variant classification through a structured 
 ## Phase 2: Service Integration (Estimated: 1 week)
 
 ### Task 4: MCP Tool Parameter Enhancement
-**Status:** ❌ Not Started  
-**Estimated:** 2 days  
-**Dependencies:** Task 3  
+**Status:** ✅ Completed
+**Estimated:** 2 days
+**Dependencies:** Task 3
 **Requirements Traceability:** 3.1-3.5 (MCP Tool Interface Enhancement)
 
 #### Subtasks:
-- [ ] 4.1: Update `ClassifyVariantParams` structure (`internal/mcp/tools/classification_tools.go`)
-  - Add `GeneSymbolNotation` field with proper JSON tags and validation
-  - Make `HGVSNotation` optional in tool parameters
-  - Add `PreferredIsoform` field for transcript selection override
-  - Update parameter validation to support either/or HGVS/gene symbol requirement
-  - Maintain backward compatibility with existing parameter structure
-- [ ] 4.2: Enhance parameter validation logic
-  - Implement either/or validation ensuring at least one notation format provided
-  - Add gene symbol format validation using existing `GeneValidator`
-  - Create helpful validation error messages with format examples
-  - Update JSON schema validation for MCP tool specification
-  - Add parameter precedence logic (HGVS takes priority when both provided)
-- [ ] 4.3: Update tool information schema
-  - Modify `GetToolInfo()` method to include new parameters in schema
-  - Update input schema with gene symbol parameter documentation
-  - Add examples for all supported gene symbol formats
-  - Update tool description to mention gene symbol capability
-  - Include parameter validation rules in schema documentation
+- [x] 4.1: Update `ClassifyVariantParams` structure (`internal/mcp/tools/classification_tools.go`)
+  - ✅ Add `GeneSymbolNotation` field with proper JSON tags and validation
+  - ✅ Make `HGVSNotation` optional in tool parameters
+  - ✅ Add `PreferredIsoform` field for transcript selection override
+  - ✅ Update parameter validation to support either/or HGVS/gene symbol requirement
+  - ✅ Maintain backward compatibility with existing parameter structure (NewClassifyVariantToolLegacy)
+- [x] 4.2: Enhance parameter validation logic
+  - ✅ Implement either/or validation ensuring at least one notation format provided
+  - ✅ Add gene symbol format validation using existing `GeneValidator`
+  - ✅ Create helpful validation error messages with format examples
+  - ✅ Update JSON schema validation for MCP tool specification
+  - ✅ Add parameter precedence logic (HGVS takes priority when both provided)
+- [x] 4.3: Update tool information schema
+  - ✅ Modify `GetToolInfo()` method to include new parameters in schema
+  - ✅ Update input schema with gene symbol parameter documentation
+  - ✅ Add examples for all supported gene symbol formats
+  - ✅ Update tool description to mention gene symbol capability
+  - ✅ Include parameter validation rules in schema documentation
 
 #### Acceptance Criteria:
-- [ ] MCP tool accepts either HGVS notation or gene symbol notation as input
-- [ ] Parameter validation provides clear error messages for invalid formats
-- [ ] Tool schema accurately reflects all supported parameters and formats
-- [ ] Backward compatibility maintained - existing clients continue to work unchanged
-- [ ] Tool information includes comprehensive examples and documentation
-- [ ] JSON schema validation correctly handles new optional parameters
+- [x] MCP tool accepts either HGVS notation or gene symbol notation as input
+- [x] Parameter validation provides clear error messages for invalid formats
+- [x] Tool schema accurately reflects all supported parameters and formats
+- [x] Backward compatibility maintained - existing clients continue to work unchanged
+- [x] Tool information includes comprehensive examples and documentation
+- [x] JSON schema validation correctly handles new optional parameters
 
 ### Task 5: Classification Service Integration
-**Status:** ❌ Not Started  
-**Estimated:** 3 days  
-**Dependencies:** Task 4  
+**Status:** ✅ Completed
+**Estimated:** 3 days
+**Dependencies:** Task 4
 **Requirements Traceability:** 4.1-4.5 (Classification Accuracy and Consistency)
 
 #### Subtasks:
-- [ ] 5.1: Enhance `ClassifyVariant` method (`internal/service/classifier.go`)
-  - Add gene symbol input handling to existing classification workflow
-  - Integrate transcript resolution service with proper error handling
-  - Implement HGVS generation workflow for gene symbol inputs
-  - Maintain identical classification logic ensuring 100% accuracy consistency
-  - Add comprehensive logging for gene symbol resolution and classification steps
-- [ ] 5.2: Add transcript resolution to service dependencies
-  - Inject `TranscriptResolver` dependency into `ClassifierService`
-  - Update `NewClassifierService` constructor with transcript resolver
-  - Add transcript resolution error handling with fallback mechanisms
-  - Implement resolution result caching at service level
-  - Add resolution metrics and performance monitoring
-- [ ] 5.3: Update service configuration and initialization
-  - Add transcript resolver to service initialization in `internal/mcp/server.go`
-  - Update dependency injection configuration for external API clients
-  - Add service initialization validation ensuring all dependencies available
-  - Update configuration management to include external API settings
-  - Add health check integration for transcript resolution service
+- [x] 5.1: Enhance `ClassifyVariant` method (`internal/service/classifier.go`)
+  - ✅ Add gene symbol input handling to existing classification workflow
+  - ✅ Integrate transcript resolution service with proper error handling
+  - ✅ Implement HGVS generation workflow for gene symbol inputs
+  - ✅ Maintain identical classification logic ensuring 100% accuracy consistency
+  - ✅ Add comprehensive logging for gene symbol resolution and classification steps
+- [x] 5.2: Add transcript resolution to service dependencies
+  - ✅ Inject `TranscriptResolver` dependency into `ClassifierService`
+  - ✅ Update `NewClassifierService` constructor with transcript resolver
+  - ✅ Add transcript resolution error handling with fallback mechanisms
+  - ✅ Implement resolution result caching at service level
+  - ✅ Add resolution metrics and performance monitoring
+- [x] 5.3: Update service configuration and initialization
+  - ✅ Add transcript resolver to service initialization in `internal/mcp/server.go`
+  - ✅ Update dependency injection configuration for external API clients
+  - ✅ Add service initialization validation ensuring all dependencies available
+  - ✅ Update configuration management to include external API settings
+  - ✅ Add health check integration for transcript resolution service (validateServiceConnectivity)
 
 #### Acceptance Criteria:
-- [ ] Gene symbol classification produces identical results to HGVS-based classification
-- [ ] Service gracefully handles transcript resolution failures with informative errors
-- [ ] Performance targets met: <2s resolution, <100ms for cached lookups
-- [ ] All existing functionality continues to work without degradation
-- [ ] Comprehensive logging enables troubleshooting and monitoring
-- [ ] Service initialization validates all external API connectivity
+- [x] Gene symbol classification produces identical results to HGVS-based classification
+- [x] Service gracefully handles transcript resolution failures with informative errors
+- [x] Performance targets met: <2s resolution, <100ms for cached lookups
+- [x] All existing functionality continues to work without degradation
+- [x] Comprehensive logging enables troubleshooting and monitoring
+- [x] Service initialization validates all external API connectivity
 
 ## Phase 3: Quality Assurance (Estimated: 1 week)
 
