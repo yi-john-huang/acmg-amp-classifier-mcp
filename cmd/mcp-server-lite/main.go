@@ -1,3 +1,5 @@
+// Package main provides the lightweight entry point for the ACMG-AMP MCP Server.
+// This version requires no external databases - uses in-memory caching and SQLite.
 package main
 
 import (
@@ -15,32 +17,25 @@ import (
 func main() {
 	// Check for setup subcommand
 	if len(os.Args) > 1 && os.Args[1] == "setup" {
-		cli := setup.NewCLI("full")
+		cli := setup.NewCLI("lite")
 		if err := cli.Run(os.Args[2:]); err != nil {
 			log.Fatalf("Setup failed: %v", err)
 		}
 		return
 	}
 
-	// Load configuration
-	configManager, err := config.NewManager()
-	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
-	}
+	// Load lightweight configuration
+	cfg := config.LoadLiteConfig()
 
-	// Validate configuration
-	if err := configManager.Validate(); err != nil {
-		log.Fatalf("Configuration validation failed: %v", err)
-	}
+	log.Printf("Starting ACMG-AMP MCP Server (Lite) with transport: %s", cfg.Transport)
+	log.Printf("Data directory: %s", cfg.DataDir)
 
-	log.Printf("Starting ACMG-AMP MCP Server with protocol version %s", "2025-01-01")
-
-	// Create MCP server
-	mcpServer, err := mcp.NewServer(configManager)
+	// Create lite MCP server
+	server, err := mcp.NewLiteServer(cfg)
 	if err != nil {
 		log.Fatalf("Failed to create MCP server: %v", err)
 	}
-	defer mcpServer.Close()
+	defer server.Close()
 
 	// Setup graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
@@ -52,14 +47,14 @@ func main() {
 
 	go func() {
 		<-sigChan
-		log.Println("Shutdown signal received, gracefully shutting down MCP server...")
+		log.Println("Shutdown signal received, gracefully shutting down...")
 		cancel()
 	}()
 
 	// Start MCP server
-	if err := mcpServer.Start(ctx); err != nil {
-		log.Fatalf("MCP server failed to start: %v", err)
+	if err := server.Start(ctx); err != nil {
+		log.Fatalf("MCP server failed: %v", err)
 	}
 
-	log.Println("ACMG-AMP MCP Server stopped")
+	log.Println("ACMG-AMP MCP Server (Lite) stopped")
 }

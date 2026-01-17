@@ -10,6 +10,9 @@ import (
 	"github.com/acmg-amp-mcp-server/internal/service"
 )
 
+// Tool is an alias for protocol.ToolHandler for use within the tools package.
+type Tool = protocol.ToolHandler
+
 // ToolRegistry manages registration of all MCP tools
 type ToolRegistry struct {
 	logger            *logrus.Logger
@@ -85,6 +88,17 @@ func (tr *ToolRegistry) RegisterAllTools() error {
 	tr.logger.Debug("Registered validate_report tool")
 
 	tr.logger.Info("Successfully registered all ACMG/AMP tools")
+	return nil
+}
+
+// RegisterTool registers a single tool with the registry.
+func (tr *ToolRegistry) RegisterTool(tool Tool) error {
+	toolInfo := tool.GetToolInfo()
+	if toolInfo.Name == "" {
+		return fmt.Errorf("tool name is required")
+	}
+	tr.router.RegisterToolHandler(toolInfo.Name, tool)
+	tr.logger.WithField("tool_name", toolInfo.Name).Debug("Registered tool")
 	return nil
 }
 

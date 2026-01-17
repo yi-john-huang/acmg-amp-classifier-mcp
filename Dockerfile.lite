@@ -1,0 +1,77 @@
+# Lightweight Dockerfile for ACMG-AMP MCP Server (Lite)
+# No external database dependencies - uses SQLite and in-memory cache
+
+# Stage 1: Build stage
+FROM golang:1.24-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache \
+    git \
+    ca-certificates \
+    tzdata
+
+# Set working directory
+WORKDIR /app
+
+# Copy go mod files first for better caching
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the lite application (pure Go, no CGO)
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags='-w -s' \
+    -o mcp-server-lite \
+    ./cmd/mcp-server-lite
+
+# Stage 2: Production stage (minimal)
+FROM alpine:3.20
+
+# Create non-root user for security
+RUN addgroup -g 10001 -S mcpuser && \
+    adduser -u 10001 -S mcpuser -G mcpuser
+
+# Install minimal runtime dependencies
+RUN apk add --no-cache \
+    ca-certificates \
+    tzdata \
+    && rm -rf /var/cache/apk/*
+
+# Set timezone
+ENV TZ=UTC
+
+# Create data directory
+RUN mkdir -p /data && chown mcpuser:mcpuser /data
+
+# Copy binary from builder stage
+COPY --from=builder --chown=mcpuser:mcpuser /app/mcp-server-lite /usr/local/bin/
+
+# Switch to non-root user
+USER mcpuser
+
+# Set working directory
+WORKDIR /home/mcpuser
+
+# Data directory as volume (persistent SQLite storage)
+VOLUME ["/data"]
+
+# Environment variables
+ENV ACMG_DATA_DIR=/data
+ENV ACMG_TRANSPORT=stdio
+ENV ACMG_LOG_LEVEL=info
+ENV ACMG_LOG_FORMAT=json
+
+# Default command (stdio mode for MCP)
+ENTRYPOINT ["mcp-server-lite"]
+
+# Metadata
+LABEL maintainer="ACMG-AMP MCP Server Team" \
+      version="1.0.0" \
+      description="Lightweight ACMG-AMP MCP Server - No external databases required" \
+      org.opencontainers.image.source="https://github.com/yi-john-huang/acmg-amp-classifier-mcp" \
+      org.opencontainers.image.documentation="https://github.com/yi-john-huang/acmg-amp-classifier-mcp/blob/main/README.md" \
+      org.opencontainers.image.licenses="MIT"
