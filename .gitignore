@@ -88,3 +88,6 @@ docs/api/generated/
 
 # Test containers data
 testcontainers-*
+
+# Claude Code local settings
+.claude/settings.local.json
