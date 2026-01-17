@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "acmg-amp-classifier": {
+      "command": "/path/to/mcp-server-lite",
+      "args": [],
+      "env": {
+        "ACMG_DATA_DIR": "~/.acmg-amp-mcp",
+        "ACMG_LOG_LEVEL": "info"
+      }
+    }
+  }
+}

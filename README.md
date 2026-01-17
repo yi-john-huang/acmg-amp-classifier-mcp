@@ -13,7 +13,7 @@ The ACMG-AMP MCP Server is a **Model Context Protocol (MCP)** compliant service 
 - **Complete ACMG/AMP Implementation**: All 28 rules (PVS1-BP7) with evidence combination logic
 - **Gene Symbol Query Support**: Input variants using gene symbols (e.g., "BRCA1:c.123A>G") with automatic transcript resolution
 - **6 External Database Sources**: ClinVar, gnomAD, COSMIC, PubMed, LOVD, HGMD integration
-- **9 Gene Database APIs**: HGNC, RefSeq, Ensembl for gene symbol validation and transcript mapping
+- **3 Gene Database APIs**: HGNC, RefSeq, Ensembl for gene symbol validation and transcript mapping
 - **Real-time Classification**: Full workflow from HGVS or gene symbol input to clinical recommendations
 - **Production-grade Architecture**: PostgreSQL database, Redis caching, comprehensive logging
 
@@ -65,6 +65,7 @@ The server provides these tools that AI agents can access directly:
 
 ### **Evidence Gathering Tools**
 - **`query_evidence`**: Gather evidence from all 6 external databases
+- **`batch_query_evidence`**: Batch query evidence for multiple variants with caching
 - **`query_clinvar`**: Search ClinVar for variant clinical significance
 - **`query_gnomad`**: Get population frequency data from gnomAD
 - **`query_cosmic`**: Search COSMIC for somatic mutation data
@@ -73,6 +74,13 @@ The server provides these tools that AI agents can access directly:
 - **`generate_report`**: Create structured clinical interpretation reports
 - **`format_report`**: Export reports in multiple formats (JSON, text, PDF)
 - **`validate_report`**: Quality assurance for generated reports
+
+### **Feedback Tools**
+- **`submit_feedback`**: Save user correction or agreement on a classification
+- **`query_feedback`**: Check for previous classification feedback for a variant
+- **`list_feedback`**: List all stored feedback with pagination
+- **`export_feedback`**: Export all feedback to a JSON backup file
+- **`import_feedback`**: Import feedback from a JSON backup file
 
 ## 🏗️ MCP Architecture
 
@@ -148,17 +156,21 @@ graph TD
 ```
 /
 ├── cmd/                          # Main applications
-│   └── mcp-server/              # MCP server entry point
+│   ├── mcp-server/              # Full MCP server (PostgreSQL + Redis)
+│   └── mcp-server-lite/         # Lite MCP server (SQLite, no dependencies)
 ├── internal/                    # Private application code
 │   ├── config/                 # Configuration management
 │   ├── domain/                 # Business logic and entities
+│   ├── feedback/               # User feedback storage (SQLite & PostgreSQL)
 │   ├── mcp/                    # MCP protocol implementation
 │   │   ├── protocol/          # JSON-RPC 2.0 protocol core
 │   │   ├── transport/         # Transport layer (stdio/HTTP-SSE)
 │   │   ├── tools/             # ACMG/AMP tool implementations
 │   │   ├── resources/         # MCP resource providers
 │   │   └── prompts/           # MCP prompt templates
-│   └── service/               # Application services
+│   ├── service/               # Application services
+│   └── setup/                 # Setup CLI and configuration utilities
+├── migrations/                 # PostgreSQL database migrations
 ├── pkg/                        # Public library code
 │   └── external/              # External API clients (6 databases)
 ├── deployments/               # Deployment configurations
@@ -167,6 +179,7 @@ graph TD
 ├── examples/                  # Usage examples and integrations
 │   └── ai-agents/            # AI agent integration examples
 ├── scripts/                   # Deployment and utility scripts
+│   └── install.sh            # One-liner installation script
 ├── .env.example              # Environment configuration template
 ├── docker-compose.yml        # Docker Compose configuration
 └── Dockerfile               # Container build configuration
@@ -184,12 +197,181 @@ The service is built around well-defined interfaces:
 
 ## 🚀 Quick Start Guide
 
+> **📖 For detailed installation and usage instructions, see the [User Guide](docs/USER_GUIDE.md)**
+
 ### Prerequisites
-- **Go 1.21+** - For building the MCP server
-- **PostgreSQL 15+** - For variant and results storage  
+
+**For Lite Server (Recommended for most users):**
+- **Go 1.24+** - For building the MCP server
+- No external databases required!
+
+**For Full Server (Production deployments):**
+- **Go 1.24+** - For building the MCP server
+- **PostgreSQL 15+** - For variant and results storage
 - **Docker & Docker Compose** - For easy deployment
 
-### 📦 Method 1: Docker Deployment (Recommended)
+---
+
+### ⚡ One-Liner Installation (Recommended)
+
+The fastest way to get started:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/yi-john-huang/acmg-amp-classifier-mcp/main/scripts/install.sh | bash
+```
+
+This will:
+1. Download the correct binary for your platform (macOS/Linux, Intel/ARM)
+2. Install to `~/.local/bin/`
+3. Add to your PATH
+4. Run the interactive setup wizard to configure Claude Desktop
+
+---
+
+### 🔧 Setup Command
+
+Both server binaries include a built-in setup command for configuration:
+
+```bash
+# Interactive setup wizard (recommended for new users)
+mcp-server-lite setup wizard
+
+# Configure Claude Desktop directly
+mcp-server-lite setup claude-desktop
+
+# Check current setup status
+mcp-server-lite setup status
+
+# Validate configuration
+mcp-server-lite setup validate
+```
+
+**Setup Command Options:**
+
+| Command | Description |
+|---------|-------------|
+| `setup wizard` | Interactive step-by-step setup |
+| `setup claude-desktop` | Configure Claude Desktop integration |
+| `setup claude-desktop --binary /path/to/binary` | Use specific binary path |
+| `setup claude-desktop --auto` | Skip confirmation prompts |
+| `setup status` | Show current configuration status |
+| `setup validate` | Validate configuration is working |
+
+---
+
+### 📦 Method 1: Lite Server (Zero Dependencies - Recommended)
+
+The **Lite Server** is the easiest way to get started. It requires **no external databases** - uses SQLite for persistence and in-memory caching.
+
+#### Option A: Pre-built Binary
+
+1. **Download the latest release**
+   ```bash
+   # macOS (Apple Silicon)
+   curl -L -o mcp-server-lite https://github.com/yi-john-huang/acmg-amp-classifier-mcp/releases/latest/download/mcp-server-lite-darwin-arm64
+   chmod +x mcp-server-lite
+
+   # macOS (Intel)
+   curl -L -o mcp-server-lite https://github.com/yi-john-huang/acmg-amp-classifier-mcp/releases/latest/download/mcp-server-lite-darwin-amd64
+   chmod +x mcp-server-lite
+
+   # Linux (x64)
+   curl -L -o mcp-server-lite https://github.com/yi-john-huang/acmg-amp-classifier-mcp/releases/latest/download/mcp-server-lite-linux-amd64
+   chmod +x mcp-server-lite
+   ```
+
+2. **Configure Claude Desktop**
+
+   Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
+
+   ```json
+   {
+     "mcpServers": {
+       "acmg-amp-classifier": {
+         "command": "/path/to/mcp-server-lite",
+         "args": [],
+         "env": {}
+       }
+     }
+   }
+   ```
+
+3. **Test with Claude**
+
+   Ask Claude: *"Classify the variant BRCA1:c.5266dupC using ACMG/AMP guidelines"*
+
+#### Option B: Build from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/yi-john-huang/acmg-amp-classifier-mcp.git
+cd acmg-amp-classifier-mcp
+
+# Build the lite server
+make build-lite
+
+# The binary is in build/mcp-server-lite
+./build/mcp-server-lite
+```
+
+#### Option C: Docker (Lite)
+
+```bash
+# Build the lite Docker image
+make docker-lite
+
+# Run with stdio transport (for Claude Desktop)
+docker run -it --rm \
+  -v ~/.acmg-amp-mcp:/data \
+  acmg-amp-mcp-server-lite:latest
+```
+
+#### Lite Server Configuration
+
+The lite server uses environment variables for configuration (all optional):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ACMG_DATA_DIR` | `~/.acmg-amp-mcp` | Data directory for SQLite and exports |
+| `ACMG_TRANSPORT` | `stdio` | Transport type: `stdio` or `http` |
+| `ACMG_HTTP_PORT` | `8080` | HTTP port (if transport is http) |
+| `ACMG_LOG_LEVEL` | `info` | Log level: `debug`, `info`, `warn`, `error` |
+| `ACMG_CACHE_MAX_ITEMS` | `1000` | Maximum items in memory cache |
+| `ACMG_CACHE_TTL` | `24h` | Cache time-to-live |
+| `CLINVAR_API_KEY` | *(none)* | NCBI API key for higher rate limits |
+| `COSMIC_API_KEY` | *(none)* | COSMIC API key |
+
+#### Lite Server Features
+
+- **User Feedback Storage**: Store classification corrections and agreements
+- **Export/Import**: Backup feedback to JSON files
+- **No Dependencies**: Works immediately without PostgreSQL or Redis
+- **Portable**: Single binary, runs anywhere
+
+#### Feedback Tools
+
+Both the Lite and Full servers include 5 MCP tools for managing user feedback:
+
+| Tool | Description |
+|------|-------------|
+| `submit_feedback` | Save user correction or agreement on a classification |
+| `query_feedback` | Check for previous classification for a variant |
+| `list_feedback` | List all stored feedback with pagination |
+| `export_feedback` | Export all feedback to a JSON backup file |
+| `import_feedback` | Import feedback from a JSON backup file |
+
+**Storage backends:**
+- **Lite Server**: SQLite (stored in `~/.acmg-amp-mcp/feedback.db`)
+- **Full Server**: PostgreSQL (same database as variants/interpretations)
+
+Example usage with Claude:
+- *"Submit feedback: I agree with the Pathogenic classification for BRCA1:c.5266dupC"*
+- *"Check if we have previous feedback for TP53:p.R273H"*
+- *"Export all feedback to a backup file"*
+
+---
+
+### 📦 Method 2: Full Server with Docker (Production)
 
 1. **Clone and configure**
    ```bash
@@ -344,7 +526,7 @@ MCP_TLS_CERT_PATH=/app/certs/server.crt
 MCP_TLS_KEY_PATH=/app/certs/server.key
 ```
 
-### 🔧 Method 2: Local Development
+### 🔧 Method 3: Local Development (Full Server)
 
 1. **Setup dependencies**
    ```bash

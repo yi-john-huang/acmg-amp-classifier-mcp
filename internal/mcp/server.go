@@ -3,6 +3,8 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -10,6 +12,7 @@ import (
 
 	"github.com/acmg-amp-mcp-server/internal/config"
 	"github.com/acmg-amp-mcp-server/internal/domain"
+	"github.com/acmg-amp-mcp-server/internal/feedback"
 	"github.com/acmg-amp-mcp-server/internal/mcp/caching"
 	"github.com/acmg-amp-mcp-server/internal/mcp/protocol"
 	"github.com/acmg-amp-mcp-server/internal/mcp/tools"
@@ -26,6 +29,7 @@ type Server struct {
 	activeTransport transport.Transport
 	protocolCore    *protocol.ProtocolCore
 	toolRegistry    *tools.ToolRegistry
+	feedbackStore   feedback.Store
 	logger          *logrus.Logger
 }
 
@@ -168,8 +172,28 @@ func NewServer(configManager *config.Manager) (*Server, error) {
 		return nil, fmt.Errorf("failed to register tools: %w", err)
 	}
 
+	// Initialize feedback store (PostgreSQL-based, using same database as main app)
+	dbConnStr := configManager.GetDatabaseConnectionString()
+	feedbackStore, err := feedback.NewPostgresStoreFromURL(dbConnStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create feedback store: %w", err)
+	}
+
+	// Register feedback tools
+	// Export directory for JSON backups (still uses local filesystem)
+	exportDir := filepath.Join(getFeedbackDataDir(), "exports")
+	if err := os.MkdirAll(exportDir, 0755); err != nil {
+		feedbackStore.Close()
+		return nil, fmt.Errorf("failed to create export directory: %w", err)
+	}
+	if err := registerFeedbackTools(toolRegistry, logger, feedbackStore, exportDir); err != nil {
+		feedbackStore.Close()
+		return nil, fmt.Errorf("failed to register feedback tools: %w", err)
+	}
+
 	// Validate all tools
 	if err := toolRegistry.ValidateAllTools(); err != nil {
+		feedbackStore.Close()
 		return nil, fmt.Errorf("tool validation failed: %w", err)
 	}
 
@@ -184,12 +208,13 @@ func NewServer(configManager *config.Manager) (*Server, error) {
 	
 	// Create server instance first
 	server := &Server{
-		config:       configManager,
-		mcpServer:    mcpServer,
-		transportMgr: transportMgr,
-		protocolCore: protocolCore,
-		toolRegistry: toolRegistry,
-		logger:       logger,
+		config:        configManager,
+		mcpServer:     mcpServer,
+		transportMgr:  transportMgr,
+		protocolCore:  protocolCore,
+		toolRegistry:  toolRegistry,
+		feedbackStore: feedbackStore,
+		logger:        logger,
 	}
 
 	// Register MCP tools from our tool registry
@@ -361,3 +386,28 @@ func validateServiceConnectivity(logger *logrus.Logger, transcriptResolver domai
 	logger.Info("Service connectivity validation completed")
 	return nil
 }
+
+// Close cleans up server resources.
+func (s *Server) Close() error {
+	if s.feedbackStore != nil {
+		if err := s.feedbackStore.Close(); err != nil {
+			s.logger.WithError(err).Error("Failed to close feedback store")
+		}
+	}
+	if s.activeTransport != nil {
+		s.activeTransport.Close()
+	}
+	return nil
+}
+
+// getFeedbackDataDir returns the directory for feedback data storage.
+func getFeedbackDataDir() string {
+	// Check environment variable first
+	if dir := os.Getenv("ACMG_DATA_DIR"); dir != "" {
+		return dir
+	}
+	// Default to user's home directory
+	homeDir, _ := os.UserHomeDir()
+	return filepath.Join(homeDir, ".acmg-amp-mcp")
+}
+

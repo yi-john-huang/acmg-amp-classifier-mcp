@@ -5,9 +5,9 @@ Complete API reference for all MCP tools, resources, and prompts provided by the
 ## Protocol Information
 
 - **Protocol**: Model Context Protocol (MCP) 2024-11-05
-- **Transport**: stdio, HTTP with Server-Sent Events, WebSocket
+- **Transport**: stdio, HTTP with Server-Sent Events (HTTP-SSE)
 - **Message Format**: JSON-RPC 2.0
-- **Authentication**: API key-based (for HTTP/WebSocket transports)
+- **Authentication**: None required (localhost only for HTTP transport)
 
 ## Server Capabilities
 
