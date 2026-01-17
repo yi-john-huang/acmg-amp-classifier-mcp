@@ -1,3 +1,6 @@
+# =============================================================================
+# Go Language
+# =============================================================================
 # Binaries for programs and plugins
 *.exe
 *.exe~
@@ -8,41 +11,127 @@
 # Test binary, built with `go test -c`
 *.test
 
-# Output of the go coverage tool, specifically when used with LiteIDE
+# Output of the go coverage tool
 *.out
-
-# Dependency directories (remove the comment below to include it)
-# vendor/
+coverage.out
+coverage.html
 
 # Go workspace file
 go.work
 
-# Environment variables and secrets
-.env
-.env.local
-.env.production
-.env.staging
-config.yaml
-config.prod.yaml
-config.staging.yaml
+# Dependency directories
+# vendor/
 
-# Database files
+# =============================================================================
+# Environment Variables and Configuration
+# =============================================================================
+.env
+.env.*
+config.yaml
+config.*.yaml
+
+# =============================================================================
+# API Keys, Tokens, and Secrets
+# =============================================================================
+*api*key*
+*api*token*
+*secret*
+*password*
+*credential*
+*auth*token*
+*access*token*
+*refresh*token*
+*bearer*token*
+token
+tokens/
+*jwt*secret*
+*encryption*key*
+*signing*key*
+*private*key*
+*secret*key*
+
+# =============================================================================
+# Certificate and Key Files
+# =============================================================================
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cert
+*.cer
+*.der
+*.csr
+*.p7b
+*.p7c
+*.p7m
+*.p7s
+*.jks
+*.keystore
+*.truststore
+ssl/
+certs/
+certificates/
+
+# =============================================================================
+# Database Files
+# =============================================================================
 *.db
 *.sqlite
 *.sqlite3
+*.sql
+*.dump
+*.backup
+database.json
+credentials.json
+connection*string*
+redis.dump
+memcached.dump
+database_backup*
+db_dump*
+*database*password*
+*db*password*
+*postgres*password*
+*mysql*password*
+*redis*password*
 
-# Log files
+# =============================================================================
+# Log Files
+# =============================================================================
 *.log
 logs/
+log/
 
-# IDE files
+# =============================================================================
+# Build Artifacts
+# =============================================================================
+dist/
+build/
+bin/
+target/
+out/
+*.bin
+*.app
+*.dmg
+*.pkg
+*.msi
+*.deb
+*.rpm
+/server
+/mcp-server
+
+# =============================================================================
+# IDE and Editor Files
+# =============================================================================
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# OS generated files
+# =============================================================================
+# OS Generated Files
+# =============================================================================
 .DS_Store
 .DS_Store?
 ._*
@@ -50,46 +139,177 @@ logs/
 .Trashes
 ehthumbs.db
 Thumbs.db
+*.lnk
+*.url
+desktop.ini
+$RECYCLE.BIN/
+.Trash/
 
-# Docker volumes
+# =============================================================================
+# Docker and Container
+# =============================================================================
 postgres_data/
 redis_data/
+docker-compose.override.yml
+docker-compose.*.yml
+!docker-compose.yml
+secrets/
+docker/secrets/
 
-# Temporary files
+# =============================================================================
+# Temporary and Backup Files
+# =============================================================================
 tmp/
 temp/
+.tmp/
+.temp/
 *.tmp
-
-# Coverage reports
-coverage.out
-coverage.html
-
-# Build artifacts
-dist/
-build/
-bin/
-/server
-/mcp-server
-
-# Security scan results
-security-scan-*.json
-security-scan-*.txt
-
-# Backup files
+*.temp
 *.bak
-*.backup
+*.old
+*.orig
+*backup*
+config_backup*
 
-# Certificate files (should be managed externally)
-*.pem
-*.key
-*.crt
-*.cert
+# =============================================================================
+# Security and Audit
+# =============================================================================
+security-scan-*
+vulnerability-*
+compliance-*
+audit/
+*audit*trail*
+*security*report*
+*compliance*report*
+*vulnerability*report*
+pentest*
+security*assessment*
+*.sarif
 
-# API documentation generated files
-docs/api/generated/
+# =============================================================================
+# Cloud Provider Credentials
+# =============================================================================
+.aws/
+.azure/
+.gcp/
+*service*account*.json
+*credentials*.json
+*.serviceaccount
+gcloud-service-key.json
+aws-credentials
+azure-credentials
+gcp-credentials
 
-# Test containers data
+# =============================================================================
+# Medical Data and HIPAA Sensitive Information
+# =============================================================================
+patient*data*
+phi*
+hipaa*
+clinical*data*
+genetic*data*
+variant*data*.json
+*patient*
+*clinical*trial*
+*medical*record*
+*genetic*variant*
+*clinical*variant*
+*pathogenic*data*
+*benign*data*
+*genomic*data*
+
+# =============================================================================
+# Test Data with Sensitive Information
+# =============================================================================
+testdata/real/
+test-data/production/
+*real*patient*
+*production*data*
+*live*data*
+*real*genetic*
+*actual*clinical*
+*live*variant*
 testcontainers-*
 
-# Claude Code local settings
+# =============================================================================
+# Session and Cache Files
+# =============================================================================
+sessions/
+cache/
+*.session
+*.cache
+session*data*
+*session*store*
+
+# =============================================================================
+# Package Manager Files
+# =============================================================================
+.npmrc
+.yarnrc
+.yarnrc.yml
+pip.conf
+.pypirc
+composer.auth.json
+.pip/
+.npm/
+.yarn/
+
+# =============================================================================
+# Archive Files
+# =============================================================================
+*.zip
+*.tar
+*.gz
+*.rar
+*.7z
+*.tar.gz
+*.tgz
+*.bz2
+*.xz
+
+# =============================================================================
+# AI Tool and Conversation Data
+# =============================================================================
+conversation-history/
+claude-conversations/
+chatgpt-sessions/
+ai-tool-logs/
+*.ai-session
+*conversation*history*
+*chat*history*
+*ai*conversation*
+claude-code-history/
 .claude/settings.local.json
+
+# =============================================================================
+# Network and VPN Configuration
+# =============================================================================
+*.ovpn
+*.ppk
+wireguard/
+openvpn/
+vpn/
+
+# =============================================================================
+# Licensing
+# =============================================================================
+license*key*
+*license*file*
+*.lic
+
+# =============================================================================
+# Medical Software Specific (ACMG/AMP)
+# =============================================================================
+acmg*credentials*
+amp*credentials*
+clinvar*key*
+gnomad*key*
+cosmic*key*
+*medical*api*key*
+*genetics*api*key*
+*clinical*api*key*
+
+# =============================================================================
+# API Documentation
+# =============================================================================
+docs/api/generated/
