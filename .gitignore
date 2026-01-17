@@ -68,6 +68,8 @@ coverage.html
 dist/
 build/
 bin/
+/server
+/mcp-server
 
 # Security scan results
 security-scan-*.json
