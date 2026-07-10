@@ -59,6 +59,7 @@ class ObservationKind(StrEnum):
     ALLELIC = "allelic"
     PHENOTYPE = "phenotype"
     GENE_MECHANISM = "gene_mechanism"
+    CONSEQUENCE = "consequence"
     VARIANT_LOCATION = "variant_location"
     CASE_CONTROL = "case_control"
 
@@ -246,6 +247,40 @@ class GeneMechanismObservation(EvidenceModel):
         "definitive", "strong", "moderate", "limited", "disputed", "refuted", "unknown"
     ]
     inheritance: InheritanceMode | None = None
+    missense_mechanism: Literal["established", "not_established", "unknown"] = "unknown"
+    benign_missense_rate: Literal["low", "high", "unknown"] = "unknown"
+
+
+class ConsequenceObservation(EvidenceModel):
+    """Structured transcript consequence facts required by location criteria."""
+
+    kind: Literal[ObservationKind.CONSEQUENCE]
+    transcript: TranscriptAccession
+    consequence: Literal[
+        "nonsense",
+        "frameshift",
+        "canonical_splice",
+        "missense",
+        "inframe_indel",
+        "synonymous",
+        "splice_region",
+        "start_lost",
+        "stop_lost",
+        "unknown",
+    ]
+    protein_change: NonEmptyText | None = None
+    nmd_predicted: bool | None = None
+    same_amino_acid_change: bool | None = None
+    same_amino_acid_splice_difference: bool | None = None
+    same_residue_different_amino_acid: bool | None = None
+    inframe_length: Annotated[int, Field(ge=0, strict=True)] | None = None
+    splice_impact: Literal["none", "predicted", "confirmed", "unknown"] = "unknown"
+
+    @model_validator(mode="after")
+    def validate_consequence_details(self) -> Self:
+        if self.inframe_length is not None and self.consequence != "inframe_indel":
+            raise ValueError("inframe_length requires an inframe_indel consequence")
+        return self
 
 
 class VariantLocationObservation(EvidenceModel):
@@ -299,6 +334,7 @@ Observation = Annotated[
     | AllelicObservation
     | PhenotypeObservation
     | GeneMechanismObservation
+    | ConsequenceObservation
     | VariantLocationObservation
     | CaseControlObservation,
     Field(discriminator="kind"),
@@ -549,6 +585,7 @@ class EvidenceSnapshot(EvidenceModel):
 class FactSet(EvidenceModel):
     """Immutable typed indexes consumed by criteria evaluators."""
 
+    evidence_items: tuple[EvidenceItem, ...] = ()
     population: tuple[PopulationObservation, ...] = ()
     clinical_assertions: tuple[ClinicalAssertionObservation, ...] = ()
     computational: tuple[ComputationalObservation, ...] = ()
@@ -558,8 +595,41 @@ class FactSet(EvidenceModel):
     allelic: tuple[AllelicObservation, ...] = ()
     phenotype: tuple[PhenotypeObservation, ...] = ()
     gene_mechanism: tuple[GeneMechanismObservation, ...] = ()
+    consequence: tuple[ConsequenceObservation, ...] = ()
     variant_location: tuple[VariantLocationObservation, ...] = ()
     case_control: tuple[CaseControlObservation, ...] = ()
+
+    @model_validator(mode="after")
+    def validate_evidence_items(self) -> Self:
+        """Reject duplicate IDs and retain a deterministic item order."""
+        if not self.evidence_items:
+            return self
+        ordered = tuple(
+            sorted(
+                self.evidence_items,
+                key=lambda item: item.evidence_id or "",
+            )
+        )
+        evidence_ids = tuple(item.evidence_id for item in ordered)
+        if any(evidence_id is None for evidence_id in evidence_ids):
+            raise ValueError("FactSet evidence_items must have evidence_id values")
+        if len(evidence_ids) != len(set(evidence_ids)):
+            raise ValueError("FactSet contains duplicate evidence_id values")
+        object.__setattr__(self, "evidence_items", ordered)
+        return self
+
+    def evidence_ids_for(self, observation: Observation) -> tuple[str, ...]:
+        """Return sorted source item IDs for exactly matching typed observations."""
+        evidence_ids = tuple(
+            item.evidence_id
+            for item in self.evidence_items
+            if item.observation == observation
+        )
+        if any(evidence_id is None for evidence_id in evidence_ids):
+            raise RuntimeError("FactSet evidence_items must have evidence_id values")
+        return tuple(
+            evidence_id for evidence_id in evidence_ids if evidence_id is not None
+        )
 
     @classmethod
     def from_evidence(cls, items: Iterable[EvidenceItem]) -> Self:
@@ -573,9 +643,18 @@ class FactSet(EvidenceModel):
         allelic: list[AllelicObservation] = []
         phenotype: list[PhenotypeObservation] = []
         gene_mechanism: list[GeneMechanismObservation] = []
+        consequence: list[ConsequenceObservation] = []
         variant_location: list[VariantLocationObservation] = []
         case_control: list[CaseControlObservation] = []
-        for item in sorted(items, key=lambda evidence: evidence.evidence_id or ""):
+        ordered_items = tuple(
+            sorted(items, key=lambda evidence: evidence.evidence_id or "")
+        )
+        evidence_ids = tuple(item.evidence_id for item in ordered_items)
+        if any(evidence_id is None for evidence_id in evidence_ids):
+            raise ValueError("FactSet evidence_items must have evidence_id values")
+        if len(evidence_ids) != len(set(evidence_ids)):
+            raise ValueError("FactSet contains duplicate evidence_id values")
+        for item in ordered_items:
             observation = item.observation
             if isinstance(observation, PopulationObservation):
                 population.append(observation)
@@ -595,11 +674,14 @@ class FactSet(EvidenceModel):
                 phenotype.append(observation)
             elif isinstance(observation, GeneMechanismObservation):
                 gene_mechanism.append(observation)
+            elif isinstance(observation, ConsequenceObservation):
+                consequence.append(observation)
             elif isinstance(observation, VariantLocationObservation):
                 variant_location.append(observation)
             elif isinstance(observation, CaseControlObservation):
                 case_control.append(observation)
         return cls(
+            evidence_items=ordered_items,
             population=tuple(population),
             clinical_assertions=tuple(clinical_assertions),
             computational=tuple(computational),
@@ -609,6 +691,7 @@ class FactSet(EvidenceModel):
             allelic=tuple(allelic),
             phenotype=tuple(phenotype),
             gene_mechanism=tuple(gene_mechanism),
+            consequence=tuple(consequence),
             variant_location=tuple(variant_location),
             case_control=tuple(case_control),
         )

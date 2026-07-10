@@ -89,6 +89,18 @@ OBSERVATION_PAYLOADS: dict[str, dict[str, object]] = {
         "validity": "definitive",
         "inheritance": "autosomal_dominant",
     },
+    "consequence": {
+        "kind": "consequence",
+        "transcript": "NM_007294.4",
+        "consequence": "missense",
+        "protein_change": "p.Arg1Gly",
+        "nmd_predicted": None,
+        "same_amino_acid_change": False,
+        "same_amino_acid_splice_difference": False,
+        "same_residue_different_amino_acid": True,
+        "inframe_length": None,
+        "splice_impact": "none",
+    },
     "variant_location": {
         "kind": "variant_location",
         "region_type": "critical_domain",

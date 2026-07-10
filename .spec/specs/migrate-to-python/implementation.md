@@ -455,3 +455,144 @@ Kept orchestration source-agnostic and used explicit typed IDs at the storage bo
 - Scoped Ruff format check: 68 files already formatted.
 - `uv run mypy`: `OK`.
 - `uv run pytest --no-cov` across data builder, bundle, application, evidence, normalization, storage, domain, infrastructure, presentation, and contract migration tests: 227 passed in 5.99s.
+
+## Task 6.1: Ruleset schema, registry, and deterministic selection
+
+**Status:** Complete  
+**Date:** 2026-07-11
+
+### RED
+
+Added approved, draft, retired, ambiguous, incompatible-evaluator, semantic-version, and rejection-record tests for versioned ruleset selection.
+
+### GREEN
+
+Added immutable ruleset and criterion specifications, semantic-version compatibility checks, a fail-closed registry, and deterministic ranked selection with accepted and rejected candidates.
+
+### REFACTOR
+
+Kept rule thresholds, permitted strengths, evaluator constraints, and publication state in validated specification data rather than evaluator control flow.
+
+## Task 6.2: FactSet indexes and evaluator registry
+
+**Status:** Complete  
+**Date:** 2026-07-11
+
+### RED
+
+Added typed evidence indexing, duplicate-ID rejection, evaluator-version mismatch, and complete-code registry tests.
+
+### GREEN
+
+Added immutable `FactSet` construction, a property-based evaluator protocol, a code-keyed immutable evaluator registry, and startup compatibility checks.
+
+### REFACTOR
+
+Made registry construction order-independent and corrected the evaluator protocol to expose immutable properties rather than writable structural fields.
+
+## Task 6.3: Population criteria evaluators
+
+**Status:** Complete  
+**Date:** 2026-07-11
+
+### RED
+
+Added BA1, BS1, BS2, PM2, coverage, ancestry, filter, and strength-boundary tests.
+
+### GREEN
+
+Added the pure population evaluator with ruleset-specified frequency, coverage, and filter comparisons. It returns typed comparisons and fails closed when the observed record is insufficient.
+
+### REFACTOR
+
+Centralized eligibility and comparison construction so all population criteria preserve the same audit trail.
+
+## Task 6.4: Consequence and location evaluators
+
+**Status:** Complete  
+**Date:** 2026-07-11
+
+### RED
+
+Added structured consequence tests for PVS1, PS1, PM1, PM4, PM5, BP1, BP3, and BP7, including NMD, splice, mechanism, and residue-difference boundaries.
+
+### GREEN
+
+Added typed consequence observations and pure evaluator logic that requires the structured consequence and gene-mechanism context selected by the active ruleset.
+
+### REFACTOR
+
+Used reusable typed comparisons and validated parameter readers instead of inferring evidence from free-form labels.
+
+## Task 6.5: Functional and computational evaluators
+
+**Status:** Complete  
+**Date:** 2026-07-11
+
+### RED
+
+Added calibrated-assay, duplicate-assay, score-threshold, predictor-agreement, and contradictory-predictor tests for PS3, BS3, PP3, and BP4.
+
+### GREEN
+
+Added pure functional/computational evaluation that requires all configured assay and prediction inputs before applying evidence.
+
+### REFACTOR
+
+Shared evidence-ID collection and typed ruleset parameter validation while retaining criterion-specific directions and strengths.
+
+## Task 6.6: Case evidence evaluators
+
+**Status:** Complete  
+**Date:** 2026-07-11
+
+### RED
+
+Added structured de novo, phenotype, segregation, allelic phase, case-control, and alternative-cause tests.
+
+### GREEN
+
+Added pure case-evidence evaluation for PS2, PM3, PM6, PP1, PP4, BP2, and BP5. Each result requires provenance-bearing, typed case facts and returns no automated success from absent context.
+
+### REFACTOR
+
+Kept case evidence separate from source evidence and represented contradictions as explicit non-applied or conflicting outcomes.
+
+## Task 6.7: Remaining evidence evaluators and registry completeness
+
+**Status:** Complete  
+**Date:** 2026-07-11
+
+### RED
+
+Added a complete 28-code matrix test for applied, not-applied, not-evaluable, disabled, invalid-strength, and ruleset version-incompatibility outcomes.
+
+### GREEN
+
+Added explicit evaluators for PS4, PP2, PP5, and BP6, including disabled/deprecated handling, and registered every 2015 criterion code in the default registry.
+
+### REFACTOR
+
+Removed generic successful fallbacks; unavailable or deprecated automation is represented only as explicit disabled or not-evaluable evidence.
+
+## Task 6.8: Conflict detection and deterministic combination
+
+**Status:** Complete  
+**Date:** 2026-07-11
+
+### RED
+
+Added table-driven fixtures for every project-defined ACMG 2015 pathogenic, likely-pathogenic, benign, and likely-benign combination; added generated ordering checks plus source, criterion, directional, algorithm, modified-strength, and no-match conflict tests.
+
+### GREEN
+
+Added a pure named/versioned combination engine with immutable decisions, canonical criteria hashes, explicit conflict records, and a data-defined matched rule for every non-conflicted result.
+
+### REFACTOR
+
+Moved the combination table into immutable `CombinationRule` values so matched rules are data results rather than incidental branches.
+
+### Scientific engine phase verification
+
+- `uv run pytest --no-cov tests/unit/domain/test_ruleset_registry.py tests/unit/domain/test_criteria_registry.py tests/unit/domain/test_population_evaluators.py tests/unit/domain/test_consequence_evaluators.py tests/unit/domain/test_functional_computational_evaluators.py tests/unit/domain/test_case_criteria_evaluators.py tests/unit/domain/test_evaluator_registry_completeness.py tests/unit/domain/test_classification_combiner.py -q`: 61 passed.
+- `uv run mypy src/acmg_classifier/domain/rules.py src/acmg_classifier/domain/criteria.py src/acmg_classifier/domain/evidence.py src/acmg_classifier/domain/combination.py src/acmg_classifier/domain/evaluators`: `OK`.
