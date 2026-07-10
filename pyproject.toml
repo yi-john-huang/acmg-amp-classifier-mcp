@@ -10,7 +10,10 @@ readme = "README.md"
 requires-python = ">=3.12,<3.14"
 license = { file = "LICENSE" }
 authors = [{ name = "ACMG-AMP Classifier contributors" }]
-dependencies = ["pydantic>=2.11,<3"]
+dependencies = [
+  "cryptography>=49,<50",
+  "pydantic>=2.11,<3",
+]
 
 [project.scripts]
 acmg = "acmg_classifier.presentation.cli.app:main"
