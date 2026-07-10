@@ -10,6 +10,7 @@ from pathlib import Path
 
 from acmg_classifier.domain.canonical import canonical_hash, canonical_json_bytes
 from acmg_classifier.domain.errors import JsonValue
+from acmg_classifier.domain.evidence import EvidenceSnapshot
 
 
 class EvidenceStoreError(RuntimeError):
@@ -71,7 +72,7 @@ class SQLiteEvidenceStore:
         self.raw_root = raw_root
         self.max_raw_bytes = max_raw_bytes
 
-    def put_evidence(self, content: JsonValue) -> str:
+    def put_evidence(self, content: object) -> str:
         """Insert canonical evidence once and return its stable identifier."""
         canonical = canonical_json_bytes(content)
         evidence_id = f"ev_{canonical_hash(content)}"
@@ -211,6 +212,42 @@ class SQLiteEvidenceStore:
                 VALUES (?, ?)
                 """,
                 ((snapshot_id, evidence_id) for evidence_id in unique_ids),
+            )
+            connection.commit()
+        return snapshot_id
+
+    def put_domain_evidence_snapshot(self, snapshot: EvidenceSnapshot) -> str:
+        """Persist a typed domain snapshot without changing its canonical ID."""
+        snapshot_id = snapshot.snapshot_id
+        if snapshot_id is None:
+            raise RuntimeError("validated EvidenceSnapshot must have a snapshot_id")
+        evidence_ids = snapshot.evidence_ids
+        canonical_content = snapshot.canonical_content()
+        source_status: JsonValue = {
+            "source_statuses": [
+                status.model_dump(mode="json") for status in snapshot.source_statuses
+            ],
+            "policy": snapshot.policy.model_dump(mode="json"),
+        }
+        canonical = canonical_json_bytes(canonical_content)
+        source_status_json = canonical_json_bytes(source_status)
+        with closing(self._connect()) as connection:
+            self._verify_evidence_ids(connection, evidence_ids)
+            connection.execute(
+                """
+                INSERT OR IGNORE INTO evidence_snapshots
+                    (snapshot_id, canonical_json, source_status_json, created_at)
+                VALUES (?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+                """,
+                (snapshot_id, canonical, source_status_json),
+            )
+            connection.executemany(
+                """
+                INSERT OR IGNORE INTO evidence_snapshot_items
+                    (snapshot_id, evidence_id)
+                VALUES (?, ?)
+                """,
+                ((snapshot_id, evidence_id) for evidence_id in evidence_ids),
             )
             connection.commit()
         return snapshot_id

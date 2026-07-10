@@ -1,0 +1,12 @@
+{
+  "kind": "functional",
+  "assay_id": "PMID:12345678:assay-1",
+  "assay_type": "DNA repair",
+  "result": "abnormal",
+  "validation_status": "validated",
+  "effect_size": 0.3,
+  "confidence_interval_lower": 0.1,
+  "confidence_interval_upper": 0.5,
+  "calibration_reference": "ClinGen-SVI-v1",
+  "citation_ids": ["PMID:12345678"]
+}

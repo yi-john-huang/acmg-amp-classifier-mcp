@@ -1,0 +1,8 @@
+{
+  "kind": "allelic",
+  "other_variant_key": "ga4gh:VA.other-allele",
+  "phase": "trans",
+  "occurrence_count": 2,
+  "observed_in_affected": true,
+  "citation_ids": ["PMID:23456789"]
+}

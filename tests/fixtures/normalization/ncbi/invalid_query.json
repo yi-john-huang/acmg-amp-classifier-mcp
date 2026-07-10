@@ -1,0 +1,10 @@
+{
+  "data": {
+    "spdis": [],
+    "input_hgvs_validity": "invalid",
+    "errors": {
+      "code": "HGVS_INVALID",
+      "message": "The HGVS expression is invalid"
+    }
+  }
+}

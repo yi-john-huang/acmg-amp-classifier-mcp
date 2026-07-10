@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Recorded-shape fixture derived from NCBI ClinVar VCV XML, ClinVar_VCV_2.6.xsd (2026-02-26). -->
+<ClinVarResult-Set>
+  <VariationArchive VariationID="14206" VariationName="NM_000492.4(CFTR):c.1521_1523del" VariationType="Deletion" DateCreated="2000-01-01" DateLastUpdated="2026-01-02" Accession="VCV000014206" Version="4" RecordType="classified">
+    <ClinicalAssertionList>
+      <ClinicalAssertion>
+        <ClinVarAccession Accession="SCV000000001" Version="3" Type="SCV" DateCreated="2000-01-01" DateLastUpdated="2026-01-02" ContributesToAggregateClassification="true" />
+        <ClinVarSubmissionID SubmitterName="Example ClinVar Submitter" OrgID="123" OrganizationCategory="clinical testing" />
+        <ClinicalSignificance DateLastEvaluated="2025-12-01">
+          <Description>Pathogenic</Description>
+          <ReviewStatus>criteria provided, single submitter</ReviewStatus>
+        </ClinicalSignificance>
+        <TraitSet>
+          <Trait Type="Disease">
+            <Name><ElementValue Type="Preferred">Cystic fibrosis</ElementValue></Name>
+            <XRef DB="MONDO" ID="0009061" />
+          </Trait>
+        </TraitSet>
+        <ObservedIn><Citation Source="PubMed" ID="23974870" /></ObservedIn>
+      </ClinicalAssertion>
+    </ClinicalAssertionList>
+  </VariationArchive>
+</ClinVarResult-Set>

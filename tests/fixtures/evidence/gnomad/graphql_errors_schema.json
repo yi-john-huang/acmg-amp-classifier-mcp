@@ -1,0 +1,5 @@
+{
+  "errors": [
+    {"message": "Cannot query field \"hemizygote_count\" on type \"VariantPopulation\"."}
+  ]
+}

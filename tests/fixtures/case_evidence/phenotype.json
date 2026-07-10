@@ -1,0 +1,7 @@
+{
+  "kind": "phenotype",
+  "term_id": "HP:0003002",
+  "state": "present",
+  "specificity": "highly_specific",
+  "citation_ids": ["PMID:12345678"]
+}

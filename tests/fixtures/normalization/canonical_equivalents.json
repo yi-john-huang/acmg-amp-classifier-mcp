@@ -1,0 +1,37 @@
+{
+  "substitution": {
+    "input": "NC_000001.11:g.101A>G",
+    "assembly": "GRCh38",
+    "accession": "NC_000001.11",
+    "start": 100,
+    "end": 101,
+    "deleted": "A",
+    "inserted": "G"
+  },
+  "deletion_equivalents": [
+    {
+      "input": "NM_000001.1:c.10delA",
+      "alias": "NM_000001.1:c.10delA",
+      "start": 100,
+      "end": 101,
+      "deleted": "A",
+      "inserted": ""
+    },
+    {
+      "input": "NM_000001.1:c.11delA",
+      "alias": "NM_000001.1:c.11delA",
+      "start": 100,
+      "end": 101,
+      "deleted": "A",
+      "inserted": ""
+    }
+  ],
+  "duplication": {
+    "input": "NM_007294.4:c.5266dupC",
+    "alias": "NM_007294.4:c.5266dupC",
+    "start": 100,
+    "end": 100,
+    "deleted": "",
+    "inserted": "C"
+  }
+}

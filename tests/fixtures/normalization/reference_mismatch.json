@@ -1,0 +1,9 @@
+{
+  "input": "NM_000492.4:c.1521A>G",
+  "provider_id": "reference-check",
+  "expected_code": "REFERENCE_MISMATCH",
+  "details": {
+    "supplied_reference": "A",
+    "resolved_reference": "C"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "input": "NC_000001.11:g.101A>G",
+  "local": {"provider_id": "local", "deleted": "A", "inserted": "G"},
+  "remote": {"provider_id": "remote", "deleted": "A", "inserted": "T"},
+  "expected_code": "NORMALIZATION_CONFLICT"
+}

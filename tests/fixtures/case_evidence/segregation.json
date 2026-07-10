@@ -1,0 +1,10 @@
+{
+  "kind": "segregation",
+  "family_count": 2,
+  "informative_meioses": 4,
+  "lod_score": 1.2,
+  "co_segregations": 4,
+  "non_segregations": 0,
+  "phenotype_defined": true,
+  "citation_ids": ["DOI:10.1000/example"]
+}

@@ -2,7 +2,7 @@
 
 from typing import Annotated, Literal
 
-from pydantic import Field, StringConstraints
+from pydantic import Field, StringConstraints, model_validator
 
 from acmg_classifier.domain.enums import (
     AnalysisIntent,
@@ -19,6 +19,10 @@ from acmg_classifier.domain.identifiers import (
 )
 from acmg_classifier.domain.models import InterpretationContext, VariantInput
 from acmg_classifier.presentation.schemas.base import StrictModel
+from acmg_classifier.presentation.schemas.case_evidence import (
+    CaseEvidenceInput,
+    validate_case_evidence_conflicts,
+)
 
 type TranscriptAccession = Annotated[
     str,
@@ -48,6 +52,12 @@ class ClassificationRequest(StrictModel):
     inheritance: InheritanceMode | None = None
     analysis_intent: AnalysisIntent = AnalysisIntent.GERMLINE_MENDELIAN
     detail_level: DetailLevel = DetailLevel.STANDARD
+    case_evidence: tuple[CaseEvidenceInput, ...] = ()
+
+    @model_validator(mode="after")
+    def reject_contradictory_case_evidence(self) -> "ClassificationRequest":
+        validate_case_evidence_conflicts(self.case_evidence)
+        return self
 
     def to_domain(self) -> tuple[VariantInput, InterpretationContext]:
         """Convert validated boundary values into immutable domain values."""

@@ -3,6 +3,7 @@ from __future__ import annotations
 import sqlite3
 import unittest
 from contextlib import closing
+from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -171,6 +172,42 @@ class SQLiteEvidenceStoreTests(unittest.TestCase):
                     "DELETE FROM evidence_snapshots WHERE snapshot_id = ?",
                     (snapshot_a,),
                 )
+
+    def test_domain_degraded_empty_snapshot_is_persisted_without_placeholder(
+        self,
+    ) -> None:
+        from acmg_classifier.domain.evidence import (
+            EvidencePolicy,
+            EvidenceSnapshot,
+            SourceStatus,
+            SourceStatusValue,
+        )
+        from acmg_classifier.infrastructure.storage.evidence import SQLiteEvidenceStore
+
+        store = SQLiteEvidenceStore(self.database_path, self.raw_root)
+        snapshot = EvidenceSnapshot(
+            evidence_ids=(),
+            source_statuses=(
+                SourceStatus(
+                    source_id="clinvar",
+                    status=SourceStatusValue.UNAVAILABLE,
+                    checked_at=datetime(2026, 7, 11, tzinfo=UTC),
+                    detail="offline_no_eligible_cache",
+                ),
+            ),
+            policy=EvidencePolicy(mode="offline"),
+            created_at=datetime(2026, 7, 11, tzinfo=UTC),
+        )
+
+        self.assertEqual(
+            store.put_domain_evidence_snapshot(snapshot), snapshot.snapshot_id
+        )
+        stored = store.get_evidence_snapshot(snapshot.snapshot_id)
+        self.assertEqual(stored.evidence_ids, ())
+        self.assertEqual(
+            stored.source_status_json,
+            b'{"policy":{"max_age_seconds":null,"mode":"offline"},"source_statuses":[{"checked_at":"2026-07-11T00:00:00Z","detail":"offline_no_eligible_cache","normalized_query_key":null,"source_id":"clinvar","source_version":null,"status":"unavailable"}]}',
+        )
 
     def test_snapshot_rejects_unknown_evidence(self) -> None:
         from acmg_classifier.infrastructure.storage.evidence import (

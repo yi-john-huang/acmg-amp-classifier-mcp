@@ -1,0 +1,26 @@
+{
+  "data": {
+    "variant": {
+      "variant_id": "X-154931044-C-T",
+      "reference_genome": "GRCh38",
+      "chrom": "X",
+      "pos": 154931044,
+      "ref": "C",
+      "alt": "T",
+      "coverage": {"exome": null, "genome": {"mean": 28.0}},
+      "exome": null,
+      "genome": {
+        "ac": 15,
+        "an": 1000,
+        "af": 0.015,
+        "homozygote_count": 3,
+        "hemizygote_count": 5,
+        "filters": [],
+        "populations": [
+          {"id": "afr", "ac": 5, "an": 200, "homozygote_count": 1, "hemizygote_count": null}
+        ]
+      },
+      "joint": null
+    }
+  }
+}

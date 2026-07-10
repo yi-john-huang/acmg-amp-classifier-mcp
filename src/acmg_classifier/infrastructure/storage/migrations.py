@@ -184,4 +184,35 @@ DEFAULT_MIGRATIONS = (
             """,
         ),
     ),
+    Migration(
+        version=4,
+        name="add_replaceable_source_cache_index",
+        statements=(
+            """
+            CREATE TABLE source_cache (
+                cache_key TEXT PRIMARY KEY,
+                source_id TEXT NOT NULL,
+                normalized_query_key TEXT NOT NULL,
+                request_fingerprint TEXT NOT NULL,
+                source_version TEXT,
+                adapter_version TEXT NOT NULL,
+                status TEXT NOT NULL
+                    CHECK (status IN ('success', 'no_record', 'failure')),
+                retrieved_at TEXT NOT NULL,
+                expires_at TEXT,
+                evidence_ids_json BLOB NOT NULL,
+                raw_snapshot_ref TEXT,
+                response_hash TEXT,
+                media_type TEXT,
+                byte_size INTEGER NOT NULL CHECK (byte_size >= 0),
+                last_error_code TEXT,
+                updated_at TEXT NOT NULL
+            )
+            """,
+            """
+            CREATE INDEX source_cache_lookup
+            ON source_cache (source_id, normalized_query_key, source_version)
+            """,
+        ),
+    ),
 )
