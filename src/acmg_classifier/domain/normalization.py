@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
-from typing import Literal
+from typing import Literal, Self, cast
 
 from acmg_classifier.domain.enums import GenomeBuild
 from acmg_classifier.domain.errors import JsonValue
@@ -286,6 +287,104 @@ class NormalizedVariant:
             ),
         )
 
+    @property
+    def variant_key(self) -> str:
+        """Return the canonical allele key consumed by evidence-source ports."""
+        return self.canonical_key.value
+
+    @property
+    def genomic_hgvs(self) -> str | None:
+        """Return the preserved genomic alias when evidence adapters require it."""
+        return next(
+            (
+                alias.expression
+                for alias in self.hgvs_aliases
+                if alias.notation == "genomic"
+            ),
+            None,
+        )
+
+    @classmethod
+    def from_canonical_content(cls, content: Mapping[str, JsonValue]) -> Self:
+        """Rehydrate validated normalized content retained in a resumable draft."""
+        try:
+            allele_content = _content_mapping(content["canonical_key"])
+            canonical_schema_version = _content_text(allele_content["schema_version"])
+            if canonical_schema_version != "1.0":
+                raise ValueError("unsupported canonical allele schema version")
+            aliases = tuple(
+                HgvsAlias(
+                    expression=_content_text(item["expression"]),
+                    notation=cast(
+                        Literal["genomic", "transcript", "protein"],
+                        _content_text(item["notation"]),
+                    ),
+                    accession=_content_optional_text(item.get("accession")),
+                    source=_content_optional_text(item.get("source")),
+                )
+                for item in _content_list_of_mappings(content["hgvs_aliases"])
+            )
+            provenance = tuple(
+                ProviderProvenance(
+                    provider_id=_content_text(item["provider_id"]),
+                    provider_version=_content_optional_text(
+                        item.get("provider_version")
+                    ),
+                    source_record_id=_content_optional_text(
+                        item.get("source_record_id")
+                    ),
+                    retrieved_at=_content_datetime(item.get("retrieved_at")),
+                    bundle_version=_content_optional_text(item.get("bundle_version")),
+                    raw_snapshot_ref=_content_optional_text(
+                        item.get("raw_snapshot_ref")
+                    ),
+                    query_key=_content_text(item["query_key"]),
+                )
+                for item in _content_list_of_mappings(content["provider_provenance"])
+            )
+            return cls(
+                original_input=_content_text(content["original_input"]),
+                parsed_input=_content_text(content["parsed_input"]),
+                canonical_key=CanonicalAlleleKey(
+                    assembly=GenomeBuild(_content_text(allele_content["assembly"])),
+                    sequence_accession=_content_text(
+                        allele_content["sequence_accession"]
+                    ),
+                    start=_content_integer(allele_content["start"]),
+                    end=_content_integer(allele_content["end"]),
+                    deleted_sequence=_content_text(
+                        allele_content["deleted_sequence"],
+                        allow_empty=True,
+                    ),
+                    inserted_sequence=_content_text(
+                        allele_content["inserted_sequence"],
+                        allow_empty=True,
+                    ),
+                    schema_version=cast(
+                        Literal["1.0"],
+                        canonical_schema_version,
+                    ),
+                ),
+                genome_build=GenomeBuild(_content_text(content["genome_build"])),
+                genomic_accession=_content_text(content["genomic_accession"]),
+                genomic_start=_content_integer(content["genomic_start"]),
+                genomic_end=_content_integer(content["genomic_end"]),
+                reference_allele=_content_text(
+                    content["reference_allele"], allow_empty=True
+                ),
+                alternate_allele=_content_text(
+                    content["alternate_allele"], allow_empty=True
+                ),
+                normalized_hgvs=_content_text(content["normalized_hgvs"]),
+                hgvs_aliases=aliases,
+                gene_symbol=_content_optional_text(content.get("gene_symbol")),
+                transcript=_content_optional_text(content.get("transcript")),
+                transcript_hgvs=_content_optional_text(content.get("transcript_hgvs")),
+                provider_provenance=provenance,
+            )
+        except (KeyError, TypeError, ValueError) as error:
+            raise ValueError("invalid normalized variant content") from error
+
     def to_canonical_content(self) -> dict[str, JsonValue]:
         """Return deterministic content, including aliases and provenance."""
         return {
@@ -328,6 +427,44 @@ class NormalizedVariant:
                 for item in self.provider_provenance
             ],
         }
+
+
+def _content_mapping(value: JsonValue) -> Mapping[str, JsonValue]:
+    if not isinstance(value, Mapping):
+        raise ValueError("normalized variant object field must be a mapping")
+    return value
+
+
+def _content_list_of_mappings(value: JsonValue) -> tuple[Mapping[str, JsonValue], ...]:
+    if not isinstance(value, list):
+        raise ValueError("normalized variant list field must be a list")
+    return tuple(_content_mapping(item) for item in value)
+
+
+def _content_text(value: JsonValue, *, allow_empty: bool = False) -> str:
+    if not isinstance(value, str) or (not allow_empty and not value):
+        raise ValueError("normalized variant text field must be non-empty text")
+    return value
+
+
+def _content_optional_text(value: JsonValue | None) -> str | None:
+    if value is None:
+        return None
+    return _content_text(value)
+
+
+def _content_integer(value: JsonValue) -> int:
+    if not isinstance(value, int) or isinstance(value, bool):
+        raise ValueError("normalized variant integer field must be an integer")
+    return value
+
+
+def _content_datetime(value: JsonValue | None) -> datetime | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ValueError("normalized variant timestamp field must be text")
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
 _TRANSCRIPT = r"(?P<accession>(?:NM|NR)_\d+\.\d+|ENST\d+\.\d+)"

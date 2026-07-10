@@ -148,6 +148,44 @@ def test_normalized_variant_hash_is_stable_under_alias_and_provenance_ordering()
     )
 
 
+def test_normalized_variant_exposes_the_evidence_query_view() -> None:
+    variant = _normalized(
+        aliases=(
+            HgvsAlias("NM_000001.1:c.1A>G", "transcript"),
+            HgvsAlias("NC_000001.11:g.101A>G", "genomic"),
+        )
+    )
+    transcript_only = _normalized(
+        aliases=(HgvsAlias("NM_000001.1:c.1A>G", "transcript"),)
+    )
+
+    assert variant.variant_key == "cak1:GRCh38:NC_000001.11:100:A>G"
+    assert variant.genomic_hgvs == "NC_000001.11:g.101A>G"
+    assert transcript_only.genomic_hgvs is None
+
+
+def test_normalized_variant_round_trips_through_canonical_draft_content() -> None:
+    original = _normalized(
+        aliases=(
+            HgvsAlias("NM_000001.1:c.1A>G", "transcript"),
+            HgvsAlias("NC_000001.11:g.101A>G", "genomic"),
+        ),
+        provenance=(
+            ProviderProvenance("remote", "1", "id-2", None, None, None, "query"),
+            ProviderProvenance("local", "1", "id-1", None, "bundle-1", None, "query"),
+        ),
+    )
+
+    restored = NormalizedVariant.from_canonical_content(original.to_canonical_content())
+
+    assert restored == original
+
+
+def test_normalized_variant_rejects_malformed_canonical_draft_content() -> None:
+    with pytest.raises(ValueError, match="normalized variant content"):
+        NormalizedVariant.from_canonical_content({"canonical_key": {}})
+
+
 def test_normalized_variant_rejects_noncanonical_allele_duplicates() -> None:
     normalized = _normalized()
 

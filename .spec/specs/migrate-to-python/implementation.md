@@ -596,3 +596,82 @@ Moved the combination table into immutable `CombinationRule` values so matched r
 
 - `uv run pytest --no-cov tests/unit/domain/test_ruleset_registry.py tests/unit/domain/test_criteria_registry.py tests/unit/domain/test_population_evaluators.py tests/unit/domain/test_consequence_evaluators.py tests/unit/domain/test_functional_computational_evaluators.py tests/unit/domain/test_case_criteria_evaluators.py tests/unit/domain/test_evaluator_registry_completeness.py tests/unit/domain/test_classification_combiner.py -q`: 61 passed.
 - `uv run mypy src/acmg_classifier/domain/rules.py src/acmg_classifier/domain/criteria.py src/acmg_classifier/domain/evidence.py src/acmg_classifier/domain/combination.py src/acmg_classifier/domain/evaluators`: `OK`.
+
+## Task 7.1: Classification workflow vertical slice
+
+**Status:** Complete  
+**Date:** 2026-07-11
+
+### RED
+
+Added an async integration slice with a real migrated SQLite state database, raw/evidence store, deterministic normalization port, context resolver, source adapter, ruleset, evaluator, and immutable record store. The slice covers completion, missing context, ruleset-required context, unsupported scope, bootstrap failure, partial evidence, unresolved criterion direction conflict, persistence failure, user-evidence persistence failure, and caller cancellation.
+
+### GREEN
+
+Added an adapter-agnostic `ClassificationService` that performs readiness, normalization, context and ruleset selection, evidence acquisition, typed user-evidence snapshot joining, fact construction, criterion evaluation, conflict-aware combination, and append-only completed-record persistence. It returns explicit completed, needs-context, degraded, conflict, unsupported, or failed states; cancellation propagates unchanged.
+
+### REFACTOR
+
+Added immutable workflow request, response, and record-content types. Added the evidence-query view directly to `NormalizedVariant` so the canonical normalized allele satisfies source-port requirements without a second wrapper or string reconstruction. Record content is canonicalized from sorted evidence IDs and excludes storage-assigned identifiers.
+
+### Verification
+
+- `uv run pytest --no-cov tests/integration/application/test_classification_service.py tests/unit/domain/test_canonical_allele.py tests/unit/application/test_variant_normalization_service.py tests/unit/application/test_context_resolution_service.py tests/integration/application/test_evidence_orchestrator_storage.py tests/integration/storage/test_record_store.py -q`: 50 passed.
+- `uv run mypy src/acmg_classifier/application/classification.py src/acmg_classifier/domain/normalization.py`: `OK`.
+
+## Task 7.2: Draft resume and progressive context questions
+
+**Status:** Complete  
+**Date:** 2026-07-11
+
+### RED
+
+Added persisted-draft integration coverage for signed-token verification, expiry, completion, tampering, question-schema validation, one-question interactive progression, full-form context, unknown answers, and corrupted normalized content.
+
+### GREEN
+
+Added `WorkflowDraftService` with HMAC-SHA-256 continuation tokens, explicit answer states, canonical draft content, strict answer-schema checks, and state-preserving progressive context merges. `ClassificationService.resume` reuses the persisted `NormalizedVariant` and atomically completes the linked draft only after a completed classification.
+
+### REFACTOR
+
+Kept persistence behind a narrow draft-store protocol; normalized-content rehydration is provider-neutral and validates the canonical allele rather than recontacting a source provider.
+
+## Task 7.3: Deterministic explanations and limitation rendering
+
+**Status:** Complete  
+**Date:** 2026-07-11
+
+### RED
+
+Added compact, standard, full, conflict, template-safety, deterministic-ordering, evidence-reference, and persisted-record explanation tests.
+
+### GREEN
+
+Added pure `ExplanationService`, immutable structured explanation blocks, safe approved-template expansion, research-use language, and deterministic limitation aggregation. Completed, degraded, and conflict workflow responses now expose an explanation; completed records persist display prose separately from the decision payload.
+
+### REFACTOR
+
+Template expansion accepts only direct named rationale fields and canonicalizes non-text JSON values, preventing attribute access, conversion directives, format-spec execution, or invented facts.
+
+## Task 7.4: Reinterpretation, replay, and difference report
+
+**Status:** Complete  
+**Date:** 2026-07-11
+
+### RED
+
+Added immutable replay, deep read-only record-content, linked reinterpretation, prior-record guard, and causal evidence/context/ruleset/bundle/criteria/classification difference tests.
+
+### GREEN
+
+Added explicit linked `ClassificationService.reinterpret` requests and `ReinterpretationService` for source-free replay and semantic difference reports over immutable SQLite records.
+
+### REFACTOR
+
+Differences deliberately exclude timestamps and display prose; they compare only persisted scientific inputs and decisions.
+
+### Scientist workflow phase verification
+
+- `uv run pytest --no-cov tests/unit/domain/test_canonical_allele.py tests/unit/application/test_variant_normalization_service.py tests/unit/application/test_context_resolution_service.py tests/unit/application/test_explanation_service.py tests/integration/application/test_classification_service.py tests/integration/application/test_draft_workflow.py tests/integration/application/test_reinterpretation.py tests/integration/application/test_evidence_orchestrator_storage.py tests/integration/storage/test_record_store.py -q`: 71 passed.
+- `uv run mypy src/acmg_classifier/application/classification.py src/acmg_classifier/application/drafts.py src/acmg_classifier/application/explanation.py src/acmg_classifier/application/reinterpretation.py src/acmg_classifier/domain/normalization.py`: `OK`.
+- `uv run ruff check src/acmg_classifier/application/classification.py src/acmg_classifier/application/drafts.py src/acmg_classifier/application/explanation.py src/acmg_classifier/application/reinterpretation.py src/acmg_classifier/domain/normalization.py tests/unit/domain/test_canonical_allele.py tests/integration/application/test_classification_service.py tests/integration/application/test_draft_workflow.py tests/unit/application/test_explanation_service.py tests/integration/application/test_reinterpretation.py`: `OK`.
