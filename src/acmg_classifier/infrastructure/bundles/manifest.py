@@ -69,9 +69,11 @@ class BundleSource(BundleModel):
     url: AnyHttpUrl
     retrieved_at: datetime
     license: NonEmptyText
+    sha256: Sha256Hex
+    terms_url: AnyHttpUrl
     transformation_version: NumericVersion
 
-    @field_validator("url")
+    @field_validator("url", "terms_url")
     @classmethod
     def require_https(cls, value: AnyHttpUrl) -> AnyHttpUrl:
         if value.scheme != "https":

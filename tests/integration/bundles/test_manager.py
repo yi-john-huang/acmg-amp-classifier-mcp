@@ -112,6 +112,8 @@ class BundleManagerTests(unittest.TestCase):
                         "url": "https://example.test/source",
                         "retrieved_at": "2026-07-11T07:00:00Z",
                         "license": "test-only fixture",
+                        "sha256": "b" * 64,
+                        "terms_url": "https://example.test/terms",
                         "transformation_version": "1.0.0",
                     }
                 ],

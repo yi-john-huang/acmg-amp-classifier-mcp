@@ -29,6 +29,8 @@ def valid_manifest(version: str = "2026.7.1") -> dict[str, object]:
                 "url": "https://www.ncbi.nlm.nih.gov/refseq/MANE/",
                 "retrieved_at": "2026-07-11T07:00:00Z",
                 "license": "United States government work",
+                "sha256": "b" * 64,
+                "terms_url": "https://www.ncbi.nlm.nih.gov/home/about/policies/",
                 "transformation_version": "1.0.0",
             }
         ],

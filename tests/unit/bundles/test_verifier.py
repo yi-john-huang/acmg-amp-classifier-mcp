@@ -36,6 +36,8 @@ def manifest_data(content: bytes) -> dict[str, object]:
                 "url": "https://www.ncbi.nlm.nih.gov/refseq/MANE/",
                 "retrieved_at": "2026-07-11T07:00:00Z",
                 "license": "United States government work",
+                "sha256": "b" * 64,
+                "terms_url": "https://www.ncbi.nlm.nih.gov/home/about/policies/",
                 "transformation_version": "1.0.0",
             }
         ],
@@ -102,6 +104,20 @@ class BundleVerifierTests(unittest.TestCase):
             (self.staging_path / "data/knowledge.sqlite3").read_bytes(),
             self.content,
         )
+
+    def test_manifest_signature_can_be_verified_without_extraction(self) -> None:
+        from acmg_classifier.infrastructure.bundles.verifier import (
+            BundleSignatureError,
+            BundleVerifier,
+        )
+
+        verifier = BundleVerifier(self.keyring)
+
+        self.assertIsNone(
+            verifier.verify_manifest_signature(self.manifest, self._signature())
+        )
+        with self.assertRaises(BundleSignatureError):
+            verifier.verify_manifest_signature(self.manifest, b"bad signature")
 
     def test_bad_signature_and_unknown_key_fail_before_extraction(self) -> None:
         from acmg_classifier.infrastructure.bundles.verifier import (

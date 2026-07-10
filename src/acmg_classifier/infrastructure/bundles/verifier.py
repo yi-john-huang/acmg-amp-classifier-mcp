@@ -75,7 +75,7 @@ class BundleVerifier:
         staging_path: Path,
     ) -> VerifiedBundle:
         """Verify signature and artifacts, leaving only trusted staged files."""
-        self._verify_signature(manifest, signature)
+        self.verify_manifest_signature(manifest, signature)
         if staging_path.exists():
             raise ArchiveSafetyError(f"Staging path already exists: {staging_path}")
         staging_path.parent.mkdir(parents=True, exist_ok=True)
@@ -92,6 +92,12 @@ class BundleVerifier:
             bundle_version=manifest.bundle_version,
             staging_path=staging_path,
         )
+
+    def verify_manifest_signature(
+        self, manifest: BundleManifest, signature: bytes
+    ) -> None:
+        """Verify an installed manifest without extracting its archive."""
+        self._verify_signature(manifest, signature)
 
     def _verify_signature(self, manifest: BundleManifest, signature: bytes) -> None:
         key_bytes = self.public_keys.get(manifest.signer_key_id)

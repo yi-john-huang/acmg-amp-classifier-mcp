@@ -13,6 +13,7 @@ authors = [{ name = "ACMG-AMP Classifier contributors" }]
 dependencies = [
   "cryptography>=49,<50",
   "filelock>=3.29,<4",
+  "platformdirs>=4.3,<5",
   "pydantic>=2.11,<3",
 ]
 
@@ -40,7 +41,7 @@ addopts = [
   "--cov=acmg_classifier",
   "--cov-report=term-missing",
 ]
-pythonpath = ["src"]
+pythonpath = ["src", "."]
 testpaths = ["tests"]
 
 [tool.coverage.run]
