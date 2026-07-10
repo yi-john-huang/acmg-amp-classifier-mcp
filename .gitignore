@@ -19,6 +19,17 @@ coverage.html
 # Go workspace file
 go.work
 
+# Python environments, bytecode, test caches, and local tool caches
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+/.cache/
+
 # Dependency directories
 # vendor/
 
