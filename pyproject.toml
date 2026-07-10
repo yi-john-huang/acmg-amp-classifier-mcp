@@ -12,6 +12,7 @@ license = { file = "LICENSE" }
 authors = [{ name = "ACMG-AMP Classifier contributors" }]
 dependencies = [
   "cryptography>=49,<50",
+  "filelock>=3.29,<4",
   "pydantic>=2.11,<3",
 ]
 
