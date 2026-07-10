@@ -319,4 +319,19 @@ docs/api/generated/
 # Local Development Tools
 # =============================================================================
 .serena/
-.spec/
+
+# SDD MCP installer output
+/.agents/
+/.claude/agents/
+/.claude/contexts/
+/.claude/hooks/
+/.claude/rules/
+/.claude/skills/sdd-*/
+/.claude/skills/simple-task/
+/.codex/agents/
+/AGENTS.md
+
+# Keep project steering documents; ignore generated feature specifications.
+/.spec/*
+!/.spec/steering/
+!/.spec/steering/**
