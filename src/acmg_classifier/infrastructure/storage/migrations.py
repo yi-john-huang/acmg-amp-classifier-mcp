@@ -98,4 +98,90 @@ DEFAULT_MIGRATIONS = (
             """,
         ),
     ),
+    Migration(
+        version=3,
+        name="add_classification_and_audit_records",
+        statements=(
+            """
+            CREATE TABLE classification_records (
+                classification_id TEXT PRIMARY KEY,
+                canonical_json BLOB NOT NULL,
+                previous_classification_id TEXT
+                    REFERENCES classification_records(classification_id),
+                created_at TEXT NOT NULL
+            )
+            """,
+            """
+            CREATE TRIGGER classification_records_reject_update
+            BEFORE UPDATE ON classification_records
+            BEGIN
+                SELECT RAISE(ABORT, 'classification_records are immutable');
+            END
+            """,
+            """
+            CREATE TRIGGER classification_records_reject_delete
+            BEFORE DELETE ON classification_records
+            BEGIN
+                SELECT RAISE(ABORT, 'classification_records are immutable');
+            END
+            """,
+            """
+            CREATE TABLE draft_requests (
+                draft_id TEXT PRIMARY KEY,
+                request_json BLOB NOT NULL,
+                expires_at TEXT NOT NULL,
+                completed_classification_id TEXT
+                    REFERENCES classification_records(classification_id),
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """,
+            """
+            CREATE TABLE review_artifacts (
+                review_id TEXT PRIMARY KEY,
+                classification_id TEXT NOT NULL
+                    REFERENCES classification_records(classification_id),
+                canonical_json BLOB NOT NULL,
+                created_at TEXT NOT NULL
+            )
+            """,
+            """
+            CREATE TABLE feedback (
+                feedback_id TEXT PRIMARY KEY,
+                classification_id TEXT NOT NULL
+                    REFERENCES classification_records(classification_id),
+                canonical_json BLOB NOT NULL,
+                created_at TEXT NOT NULL
+            )
+            """,
+            """
+            CREATE TABLE audit_events (
+                audit_id TEXT PRIMARY KEY,
+                canonical_json BLOB NOT NULL,
+                created_at TEXT NOT NULL
+            )
+            """,
+            """
+            CREATE TRIGGER review_artifacts_reject_update
+            BEFORE UPDATE ON review_artifacts
+            BEGIN
+                SELECT RAISE(ABORT, 'review_artifacts are immutable');
+            END
+            """,
+            """
+            CREATE TRIGGER feedback_reject_update
+            BEFORE UPDATE ON feedback
+            BEGIN
+                SELECT RAISE(ABORT, 'feedback is immutable');
+            END
+            """,
+            """
+            CREATE TRIGGER audit_events_reject_update
+            BEFORE UPDATE ON audit_events
+            BEGIN
+                SELECT RAISE(ABORT, 'audit_events are immutable');
+            END
+            """,
+        ),
+    ),
 )
