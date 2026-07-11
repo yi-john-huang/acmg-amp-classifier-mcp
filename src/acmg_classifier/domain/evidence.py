@@ -228,6 +228,21 @@ class SegregationObservation(EvidenceModel):
     non_segregations: Annotated[int, Field(ge=0, strict=True)] | None = None
     phenotype_defined: bool | None = None
 
+    @model_validator(mode="after")
+    def validate_segregation_counts(self) -> Self:
+        if (
+            self.informative_meioses is not None
+            and self.co_segregations is not None
+            and self.non_segregations is not None
+            and self.co_segregations + self.non_segregations
+            > self.informative_meioses
+        ):
+            raise ValueError(
+                "co_segregations plus non_segregations must not exceed "
+                "informative_meioses"
+            )
+        return self
+
 
 class DeNovoObservation(EvidenceModel):
     kind: Literal[ObservationKind.DE_NOVO]

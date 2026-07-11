@@ -292,6 +292,19 @@ class EvidenceModelTests(unittest.TestCase):
                     }
                 )
 
+    def test_segregation_counts_cannot_exceed_informative_meioses(self) -> None:
+        from acmg_classifier.domain.evidence import SegregationObservation
+
+        with self.assertRaises(ValidationError):
+            SegregationObservation(
+                kind="segregation",
+                family_count=1,
+                informative_meioses=2,
+                co_segregations=2,
+                non_segregations=1,
+                phenotype_defined=True,
+            )
+
     def test_items_are_strict_variant_and_context_scoped_and_verify_supplied_ids(
         self,
     ) -> None:

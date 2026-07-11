@@ -78,7 +78,7 @@ def _segregation(*, lod_score: float, non_segregations: int = 0) -> EvidenceItem
             family_count=2,
             informative_meioses=5,
             lod_score=lod_score,
-            co_segregations=5,
+            co_segregations=5 - non_segregations,
             non_segregations=non_segregations,
             phenotype_defined=True,
         ),
