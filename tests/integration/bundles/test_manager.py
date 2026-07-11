@@ -161,11 +161,14 @@ class BundleManagerTests(unittest.TestCase):
     ):
         from acmg_classifier.infrastructure.bundles.manager import BundleManager
         from acmg_classifier.infrastructure.bundles.verifier import BundleVerifier
+        from acmg_classifier.infrastructure.bundles.transport import (
+            HttpDownloadTransport,
+        )
 
         return BundleManager(
             root,
             verifier=BundleVerifier({"test-key": self.public_key}),
-            transport=transport,
+            transport=transport or HttpDownloadTransport(allow_loopback_http=True),
             lock_timeout=lock_timeout,
         )
 
@@ -243,7 +246,9 @@ class BundleManagerTests(unittest.TestCase):
         limited_root = self.bundle_root / "limited"
         limited = self._manager_for_root(
             limited_root,
-            transport=HttpDownloadTransport(max_download_bytes=3),
+            transport=HttpDownloadTransport(
+                max_download_bytes=3, allow_loopback_http=True
+            ),
         )
         with (
             self._server(self.archive_bytes) as url,
