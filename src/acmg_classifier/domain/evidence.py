@@ -112,6 +112,11 @@ def _normalize_utc(value: datetime) -> datetime:
     return value.astimezone(UTC)
 
 
+# Source AF values are commonly rendered to six decimal places. Accept only
+# that published rounding error when AC and AN are also authoritative.
+POPULATION_FREQUENCY_ROUNDING_TOLERANCE = 1e-6
+
+
 class PopulationObservation(EvidenceModel):
     kind: Literal[ObservationKind.POPULATION]
     source_release: NonEmptyText
@@ -136,6 +141,24 @@ class PopulationObservation(EvidenceModel):
             and self.allele_count > self.allele_number
         ):
             raise ValueError("allele_count must not exceed allele_number")
+        if (
+            self.allele_count is not None
+            and self.allele_number is not None
+            and self.allele_frequency is not None
+        ):
+            if self.allele_number == 0:
+                if self.allele_frequency != 0:
+                    raise ValueError(
+                        "allele_frequency must be zero when allele_number is zero"
+                    )
+            elif (
+                abs(self.allele_frequency - (self.allele_count / self.allele_number))
+                > POPULATION_FREQUENCY_ROUNDING_TOLERANCE
+            ):
+                raise ValueError(
+                    "allele_frequency must match allele_count / allele_number "
+                    "within the documented 1e-6 rounding tolerance"
+                )
         return self
 
 
