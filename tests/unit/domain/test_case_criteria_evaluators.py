@@ -282,6 +282,24 @@ def test_pp4_bp2_and_ps4_require_typed_case_facts() -> None:
     assert ps4.status is CriterionStatus.APPLIED
 
 
+def test_ps4_rejects_p_value_limits_above_one() -> None:
+    assessment = _evaluate(
+        CriterionCode.PS4,
+        {
+            "minimum_odds_ratio": 5.0,
+            "maximum_p_value": 1.1,
+            "minimum_case_count": 100,
+            "minimum_control_count": 1000,
+        },
+        _case_control(),
+    )
+
+    assert assessment.status is CriterionStatus.NOT_EVALUABLE
+    assert assessment.limitations == (
+        "ruleset case-evidence configuration is invalid",
+    )
+
+
 def test_bp5_is_honestly_not_evaluable_until_structured_alternative_cause_exists() -> (
     None
 ):

@@ -316,7 +316,10 @@ class CaseCriterionEvaluator:
             specification.parameters, "minimum_odds_ratio", minimum=0.0
         )
         maximum_p_value, p_value_error = _number(
-            specification.parameters, "maximum_p_value", minimum=0.0
+            specification.parameters,
+            "maximum_p_value",
+            minimum=0.0,
+            maximum=1.0,
         )
         minimum_cases, cases_error = _integer(
             specification.parameters, "minimum_case_count", minimum=1
@@ -496,7 +499,11 @@ def _integer(
 
 
 def _number(
-    parameters: Mapping[str, JsonValue], key: str, *, minimum: float
+    parameters: Mapping[str, JsonValue],
+    key: str,
+    *,
+    minimum: float,
+    maximum: float | None = None,
 ) -> tuple[float | None, str | None]:
     value = parameters.get(key)
     if (
@@ -504,8 +511,14 @@ def _number(
         or isinstance(value, bool)
         or not math.isfinite(value)
         or value < minimum
+        or (maximum is not None and value > maximum)
     ):
-        return None, f"{key} must be a finite number >= {minimum}"
+        range_description = (
+            f"between {minimum} and {maximum}"
+            if maximum is not None
+            else f">= {minimum}"
+        )
+        return None, f"{key} must be a finite number {range_description}"
     return float(value), None
 
 
