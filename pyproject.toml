@@ -16,6 +16,9 @@ dependencies = [
   "platformdirs>=4.3,<5",
   "httpx>=0.28,<1",
   "pydantic>=2.11,<3",
+  "typer>=0.16,<1",
+  "rich>=14,<15",
+  "mcp>=1.12,<2",
 ]
 
 [project.scripts]

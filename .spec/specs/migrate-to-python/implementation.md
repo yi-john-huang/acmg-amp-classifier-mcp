@@ -675,3 +675,77 @@ Differences deliberately exclude timestamps and display prose; they compare only
 - `uv run pytest --no-cov tests/unit/domain/test_canonical_allele.py tests/unit/application/test_variant_normalization_service.py tests/unit/application/test_context_resolution_service.py tests/unit/application/test_explanation_service.py tests/integration/application/test_classification_service.py tests/integration/application/test_draft_workflow.py tests/integration/application/test_reinterpretation.py tests/integration/application/test_evidence_orchestrator_storage.py tests/integration/storage/test_record_store.py -q`: 71 passed.
 - `uv run mypy src/acmg_classifier/application/classification.py src/acmg_classifier/application/drafts.py src/acmg_classifier/application/explanation.py src/acmg_classifier/application/reinterpretation.py src/acmg_classifier/domain/normalization.py`: `OK`.
 - `uv run ruff check src/acmg_classifier/application/classification.py src/acmg_classifier/application/drafts.py src/acmg_classifier/application/explanation.py src/acmg_classifier/application/reinterpretation.py src/acmg_classifier/domain/normalization.py tests/unit/domain/test_canonical_allele.py tests/integration/application/test_classification_service.py tests/integration/application/test_draft_workflow.py tests/unit/application/test_explanation_service.py tests/integration/application/test_reinterpretation.py`: `OK`.
+
+## Task 8.1: CLI classify, explain, doctor, and data commands
+
+**Status:** Complete  
+**Date:** 2026-07-11
+
+### RED
+
+Added CLI contract tests for structured noninteractive classification, interactive one-question draft resumption, stored-detail explanation rendering, diagnostics exit codes, append-only feedback submission, feedback export/import, and bounded import files.
+
+### GREEN
+
+Added Typer/Rich `acmg` commands with text and deterministic JSON output, stdout/stderr separation, noninteractive exit code `2` for `needs_context`, local doctor/data readiness commands, detail-selectable immutable explanations, and feedback commands that use the shared application services.
+
+### REFACTOR
+
+Kept CLI request construction and response rendering in shared presentation helpers. JSON output is shared with MCP rather than independently shaped per command.
+
+## Task 8.2: MCP server and primary tools
+
+**Status:** Complete  
+**Date:** 2026-07-11
+
+### RED
+
+Added direct FastMCP contract coverage and a real stdio client/server subprocess test for initialization, tool discovery, structured workflow output, and typed runtime failure envelopes.
+
+### GREEN
+
+Added the official MCP SDK adapter with `classify_variant`, `explain_classification`, and `submit_feedback`. It reports progress when a request context supplies a progress token, preserves cancellation, returns structured JSON-equivalent workflow content, and keeps SDK logging off stdout.
+
+### REFACTOR
+
+Contained FastMCP types within `presentation/mcp`; application services remain SDK-independent.
+
+## Task 8.3: MCP resources and advanced-mode isolation
+
+**Status:** Complete  
+**Date:** 2026-07-11
+
+### RED
+
+Added resource template and advanced-tool discovery tests plus identifier-scoped evidence-resource retrieval coverage.
+
+### GREEN
+
+Added immutable classification, evidence snapshot, ruleset, and raw-snapshot resources. Raw content is loaded only by explicit content-addressed reference, base64 encoded, and bounded at 4 MiB. The raw snapshot tool is registered only with explicit advanced mode.
+
+### REFACTOR
+
+Added a narrow `ResourceService` and presentation resource protocol so raw/evidence/ruleset retrieval does not leak into routine tool responses.
+
+## Task 8.4: Feedback CLI/MCP workflow
+
+**Status:** Complete  
+**Date:** 2026-07-11
+
+### RED
+
+Added integration coverage for append-only feedback, exact canonical variant/context lookup, identifier-preserving export/import, atomic import rollback, CLI serialization, and MCP submission.
+
+### GREEN
+
+Added immutable feedback submission/record models, `FeedbackService`, SQLite query/export support, atomic batch import, CLI feedback commands, and MCP submission. Feedback remains a separate artifact and never enters evidence acquisition, criteria evaluation, or an existing classification record.
+
+### REFACTOR
+
+Used canonical allele keys and copied stored interpretation context for lookup, while preserving feedback IDs and timestamps across exports and imports.
+
+### Scientist interface phase verification
+
+- `uv run pytest --no-cov tests/integration/storage/test_record_store.py tests/integration/application/test_feedback.py tests/integration/presentation/test_cli.py tests/integration/presentation/test_mcp_server.py tests/integration/presentation/test_mcp_stdio.py tests/unit/application/test_resources.py tests/unit/presentation/test_serialization.py -q`: 23 passed.
+- `uv run mypy src`: `OK`.
+- Focused Ruff checks for all Phase 8 source and test paths: `OK`.

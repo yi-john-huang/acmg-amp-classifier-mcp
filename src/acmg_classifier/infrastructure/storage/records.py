@@ -10,6 +10,7 @@ from pathlib import Path
 
 from acmg_classifier.domain.canonical import canonical_json_bytes
 from acmg_classifier.domain.errors import JsonValue
+from acmg_classifier.domain.feedback import FeedbackRecord
 
 
 class RecordStoreError(RuntimeError):
@@ -45,6 +46,16 @@ class StoredClassification:
     classification_id: str
     canonical_json: bytes
     previous_classification_id: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class StoredFeedback:
+    """An immutable feedback artifact and its durable audit timestamp."""
+
+    feedback_id: str
+    classification_id: str
+    canonical_json: bytes
+    created_at: datetime
 
 
 class SQLiteRecordStore:
@@ -171,7 +182,14 @@ class SQLiteRecordStore:
             previous_classification_id=str(row[1]) if row[1] is not None else None,
         )
 
-    def append_feedback(self, classification_id: str, feedback: JsonValue) -> str:
+    def append_feedback(
+        self,
+        classification_id: str,
+        feedback: JsonValue,
+        *,
+        feedback_id: str | None = None,
+        created_at: datetime | None = None,
+    ) -> str:
         """Append user feedback without changing its classification."""
         return self._append_classification_artifact(
             table="feedback",
@@ -179,6 +197,8 @@ class SQLiteRecordStore:
             prefix="fb",
             classification_id=classification_id,
             content=feedback,
+            artifact_id=feedback_id,
+            created_at=created_at,
         )
 
     def append_review(self, classification_id: str, review: JsonValue) -> str:
@@ -190,6 +210,61 @@ class SQLiteRecordStore:
             classification_id=classification_id,
             content=review,
         )
+
+    def list_feedback(
+        self,
+        classification_id: str | None = None,
+    ) -> tuple[StoredFeedback, ...]:
+        """Return immutable feedback in a deterministic audit order."""
+        statement = """
+            SELECT feedback_id, classification_id, canonical_json, created_at
+            FROM feedback
+        """
+        parameters: tuple[str, ...] = ()
+        if classification_id is not None:
+            statement += " WHERE classification_id = ?"
+            parameters = (classification_id,)
+        statement += " ORDER BY created_at, feedback_id"
+        with closing(self._connect()) as connection:
+            rows = tuple(connection.execute(statement, parameters))
+        return tuple(
+            StoredFeedback(
+                feedback_id=str(row[0]),
+                classification_id=str(row[1]),
+                canonical_json=bytes(row[2]),
+                created_at=datetime.fromisoformat(str(row[3]).replace("Z", "+00:00")),
+            )
+            for row in rows
+        )
+
+    def append_feedback_records(
+        self,
+        records: tuple[FeedbackRecord, ...],
+    ) -> tuple[str, ...]:
+        """Append an import batch atomically while preserving all audit fields."""
+        with closing(self._connect()) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            try:
+                for record in records:
+                    self._require_classification(connection, record.classification_id)
+                    connection.execute(
+                        """
+                        INSERT INTO feedback
+                            (feedback_id, classification_id, canonical_json, created_at)
+                        VALUES (?, ?, ?, ?)
+                        """,
+                        (
+                            record.feedback_id,
+                            record.classification_id,
+                            canonical_json_bytes(record.to_canonical_content()),
+                            _utc_text(record.submitted_at),
+                        ),
+                    )
+                connection.commit()
+            except Exception:
+                connection.rollback()
+                raise
+        return tuple(record.feedback_id for record in records)
 
     def append_audit(self, event: JsonValue) -> str:
         """Append an independent audit event."""
@@ -213,8 +288,13 @@ class SQLiteRecordStore:
         prefix: str,
         classification_id: str,
         content: JsonValue,
+        artifact_id: str | None = None,
+        created_at: datetime | None = None,
     ) -> str:
-        artifact_id = _new_id(prefix)
+        artifact_id = artifact_id or _new_id(prefix)
+        if not artifact_id.startswith(f"{prefix}_"):
+            raise ValueError(f"artifact ID must use {prefix}_ prefix")
+        created_at_text = _utc_text(created_at or self._now())
         if (table, id_column) not in {
             ("feedback", "feedback_id"),
             ("review_artifacts", "review_id"),
@@ -232,7 +312,7 @@ class SQLiteRecordStore:
                     artifact_id,
                     classification_id,
                     canonical_json_bytes(content),
-                    _utc_text(self._now()),
+                    created_at_text,
                 ),
             )
             connection.commit()
