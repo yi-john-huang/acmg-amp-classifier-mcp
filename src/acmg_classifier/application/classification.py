@@ -591,8 +591,8 @@ class ClassificationService:
                     )
             except asyncio.CancelledError:
                 raise
-            except Exception:
-                return self._failed("CLASSIFICATION_PERSISTENCE_FAILED")
+            except Exception as error:
+                return self._failed(_finalization_error_code(error))
             return ConflictClassificationResponse(
                 status=WorkflowStatus.CONFLICT,
                 normalized_variant=normalized,
@@ -659,8 +659,8 @@ class ClassificationService:
                 raise RuntimeError("record store returned an empty classification ID")
         except asyncio.CancelledError:
             raise
-        except Exception:
-            return self._failed("CLASSIFICATION_PERSISTENCE_FAILED")
+        except Exception as error:
+            return self._failed(_finalization_error_code(error))
         return CompletedClassificationResponse(
             status=WorkflowStatus.COMPLETED,
             classification_id=classification_id,
@@ -1177,6 +1177,13 @@ def _snapshot_id_for(snapshot: EvidenceSnapshot) -> str:
     if snapshot_id is None:
         raise RuntimeError("evidence acquisition returned an unassigned snapshot ID")
     return snapshot_id
+
+
+
+def _finalization_error_code(error: Exception) -> str:
+    if type(error).__name__ == "DraftRevisionConflictError":
+        return "DRAFT_REVISION_CONFLICT"
+    return "CLASSIFICATION_PERSISTENCE_FAILED"
 
 
 def _record_payload(

@@ -508,6 +508,8 @@ def _store_error(error: Exception) -> DraftResumeError:
         return DraftResumeError("DRAFT_EXPIRED")
     if name == "DraftCompletedError":
         return DraftResumeError("DRAFT_ALREADY_COMPLETED")
+    if name == "DraftRevisionConflictError":
+        return DraftResumeError("DRAFT_REVISION_CONFLICT")
     if name == "RecordNotFoundError":
         return DraftResumeError("DRAFT_TOKEN_INVALID")
     return DraftResumeError("DRAFT_PERSISTENCE_FAILED")

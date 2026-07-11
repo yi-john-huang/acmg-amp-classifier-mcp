@@ -112,6 +112,10 @@ class SQLiteRecordStoreTests(unittest.TestCase):
             )
 
         self.assertIsNone(store.get_draft(draft_id).completed_classification_id)
+        self.assertEqual(
+            store.get_draft(draft_id).request_json,
+            b'{"build":"GRCh38","variant":"NM_007294.4:c.5266dupC"}',
+        )
 
     def test_finalization_completes_draft_and_record_is_immutable(self) -> None:
         from acmg_classifier.infrastructure.storage.records import (
