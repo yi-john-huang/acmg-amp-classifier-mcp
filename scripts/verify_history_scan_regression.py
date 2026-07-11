@@ -36,18 +36,22 @@ def main() -> int:
             _run(repository, "config", "user.email", "security-test@example.invalid")
             _run(repository, "config", "user.name", "Security Regression")
 
-            credential_file = repository / "removed-history-fixture.env"
+            credential_file = (
+                repository / "scripts" / "verify_history_scan_regression.py"
+            )
+            credential_file.parent.mkdir()
+            credential_path = credential_file.relative_to(repository).as_posix()
             credential = "A" + "KIA" + "".join(("QWER", "TYUI", "OPAS", "DFGH"))
             credential_file.write_text(
                 "credential=" + credential + "\n", encoding="utf-8"
             )
-            _run(repository, "add", credential_file.name)
+            _run(repository, "add", credential_path)
             _run(repository, "commit", "--quiet", "-m", "add test credential")
-            _run(repository, "rm", "--quiet", credential_file.name)
+            _run(repository, "rm", "--quiet", credential_path)
             _run(repository, "commit", "--quiet", "-m", "remove test credential")
 
             current_tree = subprocess.run(
-                ["git", "ls-files", "--error-unmatch", credential_file.name],
+                ["git", "ls-files", "--error-unmatch", credential_path],
                 cwd=repository,
                 check=False,
                 capture_output=True,

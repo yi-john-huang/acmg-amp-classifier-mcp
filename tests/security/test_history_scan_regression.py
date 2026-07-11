@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+import pytest
 
 
 def _gitleaks_stub(tmp_path: Path, exit_code: int) -> Path:
@@ -120,3 +123,45 @@ def test_shared_history_scanner_limits_pushes_to_the_event_range(
     assert f"--log-opts={before}..{head}" in arguments_path.read_text(
         encoding="utf-8"
     )
+
+
+def test_history_scanner_does_not_exempt_regression_script_path(
+    tmp_path: Path,
+) -> None:
+    """A credential in the regression script path must remain detectable."""
+    gitleaks_command = shutil.which("gitleaks")
+    if gitleaks_command is None:
+        pytest.skip("Gitleaks is required to verify the shared scanner policy")
+
+    root = Path(__file__).resolve().parents[2]
+    repository = tmp_path / "repository"
+    fixture_path = repository / "scripts" / "verify_history_scan_regression.py"
+    fixture_path.parent.mkdir(parents=True)
+    credential = "".join(("A", "KIA", "QWERTYUIOPASDFGH"))
+    fixture_path.write_text(
+        (root / "scripts" / fixture_path.name).read_text(encoding="utf-8")
+        + f'\nfixture_credential = "{credential}"\n',
+        encoding="utf-8",
+    )
+    _run_git(repository, "init", "--quiet")
+    _run_git(repository, "config", "user.email", "security-test@example.invalid")
+    _run_git(repository, "config", "user.name", "Security Regression")
+    _run_git(repository, "add", fixture_path.relative_to(repository).as_posix())
+    _run_git(repository, "commit", "--quiet", "-m", "add fixture credential")
+
+    environment = os.environ | {"GITLEAKS_COMMAND": gitleaks_command}
+    completed = subprocess.run(
+        [
+            sys.executable,
+            root / "scripts" / "run_history_secret_scan.py",
+            "--repository",
+            str(repository),
+        ],
+        cwd=root,
+        check=False,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+
+    assert completed.returncode != 0, completed.stderr

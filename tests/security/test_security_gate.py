@@ -226,7 +226,10 @@ def test_security_workflow_uses_locked_audit_and_fail_closed_secret_scan() -> No
     assert 'name = "detect-secrets"' in lock
     assert "uv sync --frozen --no-dev --group security" in workflow
     assert "uv run --frozen --no-sync --no-dev --group security pip-audit" in workflow
-    assert "uv run --frozen --no-sync --no-dev --group security detect-secrets-hook" in workflow
+    assert (
+        "uv run --frozen --no-sync --no-dev --group security detect-secrets-hook"
+        in workflow
+    )
     assert "--baseline .secrets.baseline --" in workflow
     assert "git ls-files -z" in workflow
     assert "branches:" in workflow
@@ -275,5 +278,5 @@ def test_history_secret_scan_uses_verified_gitleaks_and_event_range() -> None:
     assert "GITLEAKS_BASE_REF" in workflow
     assert "--base-ref \"$GITLEAKS_BASE_REF\"" in workflow
     assert "--before \"$GITLEAKS_BEFORE\"" in workflow
-    assert "[[allowlists]]" in gitleaks_config
-    assert "^scripts/verify_history_scan_regression\\.py$" in gitleaks_config
+    assert "[[allowlists]]" not in gitleaks_config
+    assert "^scripts/verify_history_scan_regression\\.py$" not in gitleaks_config
