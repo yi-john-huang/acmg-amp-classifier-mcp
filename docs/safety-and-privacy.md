@@ -37,11 +37,11 @@ approval, or clinical compliance posture.
 
 ## Reporting a vulnerability
 
-Do not include a secret, patient identifier, or exploit payload in an issue.
-Contact the project maintainer through the repository's private security contact
-or your organization’s approved reporting channel. Until a published response
-and update policy is adopted, the support-policy fields remain an external
-prerequisite; see [support policy](support-policy.md).
+No project private security contact or response policy is currently published.
+Do not include a secret, patient identifier, or exploit payload in a public
+issue. Use your organization's approved reporting channel where applicable.
+Publishing a private reporting contact, response targets, and update policy
+remains an external prerequisite; see [support policy](support-policy.md).
 
 ## Interpretation safety
 
