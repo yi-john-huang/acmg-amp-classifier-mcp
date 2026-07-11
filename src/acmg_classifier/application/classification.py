@@ -439,11 +439,20 @@ class ClassificationService:
         if readiness_failure is not None:
             return readiness_failure
         if normalized_override is None:
-            normalization = await self._normalizer.normalize_async(
-                request.variant,
-                context=request.context,
-                policy=_normalization_policy(request.evidence_policy, request.context),
-            )
+            policy = _normalization_policy(request.evidence_policy, request.context)
+            normalize_async = getattr(self._normalizer, "normalize_async", None)
+            if callable(normalize_async):
+                normalization = await normalize_async(
+                    request.variant,
+                    context=request.context,
+                    policy=policy,
+                )
+            else:
+                normalization = self._normalizer.normalize(
+                    request.variant,
+                    context=request.context,
+                    policy=policy,
+                )
             if isinstance(normalization, NormalizationFailure):
                 return self._normalization_failure(normalization)
             if not isinstance(normalization, NormalizationSuccess):
