@@ -470,6 +470,24 @@ def test_doctor_writes_json_to_stdout_and_honors_repair() -> None:
     assert payload["ready"] is False
     assert payload["issue"]["code"] == "BUNDLE_UNAVAILABLE"
 
+def test_doctor_text_reports_bootstrap_readiness() -> None:
+    runner = CliRunner()
+
+    result = runner.invoke(
+        app,
+        ["doctor"],
+        obj={
+            "services": PresentationServices(
+                classifier=_Classifier(),
+                bootstrap=_Bootstrap(),
+                replay=_Replay(),
+            )
+        },
+    )
+
+    assert result.exit_code == 1
+    assert "status: not_ready" in result.stdout
+
 
 def _normalized() -> NormalizedVariant:
     key = CanonicalAlleleKey(

@@ -434,7 +434,10 @@ def _emit(payload: Mapping[str, JsonValue], output_format: str) -> None:
 
 
 def _text(payload: Mapping[str, JsonValue]) -> str:
-    status = str(payload.get("status", "unknown"))
+    status_value = payload.get("status")
+    if status_value is None and isinstance(payload.get("ready"), bool):
+        status_value = "ready" if payload["ready"] else "not_ready"
+    status = str(status_value or "unknown")
     lines = [f"status: {status}"]
     classification = payload.get("classification")
     if classification is not None:
