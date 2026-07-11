@@ -4,6 +4,8 @@ import json
 from dataclasses import replace
 from pathlib import Path
 
+import pytest
+
 from acmg_classifier.application.normalization import VariantNormalizationService
 from acmg_classifier.domain.enums import GenomeBuild
 from acmg_classifier.domain.models import InterpretationContext
@@ -239,6 +241,29 @@ def test_unsupported_parse_never_calls_provider() -> None:
 
     assert isinstance(result, NormalizationFailure)
     assert result.code is NormalizationFailureCode.UNSUPPORTED_VARIANT_SCOPE
+    assert provider.calls == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("value", "expected_code"),
+    [
+        ("NM_000492.3:c.1A>GG", NormalizationFailureCode.INVALID_VARIANT_SYNTAX),
+        ("p.Arg273His", NormalizationFailureCode.UNSUPPORTED_VARIANT_SCOPE),
+    ],
+)
+async def test_async_rejected_parse_never_calls_provider(
+    value: str, expected_code: NormalizationFailureCode
+) -> None:
+    provider = FakeProvider("local", _success("local"))
+    service = VariantNormalizationService(providers=(provider,))
+
+    result = await service.normalize_async(value)
+    expected = service.normalize(value)
+
+    assert isinstance(result, NormalizationFailure)
+    assert result == expected
+    assert result.code is expected_code
     assert provider.calls == 0
 
 

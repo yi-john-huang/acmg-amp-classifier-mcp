@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import unittest
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from pathlib import Path
 
 from acmg_classifier.application.normalization import VariantNormalizationService
@@ -45,6 +45,37 @@ class RecordedTransport:
             headers={"Content-Type": "application/json"},
             body=chunks(),
         )
+
+
+class DispatchRecordingTransport:
+    def __init__(self, monotonic: Callable[[], float]) -> None:
+        self._monotonic = monotonic
+        self.dispatch_times: list[float] = []
+
+    async def request(self, _: HttpRequest) -> HttpResponse:
+        self.dispatch_times.append(self._monotonic())
+
+        async def chunks() -> AsyncIterator[bytes]:
+            yield b"{}"
+
+        return HttpResponse(
+            status_code=200,
+            headers={"Content-Type": "application/json"},
+            body=chunks(),
+        )
+
+
+class VirtualMonotonicClock:
+    def __init__(self) -> None:
+        self.value = 0.0
+
+    def monotonic(self) -> float:
+        return self.value
+
+    async def sleep(self, delay: float) -> None:
+        started_at = self.value
+        await asyncio.sleep(0)
+        self.value = max(self.value, started_at + delay)
 
 
 class StatusTransport:
@@ -289,6 +320,36 @@ class AsyncNcbiVariationNormalizationProviderTests(unittest.IsolatedAsyncioTestC
             "cak1:GRCh38:NC_000007.14:117559592:C>T",
         )
         self.assertEqual(len(transport.requests), 2)
+
+    async def test_concurrent_requests_reserve_distinct_rate_limit_slots(self) -> None:
+        from acmg_classifier.infrastructure.normalization.ncbi import (
+            NCBIVariationNormalizationProvider,
+        )
+
+        clock = VirtualMonotonicClock()
+        transport = DispatchRecordingTransport(clock.monotonic)
+        provider = NCBIVariationNormalizationProvider(
+            client=SourceHttpClient(
+                transport=transport,
+                policy=HttpPolicy(
+                    source_id="ncbi_variation",
+                    allowed_hosts=frozenset({"api.ncbi.nlm.nih.gov"}),
+                    timeout_seconds=0.01,
+                    max_response_bytes=100_000,
+                    max_retries=0,
+                ),
+            ),
+            monotonic=clock.monotonic,
+            async_sleep=clock.sleep,
+        )
+
+        await provider._request_json("https://api.ncbi.nlm.nih.gov/variation/v0/warm")
+        await asyncio.gather(
+            provider._request_json("https://api.ncbi.nlm.nih.gov/variation/v0/one"),
+            provider._request_json("https://api.ncbi.nlm.nih.gov/variation/v0/two"),
+        )
+
+        self.assertEqual(transport.dispatch_times, [0.0, 1.0, 2.0])
 
     async def test_async_normalization_propagates_cancellation(self) -> None:
         transport = BlockingTransport()

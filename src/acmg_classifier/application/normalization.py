@@ -166,8 +166,22 @@ class VariantNormalizationService:
     ) -> NormalizationProviderResult:
         """Normalize through async-capable providers without blocking an event loop."""
         parsed = value if isinstance(value, ParsedVariant) else self.parse(value)
-        if isinstance(parsed, (InvalidVariant, UnsupportedVariant)):
-            return self.normalize(parsed, context=context, policy=policy)
+        if isinstance(parsed, InvalidVariant):
+            return NormalizationFailure(
+                NormalizationFailureCode.INVALID_VARIANT_SYNTAX,
+                parsed.message,
+                False,
+                field="variant",
+                details={"reason": parsed.reason},
+            )
+        if isinstance(parsed, UnsupportedVariant):
+            return NormalizationFailure(
+                NormalizationFailureCode.UNSUPPORTED_VARIANT_SCOPE,
+                parsed.message,
+                False,
+                field="variant",
+                details={"reason": parsed.reason},
+            )
 
         resolved_context = context or InterpretationContext()
         resolved_policy = policy or NormalizationPolicy()

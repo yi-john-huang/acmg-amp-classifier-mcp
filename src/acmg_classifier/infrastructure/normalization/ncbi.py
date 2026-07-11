@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import threading
 import time
 from collections.abc import Awaitable, Callable, Mapping
 from datetime import UTC, datetime
@@ -170,7 +171,8 @@ class NCBIVariationNormalizationProvider:
         self._clock = clock
         self._monotonic = monotonic
         self._async_sleep = async_sleep
-        self._last_request_at: float | None = None
+        self._next_request_at: float | None = None
+        self._slot_reservation_lock = threading.Lock()
 
     def normalize(
         self,
@@ -333,12 +335,15 @@ class NCBIVariationNormalizationProvider:
 
     async def _wait_for_ncbi_slot(self) -> None:
         now = self._monotonic()
-        if self._last_request_at is not None:
-            delay = _NCBI_MIN_REQUEST_INTERVAL_SECONDS - (now - self._last_request_at)
-            if delay > 0:
-                await self._async_sleep(delay)
-                now = self._monotonic()
-        self._last_request_at = now
+        with self._slot_reservation_lock:
+            next_request_at = self._next_request_at
+            slot_at = (
+                now if next_request_at is None else max(now, next_request_at)
+            )
+            self._next_request_at = slot_at + _NCBI_MIN_REQUEST_INTERVAL_SECONDS
+        delay = slot_at - now
+        if delay > 0:
+            await self._async_sleep(delay)
 
     def _contextual_url(self, parsed: ParsedVariant, build: GenomeBuild | None) -> str:
         encoded_hgvs = quote(parsed.normalized_input, safe="")
