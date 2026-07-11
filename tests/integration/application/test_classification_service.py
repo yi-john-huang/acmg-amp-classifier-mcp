@@ -198,8 +198,10 @@ class _OfflineCacheMissAdapter:
         self,
         variant: NormalizedVariant,
         *,
+        context_scope: EvidenceContextScope,
         policy: EvidencePolicy,
     ) -> EvidenceSourceResult:
+        del context_scope
         self.calls += 1
         self.policies.append(policy)
         if policy.mode is not EvidencePolicyMode.OFFLINE:
@@ -283,9 +285,10 @@ class _PopulationAdapter:
         self,
         variant: NormalizedVariant,
         *,
+        context_scope: EvidenceContextScope,
         policy: EvidencePolicy,
     ) -> EvidenceSourceResult:
-        del policy
+        del context_scope, policy
         return EvidenceSourceResult(
             source_id=self.source_id,
             evidence_items=(self.item,),
@@ -1091,9 +1094,7 @@ def _assessment(
         code=code,
         status=status,
         original_strength=strength,
-        applied_strength=(
-            strength if status is CriterionStatus.APPLIED else None
-        ),
+        applied_strength=(strength if status is CriterionStatus.APPLIED else None),
         evidence_ids=(evidence_id,),
         comparisons=(),
         rationale_template=f"{code.value} applied",

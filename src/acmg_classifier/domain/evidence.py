@@ -467,9 +467,13 @@ class EvidenceItem(EvidenceModel):
         variant_key: str,
         context_scope: EvidenceContextScope,
     ) -> None:
-        """Reject evidence whose source-specific scope conflicts with the request."""
+        """Reject evidence whose derivation-specific scope cannot serve the request."""
         if self.variant_key != variant_key:
             raise ValueError("evidence variant_key does not match requested variant")
+        if self.derivation is not EvidenceDerivation.SOURCE:
+            if self.context_scope != context_scope:
+                raise ValueError("evidence context_scope must exactly match request")
+            return
         for field_name in (
             "genome_build",
             "transcript",

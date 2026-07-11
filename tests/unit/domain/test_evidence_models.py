@@ -754,6 +754,61 @@ class EvidenceModelTests(unittest.TestCase):
                 ),
             )
 
+    def test_only_source_evidence_may_use_a_narrower_context_scope(self) -> None:
+        from acmg_classifier.domain.evidence import EvidenceContextScope, EvidenceItem
+
+        requested_scope = EvidenceContextScope.model_validate(
+            {
+                "genome_build": "GRCh38",
+                "transcript": "NM_007294.4",
+                "disease_id": "MONDO:0011450",
+                "inheritance": "autosomal_dominant",
+            }
+        )
+        for derivation, provenance in (
+            (
+                "user",
+                {
+                    "kind": "user",
+                    "submitted_at": datetime(2026, 7, 11, tzinfo=UTC),
+                    "confirmation_method": "laboratory report",
+                    "actor_id": "usr_clinician-1",
+                },
+            ),
+            (
+                "derived",
+                {
+                    "kind": "derived",
+                    "derivation_name": "evidence synthesis",
+                    "component_version": "1.0",
+                    "input_evidence_ids": ("ev_" + "a" * 64,),
+                    "generated_at": datetime(2026, 7, 11, tzinfo=UTC),
+                },
+            ),
+            (
+                "review",
+                {
+                    "kind": "review",
+                    "review_id": "review_" + "a" * 32,
+                    "reviewer_id": "usr_reviewer-1",
+                    "reviewed_at": datetime(2026, 7, 11, tzinfo=UTC),
+                    "input_evidence_ids": ("ev_" + "a" * 64,),
+                },
+            ),
+        ):
+            with self.subTest(derivation=derivation):
+                payload = evidence_payload(OBSERVATION_PAYLOADS["population"])
+                payload["context_scope"] = {"genome_build": "GRCh38"}
+                payload["derivation"] = derivation
+                payload["provenance"] = provenance
+                payload.pop("raw_snapshot_ref")
+                item = EvidenceItem.model_validate(payload)
+                with self.assertRaises(ValueError):
+                    item.assert_applies_to(
+                        variant_key="ga4gh:VA.example",
+                        context_scope=requested_scope,
+                    )
+
 
 if __name__ == "__main__":
     unittest.main()
