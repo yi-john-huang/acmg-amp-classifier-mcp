@@ -52,7 +52,7 @@ jobs:
       - name: Scan all tracked repository content against reviewed baseline
         run: |
           uv sync --frozen --no-dev --group security
-          git ls-files -z | xargs -0 uv run --frozen --no-sync --no-dev --group security detect-secrets-hook --baseline .secrets.baseline
+          git ls-files -z | xargs -0 uv run --frozen --no-sync --no-dev --group security detect-secrets-hook --baseline .secrets.baseline --
 
   history-secret-scan:
     name: Fail-closed complete Git history secret scan
