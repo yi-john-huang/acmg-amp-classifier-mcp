@@ -204,7 +204,7 @@ class ACMGAMPClient {
 async function exampleWorkflow() {
     console.log('=== ACMG/AMP MCP Client Example ===\n');
 
-    const client = new MCPClient('./bin/mcp-server', ['--config', 'config/development.yaml']);
+    const client = new MCPClient('acmg-mcp', []);
     const acmgClient = new ACMGAMPClient(client);
 
     try {
@@ -295,7 +295,7 @@ async function exampleWorkflow() {
 }
 
 async function interactiveSession() {
-    const client = new MCPClient('./bin/mcp-server', ['--config', 'config/development.yaml']);
+    const client = new MCPClient('acmg-mcp', []);
     const acmgClient = new ACMGAMPClient(client);
 
     try {

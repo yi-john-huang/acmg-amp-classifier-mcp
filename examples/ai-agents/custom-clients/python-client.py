@@ -293,7 +293,7 @@ async def example_workflow():
     """Example clinical workflow using the MCP client"""
     
     # Initialize client
-    client = MCPClient("./bin/mcp-server", ["--config", "config/development.yaml"])
+    client = MCPClient("acmg-mcp", [])
     acmg_client = ACMGAMPClient(client)
     
     try:
@@ -386,7 +386,7 @@ async def example_workflow():
 async def interactive_session():
     """Interactive session for testing MCP tools"""
     
-    client = MCPClient("./bin/mcp-server", ["--config", "config/development.yaml"])
+    client = MCPClient("acmg-mcp", [])
     acmg_client = ACMGAMPClient(client)
     
     try:
