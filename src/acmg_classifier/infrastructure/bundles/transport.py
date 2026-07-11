@@ -30,6 +30,22 @@ class ProgressEvent:
     total_bytes: int | None
 
 
+class _ValidatedRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Reject unsafe redirect targets before urllib follows them."""
+
+    def redirect_request(
+        self,
+        request: urllib.request.Request,
+        fp: object,
+        code: int,
+        msg: str,
+        headers: object,
+        new_url: str,
+    ) -> urllib.request.Request | None:
+        _validate_download_url(new_url)
+        return super().redirect_request(request, fp, code, msg, headers, new_url)
+
+
 type ProgressSink = Callable[[ProgressEvent], None]
 
 
@@ -77,7 +93,8 @@ class HttpDownloadTransport:
         headers = {"Range": f"bytes={offset}-"} if offset else {}
         request = urllib.request.Request(url, headers=headers)
         destination.parent.mkdir(parents=True, exist_ok=True)
-        with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
+        opener = urllib.request.build_opener(_ValidatedRedirectHandler())
+        with opener.open(request, timeout=self.timeout_seconds) as response:
             _validate_download_url(response.geturl())
             status = response.status
             append = offset > 0 and status == 206
