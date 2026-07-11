@@ -99,6 +99,36 @@ class SQLiteSourceCacheTests(unittest.TestCase):
         self.assertEqual(failure.state, CacheLookupState.INELIGIBLE)
         self.assertFalse(failure.eligible)
 
+    def test_deleted_evidence_reference_makes_valid_raw_cache_ineligible(self) -> None:
+        from acmg_classifier.infrastructure.storage.source_cache import CacheLookupState
+
+        cache = self.cache()
+        query = self.query()
+        evidence_id = self.evidence_store.put_evidence({"source": "clinvar"})
+        raw = self.evidence_store.put_raw_snapshot(b"{}", "application/json")
+        cache.put_success(
+            query,
+            retrieved_at=self.now,
+            expires_at=self.now + timedelta(hours=1),
+            evidence_ids=(evidence_id,),
+            raw_snapshot_ref=raw.snapshot_hash,
+            response_hash=raw.snapshot_hash.removeprefix("raw_"),
+            media_type=raw.media_type,
+            byte_size=raw.byte_size,
+        )
+
+        with self.evidence_store._connect() as connection:
+            connection.execute("DROP TRIGGER evidence_items_reject_delete")
+            connection.execute(
+                "DELETE FROM evidence_items WHERE evidence_id = ?", (evidence_id,)
+            )
+            connection.commit()
+
+        lookup = cache.get_eligible(query, policy=self.policy(), now=self.now)
+
+        self.assertEqual(lookup.state, CacheLookupState.INELIGIBLE)
+        self.assertFalse(lookup.eligible)
+
     def test_missing_or_mismatched_raw_cache_provenance_is_ineligible(self) -> None:
         from acmg_classifier.infrastructure.storage.source_cache import CacheLookupState
 

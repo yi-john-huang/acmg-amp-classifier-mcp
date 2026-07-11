@@ -123,7 +123,10 @@ class SQLiteSourceCache:
             entry = _entry_from_row(row)
         except (TypeError, ValueError, json.JSONDecodeError):
             return CacheLookup(CacheLookupState.INELIGIBLE)
-        if not self._provenance_references_match(entry):
+        if (
+            not self._evidence_references_exist(entry.evidence_ids)
+            or not self._provenance_references_match(entry)
+        ):
             return CacheLookup(CacheLookupState.INELIGIBLE, entry)
         if entry.status is SourceCacheStatus.FAILURE:
             return CacheLookup(CacheLookupState.INELIGIBLE, entry)
