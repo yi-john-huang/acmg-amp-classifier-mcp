@@ -30,6 +30,28 @@ class ProgressEvent:
     total_bytes: int | None
 
 
+class _ValidatedRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Reject unsafe redirect targets before urllib follows them."""
+
+    def __init__(self, *, allow_loopback_http: bool = False) -> None:
+        super().__init__()
+        self._allow_loopback_http = allow_loopback_http
+
+    def redirect_request(
+        self,
+        request: urllib.request.Request,
+        fp: object,
+        code: int,
+        msg: str,
+        headers: object,
+        new_url: str,
+    ) -> urllib.request.Request | None:
+        _validate_download_url(
+            new_url, allow_loopback_http=self._allow_loopback_http
+        )
+        return super().redirect_request(request, fp, code, msg, headers, new_url)
+
+
 type ProgressSink = Callable[[ProgressEvent], None]
 
 
@@ -55,6 +77,7 @@ class HttpDownloadTransport:
         timeout_seconds: float = 60,
         chunk_size: int = 64 * 1024,
         max_download_bytes: int = 300 * 1024 * 1024,
+        allow_loopback_http: bool = False,
     ) -> None:
         if timeout_seconds <= 0 or chunk_size < 1 or max_download_bytes < 1:
             raise ValueError(
@@ -63,6 +86,7 @@ class HttpDownloadTransport:
         self.timeout_seconds = timeout_seconds
         self.chunk_size = chunk_size
         self.max_download_bytes = max_download_bytes
+        self.allow_loopback_http = allow_loopback_http
 
     def download(
         self,
@@ -73,12 +97,17 @@ class HttpDownloadTransport:
         progress: ProgressSink,
     ) -> None:
         """Append a valid partial response or safely restart a full response."""
-        _validate_download_url(url)
+        _validate_download_url(url, allow_loopback_http=self.allow_loopback_http)
         headers = {"Range": f"bytes={offset}-"} if offset else {}
         request = urllib.request.Request(url, headers=headers)
         destination.parent.mkdir(parents=True, exist_ok=True)
-        with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
-            _validate_download_url(response.geturl())
+        opener = urllib.request.build_opener(
+            _ValidatedRedirectHandler(allow_loopback_http=self.allow_loopback_http)
+        )
+        with opener.open(request, timeout=self.timeout_seconds) as response:
+            _validate_download_url(
+                response.geturl(), allow_loopback_http=self.allow_loopback_http
+            )
             status = response.status
             append = offset > 0 and status == 206
             if append:
@@ -108,10 +137,14 @@ class HttpDownloadTransport:
                 os.fsync(output.fileno())
 
 
-def _validate_download_url(url: str) -> None:
+def _validate_download_url(url: str, *, allow_loopback_http: bool = False) -> None:
     parsed = urlparse(url)
     if parsed.scheme == "https":
         return
-    if parsed.scheme == "http" and parsed.hostname in {"127.0.0.1", "localhost", "::1"}:
+    if (
+        allow_loopback_http
+        and parsed.scheme == "http"
+        and parsed.hostname in {"127.0.0.1", "localhost", "::1"}
+    ):
         return
-    raise ValueError("Bundle downloads require HTTPS except for loopback tests")
+    raise ValueError("Bundle downloads require HTTPS")

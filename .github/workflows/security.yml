@@ -5,7 +5,8 @@ on:
   push:
     branches:
       - main
-
+      - master
+      - develop
 permissions:
   contents: read
 
@@ -21,12 +22,15 @@ jobs:
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.13"
-      - name: Install pinned uv
-        run: python -m pip install --disable-pip-version-check "uv==0.7.22"
+      - name: Set up pinned uv
+        uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v6.1.0
+        with:
+          version: "0.7.22"
       - name: Audit the locked runtime dependency set
         run: |
+          uv sync --frozen --no-dev --group security
           uv export --locked --no-dev --format requirements-txt --no-emit-project -o /tmp/runtime-requirements.txt
-          uvx --from "pip-audit==2.9.0" pip-audit --strict --requirement /tmp/runtime-requirements.txt
+          uv run --frozen --no-sync --no-dev --group security pip-audit --strict --requirement /tmp/runtime-requirements.txt
 
   secret-scan:
     name: Fail-closed local secret scan
@@ -41,8 +45,45 @@ jobs:
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.13"
-      - name: Install pinned uv
-        run: python -m pip install --disable-pip-version-check "uv==0.7.22"
+      - name: Set up pinned uv
+        uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v6.1.0
+        with:
+          version: "0.7.22"
       - name: Scan all tracked repository content against reviewed baseline
         run: |
-          git ls-files -z | xargs -0 uvx --from "detect-secrets==1.5.0" detect-secrets-hook --baseline .secrets.baseline
+          uv sync --frozen --no-dev --group security
+          git ls-files -z | xargs -0 uv run --frozen --no-sync --no-dev --group security detect-secrets-hook --baseline .secrets.baseline --
+
+  history-secret-scan:
+    name: Fail-closed complete Git history secret scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out complete history for scanning
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Install checksum-verified Gitleaks
+        run: |
+          archive="$RUNNER_TEMP/gitleaks_8.30.0_linux_x64.tar.gz"
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.30.0/gitleaks_8.30.0_linux_x64.tar.gz \
+            --output "$archive"
+          echo "79a3ab579b53f71efd634f3aaf7e04a0fa0cf206b7ed434638d1547a2470a66e  $archive" | sha256sum --check --status
+          tar --extract --gzip --file "$archive" --directory "$RUNNER_TEMP"
+          install -d "$RUNNER_TEMP/gitleaks-bin"
+          install "$RUNNER_TEMP/gitleaks" "$RUNNER_TEMP/gitleaks-bin/gitleaks"
+          echo "$RUNNER_TEMP/gitleaks-bin" >> "$GITHUB_PATH"
+      - name: Prove history-only credentials remain observable
+        run: python scripts/verify_history_scan_regression.py
+      - name: Scan event history for secrets
+        env:
+          GITLEAKS_BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || '' }}
+          GITLEAKS_BEFORE: ${{ github.event.before }}
+          GITLEAKS_HEAD: ${{ github.sha }}
+        run: |
+          if [ -n "$GITLEAKS_BASE_REF" ]; then
+            python scripts/run_history_secret_scan.py --repository . --base-ref "$GITLEAKS_BASE_REF" --head "$GITLEAKS_HEAD"
+          else
+            python scripts/run_history_secret_scan.py --repository . --before "$GITLEAKS_BEFORE" --head "$GITLEAKS_HEAD"
+          fi

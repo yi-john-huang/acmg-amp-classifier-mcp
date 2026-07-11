@@ -163,3 +163,37 @@ def test_https_redirect_handler_rejects_http_destination() -> None:
         handler.redirect_request(
             request, None, 302, "Found", {}, "http://example.test/source"
         )
+
+
+def test_downgrade_redirect_fails_closed_and_cleans_staging(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from data_builder import sources
+
+    recipe = _loaded_recipe(tmp_path)
+    cache = tmp_path / "cache"
+
+    class _DowngradingOpener:
+        def __init__(self, handler: sources._HTTPSOnlyRedirectHandler) -> None:
+            self._handler = handler
+
+        def open(
+            self, request: sources.urllib.request.Request, *, timeout: int
+        ) -> _FakeResponse:
+            return self._handler.redirect_request(
+                request, None, 302, "Found", {}, "http://example.test/source"
+            )
+
+    def build_downgrading_opener(
+        handler_type: type[sources._HTTPSOnlyRedirectHandler],
+    ) -> _DowngradingOpener:
+        return _DowngradingOpener(handler_type())
+
+    monkeypatch.setattr(
+        sources.urllib.request, "build_opener", build_downgrading_opener
+    )
+
+    with pytest.raises(sources.SourceAcquisitionError, match="non-HTTPS redirect"):
+        sources.acquire_sources(recipe, cache)
+
+    assert not tuple(cache.iterdir())

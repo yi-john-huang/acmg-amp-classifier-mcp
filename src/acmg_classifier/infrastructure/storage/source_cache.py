@@ -12,6 +12,11 @@ from enum import StrEnum
 from pathlib import Path
 
 from acmg_classifier.domain.evidence import EvidencePolicy, EvidencePolicyMode
+from acmg_classifier.infrastructure.storage.evidence import (
+    RawSnapshotIntegrityError,
+    RawSnapshotMissingError,
+    SQLiteEvidenceStore,
+)
 from acmg_classifier.ports.evidence import SourceQuery
 
 _EVIDENCE_ID = re.compile(r"^ev_[0-9a-f]{64}$")
@@ -70,8 +75,11 @@ class CacheLookup:
 class SQLiteSourceCache:
     """Short-transaction cache index; it deliberately never performs network I/O."""
 
-    def __init__(self, database_path: Path) -> None:
+    def __init__(
+        self, database_path: Path, raw_snapshot_store: SQLiteEvidenceStore
+    ) -> None:
         self.database_path = database_path
+        self.raw_snapshot_store = raw_snapshot_store
 
     def get_eligible(
         self,
@@ -115,7 +123,10 @@ class SQLiteSourceCache:
             entry = _entry_from_row(row)
         except (TypeError, ValueError, json.JSONDecodeError):
             return CacheLookup(CacheLookupState.INELIGIBLE)
-        if not self._evidence_references_exist(entry.evidence_ids):
+        if (
+            not self._evidence_references_exist(entry.evidence_ids)
+            or not self._provenance_references_match(entry)
+        ):
             return CacheLookup(CacheLookupState.INELIGIBLE, entry)
         if entry.status is SourceCacheStatus.FAILURE:
             return CacheLookup(CacheLookupState.INELIGIBLE, entry)
@@ -272,6 +283,19 @@ class SQLiteSourceCache:
             )
             count = connection.execute(statement, evidence_ids).fetchone()[0]
         return int(count) == len(evidence_ids)
+
+    def _provenance_references_match(self, entry: SourceCacheEntry) -> bool:
+        if entry.raw_snapshot_ref is None:
+            return False
+        try:
+            raw = self.raw_snapshot_store.verify_raw_snapshot(entry.raw_snapshot_ref)
+        except (RawSnapshotMissingError, RawSnapshotIntegrityError):
+            return False
+        return (
+            entry.response_hash == raw.snapshot_hash.removeprefix("raw_")
+            and entry.media_type == raw.media_type
+            and entry.byte_size == raw.byte_size
+        )
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self.database_path)

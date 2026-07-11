@@ -4,6 +4,7 @@ import hashlib
 import os
 import shutil
 import stat
+import struct
 import tempfile
 import zipfile
 from collections.abc import Mapping
@@ -61,11 +62,19 @@ class BundleVerifier:
         public_keys: Mapping[str, bytes],
         *,
         max_expanded_bytes: int = 250 * 1024 * 1024,
+        max_members: int = 4_096,
+        max_metadata_bytes: int = 16 * 1024 * 1024,
     ) -> None:
         if max_expanded_bytes < 1:
             raise ValueError("max_expanded_bytes must be positive")
+        if max_members < 1:
+            raise ValueError("max_members must be positive")
+        if max_metadata_bytes < 1:
+            raise ValueError("max_metadata_bytes must be positive")
         self.public_keys = dict(public_keys)
         self.max_expanded_bytes = max_expanded_bytes
+        self.max_members = max_members
+        self.max_metadata_bytes = max_metadata_bytes
 
     def verify_and_extract(
         self,
@@ -120,6 +129,7 @@ class BundleVerifier:
         temporary_path: Path,
     ) -> None:
         artifacts = {artifact.path: artifact for artifact in manifest.artifacts}
+        self._preflight_metadata(archive_path)
         try:
             with zipfile.ZipFile(archive_path) as archive:
                 members = archive.infolist()
@@ -130,6 +140,62 @@ class BundleVerifier:
                     )
         except zipfile.BadZipFile as error:
             raise ArchiveSafetyError("Bundle is not a valid ZIP archive") from error
+
+    def _preflight_metadata(self, archive_path: Path) -> None:
+        """Bound central-directory metadata before ``ZipFile`` parses it."""
+        end_of_central_directory = b"PK\x05\x06"
+        end_record_size = 22
+        maximum_comment_size = 0xFFFF
+        try:
+            archive_size = archive_path.stat().st_size
+            with archive_path.open("rb") as archive:
+                archive.seek(
+                    -min(
+                        archive_size,
+                        end_record_size + maximum_comment_size,
+                    ),
+                    2,
+                )
+                trailer = archive.read(end_record_size + maximum_comment_size)
+        except OSError as error:
+            raise ArchiveSafetyError("Bundle archive cannot be read") from error
+
+        record_offset = trailer.rfind(end_of_central_directory)
+        while record_offset >= 0:
+            if record_offset + end_record_size <= len(trailer):
+                (
+                    _,
+                    disk_number,
+                    central_directory_disk,
+                    members_on_disk,
+                    member_count,
+                    central_directory_size,
+                    _,
+                    comment_size,
+                ) = struct.unpack_from("<4s4H2LH", trailer, record_offset)
+                if record_offset + end_record_size + comment_size == len(trailer):
+                    break
+            record_offset = trailer.rfind(end_of_central_directory, 0, record_offset)
+        else:
+            raise ArchiveSafetyError("Bundle archive has no valid ZIP directory record")
+
+        if (
+            disk_number != 0
+            or central_directory_disk != 0
+            or members_on_disk != member_count
+        ):
+            raise ArchiveSafetyError("Multi-disk ZIP archives are not allowed")
+        if member_count > self.max_members:
+            raise ArchiveSafetyError(
+                f"Bundle archive has {member_count} members, above {self.max_members}"
+            )
+        if central_directory_size > self.max_metadata_bytes:
+            raise ArchiveSafetyError(
+                "Bundle archive metadata exceeds "
+                f"{self.max_metadata_bytes} bytes"
+            )
+        if central_directory_size > archive_size - len(trailer) + record_offset:
+            raise ArchiveSafetyError("Bundle archive has an invalid central directory")
 
     def _validate_members(
         self,

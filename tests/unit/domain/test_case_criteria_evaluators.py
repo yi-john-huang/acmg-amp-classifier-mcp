@@ -78,7 +78,7 @@ def _segregation(*, lod_score: float, non_segregations: int = 0) -> EvidenceItem
             family_count=2,
             informative_meioses=5,
             lod_score=lod_score,
-            co_segregations=5,
+            co_segregations=5 - non_segregations,
             non_segregations=non_segregations,
             phenotype_defined=True,
         ),
@@ -280,6 +280,24 @@ def test_pp4_bp2_and_ps4_require_typed_case_facts() -> None:
     assert pp4.status is CriterionStatus.APPLIED
     assert bp2.status is CriterionStatus.APPLIED
     assert ps4.status is CriterionStatus.APPLIED
+
+
+def test_ps4_rejects_p_value_limits_above_one() -> None:
+    assessment = _evaluate(
+        CriterionCode.PS4,
+        {
+            "minimum_odds_ratio": 5.0,
+            "maximum_p_value": 1.1,
+            "minimum_case_count": 100,
+            "minimum_control_count": 1000,
+        },
+        _case_control(),
+    )
+
+    assert assessment.status is CriterionStatus.NOT_EVALUABLE
+    assert assessment.limitations == (
+        "ruleset case-evidence configuration is invalid",
+    )
 
 
 def test_bp5_is_honestly_not_evaluable_until_structured_alternative_cause_exists() -> (

@@ -394,16 +394,18 @@
         "get_raw_snapshot"
       ],
       "evidence": "tests/integration/presentation/test_mcp_server.py; tests/integration/presentation/test_mcp_stdio.py",
-      "known_limit": "Stdio is the supported transport; advanced raw content is opt-in and identifier-scoped.",
+      "known_limit": "Stdio is the supported transport. Advanced raw content exists only through embedded create_server(advanced=True); installed acmg-mcp has no public advanced-mode switch. Default evidence and ruleset reads return RESOURCE_UNAVAILABLE because the wheel composes no resource backend.",
       "primary_tools": [
         "classify_variant",
         "explain_classification",
         "submit_feedback"
       ],
-      "resources": [
+      "routine_resources": [
         "acmg://classifications/{classification_id}",
         "acmg://evidence/{snapshot_id}",
-        "acmg://rulesets/{ruleset_id}/{version}",
+        "acmg://rulesets/{ruleset_id}/{version}"
+      ],
+      "advanced_resources": [
         "acmg://raw/{raw_snapshot_ref}"
       ],
       "source_path": "src/acmg_classifier/presentation/mcp/server.py",

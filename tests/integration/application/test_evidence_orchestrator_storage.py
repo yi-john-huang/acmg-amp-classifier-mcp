@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import AsyncIterator
 import sqlite3
 import unittest
 from datetime import UTC, datetime
@@ -19,6 +20,32 @@ from acmg_classifier.infrastructure.storage.sqlite import SQLiteStateStore
 from acmg_classifier.ports.evidence import CacheState, EvidenceSourceResult
 
 
+async def _chunks(content: bytes) -> AsyncIterator[bytes]:
+    yield content
+
+
+class _FixtureTransport:
+    def __init__(self, responses: list[bytes], content_type: str) -> None:
+        self._responses = responses
+        self._content_type = content_type
+        self.requests: list[object] = []
+
+    async def request(self, request: object) -> object:
+        from acmg_classifier.infrastructure.http.policy import HttpResponse
+
+        self.requests.append(request)
+        return HttpResponse(
+            status_code=200,
+            headers={"Content-Type": self._content_type},
+            body=_chunks(self._responses.pop(0)),
+        )
+
+
+class _CompleteVariant:
+    variant_key = "GRCh38:1:55516888:G:GA"
+    genome_build = "GRCh38"
+    genomic_hgvs = "NC_000007.14:g.117559593_117559595del"
+
 class _Variant:
     variant_key = "ga4gh:VA.transaction"
     genome_build = "GRCh38"
@@ -33,7 +60,11 @@ class _NetworkWaitingAdapter:
         self._release = release
 
     async def query(
-        self, variant: _Variant, *, policy: EvidencePolicy
+        self,
+        variant: _Variant,
+        *,
+        context_scope: EvidenceContextScope,
+        policy: EvidencePolicy,
     ) -> EvidenceSourceResult:
         self._started.set()
         await self._release.wait()

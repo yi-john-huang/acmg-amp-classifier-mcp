@@ -185,6 +185,12 @@ class _Feedback:
         return tuple(record.feedback_id for record in records)
 
 
+class _FailingFeedback:
+    def submit(self, submission: FeedbackSubmission) -> FeedbackRecord:
+        del submission
+        raise ValueError("database password=do-not-disclose")
+
+
 def test_noninteractive_classify_emits_only_shared_json_contract() -> None:
     classifier = _Classifier()
     runner = CliRunner()
@@ -324,6 +330,38 @@ def test_feedback_command_uses_append_only_service_and_emits_json() -> None:
     assert feedback.submissions[0].feedback_type is FeedbackType.CORRECTION
 
 
+def test_feedback_command_redacts_service_error_details() -> None:
+    runner = CliRunner()
+
+    result = runner.invoke(
+        app,
+        [
+            "feedback",
+            "cls_" + "b" * 32,
+            "--type",
+            "agreement",
+            "--rationale",
+            "Reviewed.",
+            "--actor-id",
+            "usr_scientist-1",
+            "--format",
+            "json",
+        ],
+        obj={
+            "services": PresentationServices(
+                classifier=_Classifier(),
+                bootstrap=_Bootstrap(),
+                replay=_Replay(),
+                feedback=cast(object, _FailingFeedback()),
+            )
+        },
+    )
+
+    assert result.exit_code == 2
+    assert "database password" not in result.stdout
+    assert json.loads(result.stdout)["error_code"] == "INVALID_FEEDBACK"
+
+
 def test_feedback_export_and_import_preserve_feedback_content(tmp_path: Path) -> None:
     feedback = _Feedback()
     feedback.submit(
@@ -388,6 +426,27 @@ def test_feedback_import_rejects_oversized_file_before_parsing(
     assert json.loads(result.stdout)["error_code"] == "INVALID_FEEDBACK_IMPORT"
 
 
+def test_feedback_import_redacts_rejected_path_value(tmp_path: Path) -> None:
+    input_path = tmp_path / "api_key=secret-marker.json"
+    runner = CliRunner()
+
+    result = runner.invoke(
+        app,
+        ["feedback-import", str(input_path), "--format", "json"],
+        obj={
+            "services": PresentationServices(
+                classifier=_Classifier(),
+                bootstrap=_Bootstrap(),
+                replay=_Replay(),
+                feedback=_Feedback(),
+            )
+        },
+    )
+
+    assert result.exit_code == 2
+    assert "api_key=secret-marker" not in result.stdout
+    assert json.loads(result.stdout)["error_code"] == "INVALID_FEEDBACK_IMPORT"
+
 def test_doctor_writes_json_to_stdout_and_honors_repair() -> None:
     bootstrap = _Bootstrap()
     runner = CliRunner()
@@ -410,6 +469,35 @@ def test_doctor_writes_json_to_stdout_and_honors_repair() -> None:
     payload = json.loads(result.stdout)
     assert payload["ready"] is False
     assert payload["issue"]["code"] == "BUNDLE_UNAVAILABLE"
+
+def test_doctor_text_reports_bootstrap_readiness() -> None:
+    runner = CliRunner()
+
+    result = runner.invoke(
+        app,
+        ["doctor"],
+        obj={
+            "services": PresentationServices(
+                classifier=_Classifier(),
+                bootstrap=_Bootstrap(),
+                replay=_Replay(),
+            )
+        },
+    )
+
+    assert result.exit_code == 1
+    assert "status: not_ready" in result.stdout
+
+def test_bundle_command_help_states_catalog_dependency() -> None:
+    runner = CliRunner()
+
+    doctor_help = runner.invoke(app, ["doctor", "--help"])
+    update_help = runner.invoke(app, ["data", "update", "--help"])
+
+    assert doctor_help.exit_code == 0
+    assert "configured catalog" in doctor_help.stdout
+    assert update_help.exit_code == 0
+    assert "configured catalog" in update_help.stdout
 
 
 def _normalized() -> NormalizedVariant:

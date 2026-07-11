@@ -170,6 +170,7 @@ class WorkflowDraftServiceIntegrationTests(unittest.TestCase):
             normalized_variant=_normalized(),
             questions=(_disease_question(),),
         )
+        revision = self.store.get_draft(continuation.draft_id).revision
         self.store.update_draft(
             continuation.draft_id,
             {
@@ -179,6 +180,7 @@ class WorkflowDraftServiceIntegrationTests(unittest.TestCase):
                 "questions": [_disease_question().to_canonical_content()],
                 "answer_states": {},
             },
+            expected_revision=revision,
         )
 
         with self.assertRaisesRegex(DraftResumeError, "DRAFT_CONTENT_INVALID"):
@@ -279,6 +281,7 @@ class WorkflowDraftServiceIntegrationTests(unittest.TestCase):
         self.store.finalize_classification(
             {"classification": "uncertain_significance"},
             draft_id=continuation.draft_id,
+            expected_draft_revision=0,
         )
         with self.assertRaisesRegex(DraftResumeError, "DRAFT_ALREADY_COMPLETED"):
             self.service.resume(continuation.resume_token, answers=())

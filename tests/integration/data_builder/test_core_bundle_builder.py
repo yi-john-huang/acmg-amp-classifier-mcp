@@ -14,6 +14,21 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 FIXTURES = Path(__file__).parents[2] / "fixtures" / "data_builder"
 
 
+def test_gzip_source_expansion_is_bounded_before_text_decoding(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import gzip
+
+    from data_builder import parsers
+
+    source = tmp_path / "source.tsv.gz"
+    source.write_bytes(gzip.compress(b"012345678"))
+    monkeypatch.setattr(parsers, "MAX_DECOMPRESSED_SOURCE_BYTES", 8)
+
+    with pytest.raises(parsers.SourceFormatError, match="expanded size"):
+        parsers._decoded_source(source)
+
+
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 

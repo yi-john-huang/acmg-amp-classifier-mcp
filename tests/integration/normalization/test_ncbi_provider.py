@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import unittest
 from collections.abc import AsyncIterator
 from pathlib import Path
@@ -17,6 +18,11 @@ from acmg_classifier.infrastructure.http.policy import (
     SourceHttpClient,
 )
 from acmg_classifier.ports.normalization import NormalizationPolicy
+
+
+async def _no_sleep(_: float) -> None:
+    return None
+
 
 FIXTURE_ROOT = Path(__file__).parents[2] / "fixtures" / "normalization" / "ncbi"
 
@@ -70,6 +76,16 @@ class NeverCalledTransport:
         raise AssertionError("offline policy must not open an NCBI connection")
 
 
+class BlockingTransport:
+    def __init__(self) -> None:
+        self.started = asyncio.Event()
+
+    async def request(self, _: HttpRequest) -> HttpResponse:
+        self.started.set()
+        await asyncio.Event().wait()
+        raise AssertionError("unreachable")
+
+
 class NcbiVariationNormalizationProviderTests(unittest.TestCase):
     def provider(self, transport: object) -> object:
         from acmg_classifier.infrastructure.normalization.ncbi import (
@@ -87,7 +103,7 @@ class NcbiVariationNormalizationProviderTests(unittest.TestCase):
                     max_retries=0,
                 ),
             ),
-            sleep=lambda _: None,
+            async_sleep=_no_sleep,
             monotonic=lambda: 0.0,
         )
 
@@ -252,6 +268,41 @@ class NcbiVariationNormalizationProviderTests(unittest.TestCase):
             result.code, NormalizationFailureCode.NORMALIZATION_UNAVAILABLE
         )
         self.assertEqual(transport.calls, 0)
+
+
+class AsyncNcbiVariationNormalizationProviderTests(unittest.IsolatedAsyncioTestCase):
+    async def test_live_provider_normalizes_through_async_service_path(self) -> None:
+        transport = RecordedTransport(
+            [
+                (FIXTURE_ROOT / "substitution_contextuals.json").read_bytes(),
+                (FIXTURE_ROOT / "substitution_canonical.json").read_bytes(),
+            ]
+        )
+        provider = NcbiVariationNormalizationProviderTests().provider(transport)
+        service = VariantNormalizationService(providers=(provider,))
+
+        result = await service.normalize_async("NC_000007.14:g.117559593C>T")
+
+        self.assertEqual(result.status, "success")
+        self.assertEqual(
+            result.normalized.canonical_key.value,
+            "cak1:GRCh38:NC_000007.14:117559592:C>T",
+        )
+        self.assertEqual(len(transport.requests), 2)
+
+    async def test_async_normalization_propagates_cancellation(self) -> None:
+        transport = BlockingTransport()
+        provider = NcbiVariationNormalizationProviderTests().provider(transport)
+        service = VariantNormalizationService(providers=(provider,))
+
+        task = asyncio.create_task(
+            service.normalize_async("NC_000007.14:g.117559593C>T")
+        )
+        await transport.started.wait()
+        task.cancel()
+
+        with self.assertRaises(asyncio.CancelledError):
+            await task
 
 
 if __name__ == "__main__":

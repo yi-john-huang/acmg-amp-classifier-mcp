@@ -29,6 +29,10 @@ class DraftCompletedError(RecordStoreError):
     """A completed draft cannot be changed."""
 
 
+class DraftRevisionConflictError(RecordStoreError):
+    """A draft update was based on an obsolete revision."""
+
+
 @dataclass(frozen=True, slots=True)
 class StoredDraft:
     """A resumable request and its lifecycle state."""
@@ -37,7 +41,7 @@ class StoredDraft:
     request_json: bytes
     expires_at: datetime
     completed_classification_id: str | None
-
+    revision: int
 
 @dataclass(frozen=True, slots=True)
 class StoredClassification:
@@ -94,34 +98,70 @@ class SQLiteRecordStore:
         self._ensure_not_expired(draft)
         return draft
 
-    def update_draft(self, draft_id: str, request: JsonValue) -> None:
-        """Replace request content while the draft is active."""
+    def update_draft(
+        self,
+        draft_id: str,
+        request: JsonValue,
+        *,
+        expected_revision: int,
+    ) -> int:
+        """Replace active draft content only at its expected revision."""
+        if (
+            not isinstance(expected_revision, int)
+            or isinstance(expected_revision, bool)
+            or expected_revision < 0
+        ):
+            raise ValueError("expected_revision must be a non-negative integer")
         with closing(self._connect()) as connection:
             connection.execute("BEGIN IMMEDIATE")
             try:
                 draft = self._load_draft(connection, draft_id)
                 self._ensure_draft_mutable(draft)
-                connection.execute(
+                result = connection.execute(
                     """
                     UPDATE draft_requests
-                    SET request_json = ?, updated_at = ?
-                    WHERE draft_id = ?
+                    SET request_json = ?, revision = revision + 1, updated_at = ?
+                    WHERE draft_id = ? AND revision = ?
                     """,
-                    (canonical_json_bytes(request), _utc_text(self._now()), draft_id),
+                    (
+                        canonical_json_bytes(request),
+                        _utc_text(self._now()),
+                        draft_id,
+                        expected_revision,
+                    ),
                 )
+                if result.rowcount != 1:
+                    raise DraftRevisionConflictError(
+                        f"Draft revision conflict: {draft_id}"
+                    )
                 connection.commit()
             except Exception:
                 connection.rollback()
                 raise
+        return expected_revision + 1
 
     def finalize_classification(
         self,
         record: JsonValue,
         *,
         draft_id: str | None = None,
+        expected_draft_revision: int | None = None,
         previous_classification_id: str | None = None,
     ) -> str:
         """Atomically create a classification and complete its draft."""
+        if draft_id is None:
+            if expected_draft_revision is not None:
+                raise ValueError(
+                    "expected_draft_revision requires a draft_id"
+                )
+        elif (
+            not isinstance(expected_draft_revision, int)
+            or isinstance(expected_draft_revision, bool)
+            or expected_draft_revision < 0
+        ):
+            raise ValueError(
+                "draft finalization requires a non-negative expected_draft_revision"
+            )
         classification_id = _new_id("cls")
         with closing(self._connect()) as connection:
             connection.execute("BEGIN IMMEDIATE")
@@ -147,16 +187,28 @@ class SQLiteRecordStore:
                     ),
                 )
                 if draft_id is not None:
+                    assert expected_draft_revision is not None
                     draft = self._load_draft(connection, draft_id)
                     self._ensure_draft_mutable(draft)
-                    connection.execute(
+                    result = connection.execute(
                         """
                         UPDATE draft_requests
                         SET completed_classification_id = ?, updated_at = ?
                         WHERE draft_id = ?
+                          AND revision = ?
+                          AND completed_classification_id IS NULL
                         """,
-                        (classification_id, _utc_text(self._now()), draft_id),
+                        (
+                            classification_id,
+                            _utc_text(self._now()),
+                            draft_id,
+                            expected_draft_revision,
+                        ),
                     )
+                    if result.rowcount != 1:
+                        raise DraftRevisionConflictError(
+                            f"Draft revision conflict: {draft_id}"
+                        )
                 connection.commit()
             except Exception:
                 connection.rollback()
@@ -325,7 +377,7 @@ class SQLiteRecordStore:
     ) -> StoredDraft:
         row = connection.execute(
             """
-            SELECT request_json, expires_at, completed_classification_id
+            SELECT request_json, expires_at, completed_classification_id, revision
             FROM draft_requests
             WHERE draft_id = ?
             """,
@@ -338,6 +390,7 @@ class SQLiteRecordStore:
             request_json=bytes(row[0]),
             expires_at=datetime.fromisoformat(str(row[1]).replace("Z", "+00:00")),
             completed_classification_id=str(row[2]) if row[2] is not None else None,
+            revision=int(row[3]),
         )
 
     def _ensure_draft_mutable(self, draft: StoredDraft) -> None:

@@ -207,13 +207,13 @@ def submit_feedback(
                 actor_id=actor_id,
             )
         )
-    except ValueError as error:
+    except Exception:
         _emit(
             {
                 "schema_version": "1.0",
                 "status": "failed",
                 "error_code": "INVALID_FEEDBACK",
-                "limitations": [str(error)],
+                "limitations": ["feedback could not be accepted"],
             },
             output_format,
         )
@@ -277,13 +277,12 @@ def import_feedback(
             raise ValueError("feedback export must contain a feedback array")
         records = tuple(FeedbackRecord.model_validate(value) for value in values)
         imported_ids = services.feedback.import_records(records)
-    except (OSError, TypeError, ValueError, json.JSONDecodeError) as error:
+    except (OSError, TypeError, ValueError, json.JSONDecodeError):
         _emit(
             {
                 "schema_version": "1.0",
                 "status": "failed",
                 "error_code": "INVALID_FEEDBACK_IMPORT",
-                "limitations": [str(error)],
             },
             output_format,
         )
@@ -316,7 +315,7 @@ def doctor(
     repair: RepairOption = False,
     output_format: OutputFormatOption = "text",
 ) -> None:
-    """Inspect local readiness or repair a compatible signed data bundle."""
+    """Inspect local readiness; repair requires an injected configured catalog."""
     services = _services(ctx)
     _validate_format(output_format)
     report = services.bootstrap.doctor(repair=repair)
@@ -338,7 +337,7 @@ def data_update(
     ctx: typer.Context,
     output_format: OutputFormatOption = "text",
 ) -> None:
-    """Install or reuse the selected compatible data bundle."""
+    """Install or reuse a compatible bundle from an injected configured catalog."""
     services = _services(ctx)
     _validate_format(output_format)
     report = services.bootstrap.ensure_ready()
@@ -435,7 +434,10 @@ def _emit(payload: Mapping[str, JsonValue], output_format: str) -> None:
 
 
 def _text(payload: Mapping[str, JsonValue]) -> str:
-    status = str(payload.get("status", "unknown"))
+    status_value = payload.get("status")
+    if status_value is None and isinstance(payload.get("ready"), bool):
+        status_value = "ready" if payload["ready"] else "not_ready"
+    status = str(status_value or "unknown")
     lines = [f"status: {status}"]
     classification = payload.get("classification")
     if classification is not None:

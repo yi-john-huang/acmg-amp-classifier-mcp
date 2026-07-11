@@ -39,21 +39,25 @@ The current primary tools are:
 | `explain_classification` | Render a selected detail level from an immutable stored record. |
 | `submit_feedback` | Append an anchored agreement/correction review note. |
 
-`get_raw_snapshot` is advanced mode only. It retrieves explicit raw content by
-identifier and is not part of the routine classification workflow.
+`get_raw_snapshot` and raw-resource templates are advanced factory features,
+not installed `acmg-mcp` capabilities. The shipped command starts routine mode
+only and has no public advanced-mode switch.
 
-The server exposes identifier-scoped resources for classifications, evidence
-snapshots, rulesets, and advanced raw snapshots. The exact resource templates
-are listed in [capabilities.json](release/capabilities.json).
+The routine server advertises identifier-scoped classification, evidence, and
+ruleset templates. Classification reads use the local immutable-record store and
+return stored content or `CLASSIFICATION_NOT_FOUND`. The default wheel composes
+no evidence/ruleset resource backend, so those reads return
+`RESOURCE_UNAVAILABLE`.
 
 ## Classification request behavior
 
 `classify_variant` accepts a supported variant and optional interpretation
-context, offline/interactive controls, resume token/answers, and explicit
+context, offline/interactive controls, resume token/answers, and an explicit
 optional review request. It returns one structured workflow state rather than a
-collection of low-level evidence tool results. Current default first use returns
-`BUNDLE_UNAVAILABLE` until a compatible signed catalog and scientific runtime
-are supplied.
+collection of low-level evidence tool results. On clean first use, the installed
+default composition returns `BUNDLE_UNAVAILABLE`: it ships no compatible signed
+catalog, trusted release keys, or configurable scientific runtime. Other
+bootstrap or runtime failures retain their own structured error codes.
 
 Do not use an MCP output as a clinical report or treatment recommendation. See
 [onboarding](onboarding.md), [known limits](known-limits.md), and

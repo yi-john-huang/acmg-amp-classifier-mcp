@@ -1,0 +1,8 @@
+title = "Repository Gitleaks policy"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "History-scan regression fixture source"
+paths = ['''^scripts/verify_history_scan_regression\.py$''']

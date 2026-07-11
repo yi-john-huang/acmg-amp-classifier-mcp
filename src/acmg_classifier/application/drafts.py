@@ -54,6 +54,9 @@ class DraftStoreRecord(Protocol):
     @property
     def completed_classification_id(self) -> str | None: ...
 
+    @property
+    def revision(self) -> int: ...
+
 
 class DraftStore(Protocol):
     """The minimal mutable-draft storage boundary used by this service."""
@@ -62,7 +65,13 @@ class DraftStore(Protocol):
 
     def get_draft(self, draft_id: str) -> DraftStoreRecord: ...
 
-    def update_draft(self, draft_id: str, request: JsonValue) -> None: ...
+    def update_draft(
+        self,
+        draft_id: str,
+        request: JsonValue,
+        *,
+        expected_revision: int,
+    ) -> int: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,6 +110,7 @@ class ResumedWorkflowDraft:
     request: Mapping[str, JsonValue]
     normalized_variant: NormalizedVariant
     answer_states: Mapping[str, str]
+    revision: int
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "request", MappingProxyType(dict(self.request)))
@@ -182,7 +192,11 @@ class WorkflowDraftService:
             answer_states,
         )
         try:
-            self._store.update_draft(draft_id, payload)
+            self._store.update_draft(
+                draft_id,
+                payload,
+                expected_revision=stored.revision,
+            )
         except Exception as error:
             raise _store_error(error) from error
         return DraftContinuation(
@@ -218,6 +232,7 @@ class WorkflowDraftService:
             raise DraftResumeError("DRAFT_CONTENT_INVALID") from error
         questions = _payload_questions(payload)
         answer_states = _payload_answer_states(payload)
+        revision = stored.revision
         merged_request = _merge_answers(request, questions, answer_states, answers)
         if answers:
             payload = _draft_payload(
@@ -227,7 +242,11 @@ class WorkflowDraftService:
                 answer_states,
             )
             try:
-                self._store.update_draft(draft_id, payload)
+                revision = self._store.update_draft(
+                    draft_id,
+                    payload,
+                    expected_revision=stored.revision,
+                )
             except Exception as error:
                 raise _store_error(error) from error
         return ResumedWorkflowDraft(
@@ -236,6 +255,7 @@ class WorkflowDraftService:
             request=merged_request,
             normalized_variant=normalized,
             answer_states=answer_states,
+            revision=revision,
         )
 
     def _expires_at(self) -> datetime:
@@ -488,6 +508,8 @@ def _store_error(error: Exception) -> DraftResumeError:
         return DraftResumeError("DRAFT_EXPIRED")
     if name == "DraftCompletedError":
         return DraftResumeError("DRAFT_ALREADY_COMPLETED")
+    if name == "DraftRevisionConflictError":
+        return DraftResumeError("DRAFT_REVISION_CONFLICT")
     if name == "RecordNotFoundError":
         return DraftResumeError("DRAFT_TOKEN_INVALID")
     return DraftResumeError("DRAFT_PERSISTENCE_FAILED")

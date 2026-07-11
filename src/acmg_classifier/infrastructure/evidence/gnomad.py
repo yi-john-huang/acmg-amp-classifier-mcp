@@ -187,6 +187,7 @@ class GnomADAdapter:
         self,
         variant: NormalizedVariantQuery,
         *,
+        context_scope: EvidenceContextScope,
         policy: EvidencePolicy,
     ) -> EvidenceSourceResult:
         now = _utc(self._clock())

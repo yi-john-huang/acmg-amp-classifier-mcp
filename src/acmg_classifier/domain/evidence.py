@@ -112,6 +112,11 @@ def _normalize_utc(value: datetime) -> datetime:
     return value.astimezone(UTC)
 
 
+# Source AF values are commonly rendered to six decimal places. Accept only
+# that published rounding error when AC and AN are also authoritative.
+POPULATION_FREQUENCY_ROUNDING_TOLERANCE = 1e-6
+
+
 class PopulationObservation(EvidenceModel):
     kind: Literal[ObservationKind.POPULATION]
     source_release: NonEmptyText
@@ -136,6 +141,36 @@ class PopulationObservation(EvidenceModel):
             and self.allele_count > self.allele_number
         ):
             raise ValueError("allele_count must not exceed allele_number")
+        if self.allele_count is not None:
+            genotype_allele_count = 2 * (self.homozygote_count or 0) + (
+                self.hemizygote_count or 0
+            )
+            if genotype_allele_count > self.allele_count:
+                raise ValueError(
+                    "homozygote and hemizygote counts exceed allele_count"
+                )
+        if self.allele_count == 0 and self.allele_frequency not in (None, 0):
+            raise ValueError(
+                "allele_frequency must be zero when allele_count is zero"
+            )
+        if (
+            self.allele_count is not None
+            and self.allele_number is not None
+            and self.allele_frequency is not None
+        ):
+            if self.allele_number == 0:
+                if self.allele_frequency != 0:
+                    raise ValueError(
+                        "allele_frequency must be zero when allele_number is zero"
+                    )
+            elif (
+                abs(self.allele_frequency - (self.allele_count / self.allele_number))
+                > POPULATION_FREQUENCY_ROUNDING_TOLERANCE
+            ):
+                raise ValueError(
+                    "allele_frequency must match allele_count / allele_number "
+                    "within the documented 1e-6 rounding tolerance"
+                )
         return self
 
 
@@ -204,6 +239,24 @@ class SegregationObservation(EvidenceModel):
     co_segregations: Annotated[int, Field(ge=0, strict=True)] | None = None
     non_segregations: Annotated[int, Field(ge=0, strict=True)] | None = None
     phenotype_defined: bool | None = None
+
+    @model_validator(mode="after")
+    def validate_segregation_counts(self) -> Self:
+        if self.co_segregations is None and self.non_segregations is None:
+            return self
+        if self.informative_meioses is None or self.informative_meioses == 0:
+            raise ValueError(
+                "segregation counts require positive informative_meioses"
+            )
+        if (
+            (self.co_segregations or 0) + (self.non_segregations or 0)
+            > self.informative_meioses
+        ):
+            raise ValueError(
+                "co_segregations plus non_segregations must not exceed "
+                "informative_meioses"
+            )
+        return self
 
 
 class DeNovoObservation(EvidenceModel):
@@ -467,11 +520,24 @@ class EvidenceItem(EvidenceModel):
         variant_key: str,
         context_scope: EvidenceContextScope,
     ) -> None:
-        """Reject using evidence outside the exact requested biological scope."""
+        """Reject evidence whose derivation-specific scope cannot serve the request."""
         if self.variant_key != variant_key:
             raise ValueError("evidence variant_key does not match requested variant")
-        if self.context_scope != context_scope:
-            raise ValueError("evidence context_scope does not match requested context")
+        if self.derivation is not EvidenceDerivation.SOURCE:
+            if self.context_scope != context_scope:
+                raise ValueError("evidence context_scope must exactly match request")
+            return
+        for field_name in (
+            "genome_build",
+            "transcript",
+            "disease_id",
+            "inheritance",
+        ):
+            source_value = getattr(self.context_scope, field_name)
+            if source_value is not None and source_value != getattr(
+                context_scope, field_name
+            ):
+                raise ValueError("evidence context_scope is incompatible with request")
 
 
 class SourceStatus(EvidenceModel):

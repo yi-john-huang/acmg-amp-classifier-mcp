@@ -3,13 +3,11 @@ from __future__ import annotations
 import importlib
 import os
 import subprocess
-import sys
 import tempfile
 import tomllib
 import unittest
 import venv
 from pathlib import Path
-from sysconfig import get_path
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
 
@@ -71,7 +69,7 @@ class PackageSmokeTests(unittest.TestCase):
                 "Scripts/python.exe" if os.name == "nt" else "bin/python"
             )
             install = subprocess.run(
-                [str(python), "-m", "pip", "install", "--no-deps", str(wheels[0])],
+                [str(python), "-m", "pip", "install", str(wheels[0])],
                 cwd=temporary_path,
                 check=False,
                 capture_output=True,
@@ -83,19 +81,9 @@ class PackageSmokeTests(unittest.TestCase):
             console = environment_directory / (
                 "Scripts/acmg.exe" if os.name == "nt" else "bin/acmg"
             )
-            python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
-            site_packages = environment_directory / (
-                "Lib/site-packages"
-                if os.name == "nt"
-                else f"lib/python{python_version}/site-packages"
-            )
-            dependency_site_packages = get_path("purelib")
-            assert dependency_site_packages is not None
-            environment = os.environ | {
-                "PYTHONPATH": os.pathsep.join(
-                    (str(site_packages), dependency_site_packages)
-                )
-            }
+            environment = os.environ.copy()
+            environment.pop("PYTHONPATH", None)
+            environment.pop("PYTHONHOME", None)
             help_result = subprocess.run(
                 [str(console), "--help"],
                 cwd=temporary_path,

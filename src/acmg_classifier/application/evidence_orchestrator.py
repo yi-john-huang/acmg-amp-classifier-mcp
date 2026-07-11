@@ -90,7 +90,9 @@ class EvidenceOrchestrator:
                 async with asyncio.TaskGroup() as group:
                     for adapter in self._adapters:
                         tasks[adapter.source_id] = group.create_task(
-                            self._query_adapter(adapter, variant, policy)
+                            self._query_adapter(
+                                adapter, variant, context_scope, policy
+                            )
                         )
         except TimeoutError:
             deadline_expired = True
@@ -142,10 +144,13 @@ class EvidenceOrchestrator:
         self,
         adapter: EvidenceAdapter,
         variant: NormalizedVariantQuery,
+        context_scope: EvidenceContextScope,
         policy: EvidencePolicy,
     ) -> EvidenceSourceResult:
         try:
-            return await adapter.query(variant, policy=policy)
+            return await adapter.query(
+                variant, context_scope=context_scope, policy=policy
+            )
         except TimeoutError:
             return self._failure_result(adapter.source_id, SourceStatusValue.TIMEOUT)
         except Exception as error:

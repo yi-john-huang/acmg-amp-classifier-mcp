@@ -15,6 +15,9 @@ ENSEMBL_TRANSCRIPT = re.compile(r"^ENST\d+\.\d+$")
 GENOMIC_ACCESSION = re.compile(r"^(?:NC|NW|NT)_\d+\.\d+$")
 GENE_SYMBOL = re.compile(r"^[A-Za-z0-9@._-]+$")
 
+MAX_DECOMPRESSED_SOURCE_BYTES = 64 * 1024 * 1024
+_GZIP_READ_CHUNK_BYTES = 1024 * 1024
+
 
 class SourceFormatError(ValueError):
     """An official source no longer satisfies its locked schema."""
@@ -49,12 +52,22 @@ class GeneDisease:
 
 
 def _decoded_source(path: Path) -> str:
-    content = path.read_bytes()
-    if content.startswith(b"\x1f\x8b"):
+    with path.open("rb") as source:
+        is_gzip = source.read(2) == b"\x1f\x8b"
+    if is_gzip:
+        content = bytearray()
         try:
-            content = gzip.decompress(content)
-        except OSError as error:
+            with gzip.open(path, "rb") as source:
+                while block := source.read(_GZIP_READ_CHUNK_BYTES):
+                    if len(content) > MAX_DECOMPRESSED_SOURCE_BYTES - len(block):
+                        raise SourceFormatError(
+                            f"gzip source exceeds maximum expanded size: {path.name}"
+                        )
+                    content.extend(block)
+        except (OSError, EOFError) as error:
             raise SourceFormatError(f"invalid gzip source: {path.name}") from error
+    else:
+        content = path.read_bytes()
     try:
         return content.decode("utf-8-sig")
     except UnicodeDecodeError as error:

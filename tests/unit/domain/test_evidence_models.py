@@ -263,12 +263,39 @@ class EvidenceModelTests(unittest.TestCase):
         )
         self.assertIsNone(unknown.allele_count)
         self.assertIsNone(unknown.allele_frequency)
+        rounded = PopulationObservation.model_validate(
+            {
+                "kind": "population",
+                "source_release": "gnomad-r4.1",
+                "allele_count": 1,
+                "allele_number": 100,
+                "allele_frequency": 0.0100005,
+                "filter_status": "pass",
+            }
+        )
+        zero_count = PopulationObservation.model_validate(
+            {
+                "kind": "population",
+                "source_release": "gnomad-r4.1",
+                "allele_count": 0,
+                "allele_number": 100,
+                "allele_frequency": 0.0,
+                "filter_status": "pass",
+            }
+        )
+        self.assertEqual(zero_count.allele_frequency, 0.0)
+
+        self.assertEqual(rounded.allele_frequency, 0.0100005)
 
         for invalid in (
             {"allele_count": "1"},
             {"allele_count": 2, "allele_number": 1},
+            {"allele_count": 1, "allele_number": 100, "allele_frequency": 0.2},
+            {"allele_count": 1, "homozygote_count": 1},
+            {"allele_count": 1, "hemizygote_count": 2},
             {"allele_frequency": math.nan},
             {"allele_frequency": 1.1},
+            {"allele_count": 0, "allele_number": 100, "allele_frequency": 0.0000001},
         ):
             with self.subTest(invalid=invalid), self.assertRaises(ValidationError):
                 PopulationObservation.model_validate(
@@ -278,6 +305,22 @@ class EvidenceModelTests(unittest.TestCase):
                         "filter_status": "pass",
                         **invalid,
                     }
+                )
+
+    def test_segregation_counts_require_positive_informative_meioses(self) -> None:
+        from acmg_classifier.domain.evidence import SegregationObservation
+
+        for counts in (
+            {"informative_meioses": 2, "co_segregations": 2, "non_segregations": 1},
+            {"informative_meioses": 0, "non_segregations": 1},
+            {"informative_meioses": 0, "co_segregations": 0},
+        ):
+            with self.subTest(counts=counts), self.assertRaises(ValidationError):
+                SegregationObservation(
+                    kind="segregation",
+                    family_count=1,
+                    phenotype_defined=True,
+                    **counts,
                 )
 
     def test_items_are_strict_variant_and_context_scoped_and_verify_supplied_ids(
@@ -717,15 +760,15 @@ class EvidenceModelTests(unittest.TestCase):
                 }
             )
 
-    def test_evidence_application_requires_exact_variant_and_context_scope(
+    def test_evidence_application_requires_exact_variant_and_compatible_context_scope(
         self,
     ) -> None:
         from acmg_classifier.domain.evidence import EvidenceContextScope, EvidenceItem
 
-        item = EvidenceItem.model_validate(
-            evidence_payload(OBSERVATION_PAYLOADS["population"])
-        )
-        scope = EvidenceContextScope.model_validate(
+        source_scoped_payload = evidence_payload(OBSERVATION_PAYLOADS["population"])
+        source_scoped_payload["context_scope"] = {"genome_build": "GRCh38"}
+        item = EvidenceItem.model_validate(source_scoped_payload)
+        requested_scope = EvidenceContextScope.model_validate(
             {
                 "genome_build": "GRCh38",
                 "transcript": "NM_007294.4",
@@ -733,24 +776,81 @@ class EvidenceModelTests(unittest.TestCase):
                 "inheritance": "autosomal_dominant",
             }
         )
-        item.assert_applies_to(variant_key="ga4gh:VA.example", context_scope=scope)
+        item.assert_applies_to(
+            variant_key="ga4gh:VA.example", context_scope=requested_scope
+        )
         with self.assertRaises(ValueError):
             item.assert_applies_to(
                 variant_key="ga4gh:VA.other-allele",
-                context_scope=scope,
+                context_scope=requested_scope,
             )
         with self.assertRaises(ValueError):
             item.assert_applies_to(
                 variant_key="ga4gh:VA.example",
                 context_scope=EvidenceContextScope.model_validate(
                     {
-                        "genome_build": "GRCh38",
+                        "genome_build": "GRCh37",
                         "transcript": "NM_007294.4",
                         "disease_id": "MONDO:0011450",
                         "inheritance": "autosomal_recessive",
                     }
                 ),
             )
+
+    def test_only_source_evidence_may_use_a_narrower_context_scope(self) -> None:
+        from acmg_classifier.domain.evidence import EvidenceContextScope, EvidenceItem
+
+        requested_scope = EvidenceContextScope.model_validate(
+            {
+                "genome_build": "GRCh38",
+                "transcript": "NM_007294.4",
+                "disease_id": "MONDO:0011450",
+                "inheritance": "autosomal_dominant",
+            }
+        )
+        for derivation, provenance in (
+            (
+                "user",
+                {
+                    "kind": "user",
+                    "submitted_at": datetime(2026, 7, 11, tzinfo=UTC),
+                    "confirmation_method": "laboratory report",
+                    "actor_id": "usr_clinician-1",
+                },
+            ),
+            (
+                "derived",
+                {
+                    "kind": "derived",
+                    "derivation_name": "evidence synthesis",
+                    "component_version": "1.0",
+                    "input_evidence_ids": ("ev_" + "a" * 64,),
+                    "generated_at": datetime(2026, 7, 11, tzinfo=UTC),
+                },
+            ),
+            (
+                "review",
+                {
+                    "kind": "review",
+                    "review_id": "review_" + "a" * 32,
+                    "reviewer_id": "usr_reviewer-1",
+                    "reviewed_at": datetime(2026, 7, 11, tzinfo=UTC),
+                    "input_evidence_ids": ("ev_" + "a" * 64,),
+                },
+            ),
+        ):
+            with self.subTest(derivation=derivation):
+                payload = evidence_payload(OBSERVATION_PAYLOADS["population"])
+                payload["context_scope"] = {"genome_build": "GRCh38"}
+                payload["derivation"] = derivation
+                payload["provenance"] = provenance
+                payload.pop("raw_snapshot_ref")
+                item = EvidenceItem.model_validate(payload)
+                with self.assertRaises(ValueError):
+                    item.assert_applies_to(
+                        variant_key="ga4gh:VA.example",
+                        context_scope=requested_scope,
+                    )
 
 
 if __name__ == "__main__":

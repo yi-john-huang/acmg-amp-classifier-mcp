@@ -212,15 +212,26 @@ def test_security_workflow_uses_locked_audit_and_fail_closed_secret_scan() -> No
         encoding="utf-8"
     )
     baseline = json.loads((root / ".secrets.baseline").read_text(encoding="utf-8"))
+    pyproject = (root / "pyproject.toml").read_text(encoding="utf-8")
+    lock = (root / "uv.lock").read_text(encoding="utf-8")
 
     assert "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683" in workflow
     assert "actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065" in workflow
+    assert "astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb" in workflow
+    assert "python -m pip install" not in workflow
     assert "uv export --locked" in workflow
-    assert "pip-audit==2.9.0" in workflow
-    assert "detect-secrets==1.5.0" in workflow
-    assert "detect-secrets-hook" in workflow
-    assert "--baseline .secrets.baseline" in workflow
+    assert 'pip-audit==2.9.0' in pyproject
+    assert 'detect-secrets==1.5.0' in pyproject
+    assert 'name = "pip-audit"' in lock
+    assert 'name = "detect-secrets"' in lock
+    assert "uv sync --frozen --no-dev --group security" in workflow
+    assert "uv run --frozen --no-sync --no-dev --group security pip-audit" in workflow
+    assert "uv run --frozen --no-sync --no-dev --group security detect-secrets-hook" in workflow
+    assert "--baseline .secrets.baseline --" in workflow
     assert "git ls-files -z" in workflow
+    assert "branches:" in workflow
+    assert "      - develop" in workflow
+    assert "      - master" in workflow
     assert "contents: read" in workflow
     assert baseline["version"] == "1.5.0"
     assert baseline["results"]["data_builder/recipes/core-2026.7.10.json"]
@@ -234,3 +245,35 @@ def test_security_workflow_uses_locked_audit_and_fail_closed_secret_scan() -> No
         and finding["is_verified"] is False
         for finding in findings
     )
+
+
+def test_history_secret_scan_uses_verified_gitleaks_and_event_range() -> None:
+    root = Path(__file__).resolve().parents[2]
+    workflow = (root / ".github" / "workflows" / "security.yml").read_text(
+        encoding="utf-8"
+    )
+    gitleaks_config = (root / ".gitleaks.toml").read_text(encoding="utf-8")
+
+    assert "python scripts/verify_history_scan_regression.py" in workflow
+    assert "gitleaks_8.30.0_linux_x64.tar.gz" in workflow
+    assert (
+        "".join(
+            (
+                "79a3ab57",
+                "9b53f71e",
+                "fd634f3a",
+                "af7e04a0",
+                "fa0cf206",
+                "b7ed4346",
+                "38d1547a",
+                "2470a66e",
+            )
+        )
+        in workflow
+    )
+    assert "sha256sum --check --status" in workflow
+    assert "GITLEAKS_BASE_REF" in workflow
+    assert "--base-ref \"$GITLEAKS_BASE_REF\"" in workflow
+    assert "--before \"$GITLEAKS_BEFORE\"" in workflow
+    assert "[[allowlists]]" in gitleaks_config
+    assert "^scripts/verify_history_scan_regression\\.py$" in gitleaks_config

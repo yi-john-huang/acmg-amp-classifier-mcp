@@ -414,6 +414,7 @@ class ClassificationService:
             request,
             normalized_override=resumed.normalized_variant,
             draft_id=resumed.draft_id,
+            draft_revision=resumed.revision,
             answer_states=resumed.answer_states,
         )
 
@@ -423,6 +424,7 @@ class ClassificationService:
         *,
         normalized_override: NormalizedVariant | None = None,
         draft_id: str | None = None,
+        draft_revision: int | None = None,
         answer_states: Mapping[str, str] | None = None,
     ) -> ClassificationWorkflowResponse:
         """Execute a new or resumed workflow after normalized state is available."""
@@ -439,11 +441,20 @@ class ClassificationService:
         if readiness_failure is not None:
             return readiness_failure
         if normalized_override is None:
-            normalization = self._normalizer.normalize(
-                request.variant,
-                context=request.context,
-                policy=_normalization_policy(request.evidence_policy, request.context),
-            )
+            policy = _normalization_policy(request.evidence_policy, request.context)
+            normalize_async = getattr(self._normalizer, "normalize_async", None)
+            if callable(normalize_async):
+                normalization = await normalize_async(
+                    request.variant,
+                    context=request.context,
+                    policy=policy,
+                )
+            else:
+                normalization = self._normalizer.normalize(
+                    request.variant,
+                    context=request.context,
+                    policy=policy,
+                )
             if isinstance(normalization, NormalizationFailure):
                 return self._normalization_failure(normalization)
             if not isinstance(normalization, NormalizationSuccess):
@@ -560,6 +571,11 @@ class ClassificationService:
                 )
                 conflict_finalization_kwargs: dict[str, object] = {}
                 if draft_id is not None:
+                    if draft_revision is None:
+                        raise RuntimeError("resumed draft revision is unavailable")
+                    conflict_finalization_kwargs["expected_draft_revision"] = (
+                        draft_revision
+                    )
                     conflict_finalization_kwargs["draft_id"] = draft_id
                 if request.previous_classification_id is not None:
                     conflict_finalization_kwargs["previous_classification_id"] = (
@@ -575,8 +591,8 @@ class ClassificationService:
                     )
             except asyncio.CancelledError:
                 raise
-            except Exception:
-                return self._failed("CLASSIFICATION_PERSISTENCE_FAILED")
+            except Exception as error:
+                return self._failed(_finalization_error_code(error))
             return ConflictClassificationResponse(
                 status=WorkflowStatus.CONFLICT,
                 normalized_variant=normalized,
@@ -627,6 +643,9 @@ class ClassificationService:
             )
             finalization_kwargs: dict[str, object] = {}
             if draft_id is not None:
+                if draft_revision is None:
+                    raise RuntimeError("resumed draft revision is unavailable")
+                finalization_kwargs["expected_draft_revision"] = draft_revision
                 finalization_kwargs["draft_id"] = draft_id
             if request.previous_classification_id is not None:
                 finalization_kwargs["previous_classification_id"] = (
@@ -640,8 +659,8 @@ class ClassificationService:
                 raise RuntimeError("record store returned an empty classification ID")
         except asyncio.CancelledError:
             raise
-        except Exception:
-            return self._failed("CLASSIFICATION_PERSISTENCE_FAILED")
+        except Exception as error:
+            return self._failed(_finalization_error_code(error))
         return CompletedClassificationResponse(
             status=WorkflowStatus.COMPLETED,
             classification_id=classification_id,
@@ -1158,6 +1177,13 @@ def _snapshot_id_for(snapshot: EvidenceSnapshot) -> str:
     if snapshot_id is None:
         raise RuntimeError("evidence acquisition returned an unassigned snapshot ID")
     return snapshot_id
+
+
+
+def _finalization_error_code(error: Exception) -> str:
+    if type(error).__name__ == "DraftRevisionConflictError":
+        return "DRAFT_REVISION_CONFLICT"
+    return "CLASSIFICATION_PERSISTENCE_FAILED"
 
 
 def _record_payload(

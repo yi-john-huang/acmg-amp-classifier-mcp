@@ -7,6 +7,7 @@ import warnings
 import zipfile
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -219,6 +220,57 @@ class BundleVerifierTests(unittest.TestCase):
                 self.staging_path,
             )
         self.assertFalse(self.staging_path.exists())
+
+    def test_member_count_limit_is_enforced_before_zipfile_construction(self) -> None:
+        from acmg_classifier.infrastructure.bundles.verifier import (
+            ArchiveSafetyError,
+            BundleVerifier,
+        )
+
+        self._write_archive(
+            [
+                ("data/knowledge.sqlite3", self.content),
+                ("untrusted-metadata-only", b""),
+            ]
+        )
+
+        with (
+            patch(
+                "acmg_classifier.infrastructure.bundles.verifier.zipfile.ZipFile"
+            ) as archive,
+            self.assertRaisesRegex(ArchiveSafetyError, "members"),
+        ):
+            BundleVerifier(self.keyring, max_members=1).verify_and_extract(
+                self.archive_path,
+                self.manifest,
+                self._signature(),
+                self.staging_path,
+            )
+
+        archive.assert_not_called()
+
+    def test_metadata_limit_is_enforced_before_zipfile_construction(self) -> None:
+        from acmg_classifier.infrastructure.bundles.verifier import (
+            ArchiveSafetyError,
+            BundleVerifier,
+        )
+
+        self._write_archive([("data/knowledge.sqlite3", self.content)])
+
+        with (
+            patch(
+                "acmg_classifier.infrastructure.bundles.verifier.zipfile.ZipFile"
+            ) as archive,
+            self.assertRaisesRegex(ArchiveSafetyError, "metadata"),
+        ):
+            BundleVerifier(self.keyring, max_metadata_bytes=1).verify_and_extract(
+                self.archive_path,
+                self.manifest,
+                self._signature(),
+                self.staging_path,
+            )
+
+        archive.assert_not_called()
 
     def test_malformed_archive_policy_and_existing_staging_are_rejected(self) -> None:
         from acmg_classifier.infrastructure.bundles.verifier import (

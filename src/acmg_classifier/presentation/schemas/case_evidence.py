@@ -73,6 +73,24 @@ class SegregationEvidenceInput(CaseEvidenceInputBase):
     non_segregations: Annotated[int, Field(ge=0, strict=True)] | None = None
     phenotype_defined: bool | None = None
 
+    @model_validator(mode="after")
+    def validate_segregation_counts(self) -> Self:
+        if self.co_segregations is None and self.non_segregations is None:
+            return self
+        if self.informative_meioses is None or self.informative_meioses == 0:
+            raise ValueError(
+                "segregation counts require positive informative_meioses"
+            )
+        if (
+            (self.co_segregations or 0) + (self.non_segregations or 0)
+            > self.informative_meioses
+        ):
+            raise ValueError(
+                "co_segregations plus non_segregations must not exceed "
+                "informative_meioses"
+            )
+        return self
+
 
 class DeNovoEvidenceInput(CaseEvidenceInputBase):
     """Aggregated de novo assertion with explicit confirmation state."""

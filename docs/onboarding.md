@@ -12,7 +12,7 @@ installed.
 Use Python 3.12 or 3.13 and uv:
 
 ```sh
-uv tool install --from . acmg-classifier
+uv tool install .
 acmg --help
 ```
 
@@ -32,7 +32,8 @@ acmg data status --format json
 
 The default runtime owns its SQLite state directory. It has no manual database
 or service configuration step. `doctor` reports either a compatible installed
-bundle or a structured readiness issue and a repair action.
+bundle or a structured readiness issue; it cannot acquire a bundle in the
+default wheel.
 
 A newly installed experimental wheel has no configured controlled catalog. Its
 normal, safe state is:
@@ -45,9 +46,9 @@ normal, safe state is:
 }
 ```
 
-Run the supplied repair guidance only when your release administrator provides
-the appropriate signed catalog. Do not substitute a synthetic fixture or an
-unverified archive.
+Do not follow a repair action expecting the default wheel to download a catalog:
+it has neither a catalog nor trusted release keys. Do not substitute a synthetic
+fixture or an unverified archive.
 
 ## Submit an input
 
@@ -55,11 +56,12 @@ unverified archive.
 acmg classify 'NM_000059.4(BRCA2):c.7008-1G>A' --no-interactive --format json
 ```
 
-With no compatible catalog, this emits `BUNDLE_UNAVAILABLE`; it is not a
-classification. When a release administrator supplies a compatible runtime,
-structured responses can be `completed`, `needs_context`, `degraded`,
-`conflict`, `unsupported`, or `failed`. Read each response's `status`, stable
-error code, limitations, and source impacts before acting on it.
+On clean first use, the installed default emits `BUNDLE_UNAVAILABLE`; it is not
+a classification. Other bootstrap or runtime failures retain their own error
+codes. The package exposes no public command to configure a scientific runtime.
+Separately composed deployments may return `completed`, `needs_context`,
+`degraded`, `conflict`, `unsupported`, or `failed`; read each response's status,
+stable error code, limitations, and source impacts before acting on it.
 
 Use `--offline` only with a compatible local bundle/cache. Offline mode refuses
 remote normalization and records unavailable evidence sources and their affected
@@ -80,9 +82,9 @@ Use the installed stdio command:
 }
 ```
 
-The routine surface is `classify_variant`, `explain_classification`, and
-`submit_feedback`. The routine workflow does not expose legacy low-level source
-queries. `get_raw_snapshot` is explicit advanced mode and identifier-scoped.
+The routine installed surface is `classify_variant`, `explain_classification`,
+and `submit_feedback`. It does not expose legacy low-level source queries,
+advanced raw snapshots, or a public advanced-mode switch.
 
 ## Safe data handling
 

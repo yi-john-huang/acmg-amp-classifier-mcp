@@ -103,6 +103,16 @@ class _Condition:
     label: str | None
 
 
+@dataclass(frozen=True, slots=True)
+class _AuthoritativeAllele:
+    assembly: str
+    accession: str
+    start: int
+    stop: int
+    reference: str
+    alternate: str
+
+
 class ClinVarAdapter:
     """Retrieve and map official ClinVar VCV XML without clinical interpretation."""
 
@@ -130,6 +140,7 @@ class ClinVarAdapter:
         self,
         variant: NormalizedVariantQuery,
         *,
+        context_scope: EvidenceContextScope,
         policy: EvidencePolicy,
     ) -> EvidenceSourceResult:
         """Return VCV/SCV observations or one honest source status.
@@ -141,8 +152,11 @@ class ClinVarAdapter:
         """
         checked_at = _as_utc(self._clock())
         try:
-            query = self._build_query(variant)
-            scope = EvidenceContextScope(genome_build=GenomeBuild(variant.genome_build))
+            query = self._build_query(variant, context_scope)
+            scope = EvidenceContextScope(
+                genome_build=GenomeBuild(variant.genome_build),
+                disease_id=context_scope.disease_id,
+            )
         except (TypeError, ValueError):
             return self._unavailable_result(
                 checked_at=checked_at,
@@ -238,6 +252,26 @@ class ClinVarAdapter:
                 query=query, checked_at=checked_at, raw_snapshot_refs=tuple(raw_refs)
             )
         try:
+            allele_matches = _vcv_allele_matches(final_outcome.body, variant)
+        except ClinVarSchemaError:
+            return self._schema_changed(
+                query=query, checked_at=checked_at, raw_snapshot_refs=tuple(raw_refs)
+            )
+        if not allele_matches:
+            self._put_negative(query.source_query, checked_at, final_outcome, raw_ref)
+            return self._result(
+                status=SourceStatus(
+                    source_id=self.source_id,
+                    status=SourceStatusValue.FRESH,
+                    checked_at=checked_at,
+                    source_version=self._settings.source_schema_version,
+                    normalized_query_key=query.source_query.normalized_query_key,
+                    detail="allele_mismatch_excluded",
+                ),
+                cache_state=CacheState.LIVE,
+                raw_snapshot_refs=tuple(raw_refs),
+            )
+        try:
             source_version, items, condition_mismatch = self._map_vcv(
                 raw_xml=final_outcome.body,
                 raw_snapshot_ref=raw_ref,
@@ -300,13 +334,17 @@ class ClinVarAdapter:
             raw_snapshot_refs=tuple(raw_refs),
         )
 
-    def _build_query(self, variant: NormalizedVariantQuery) -> ClinVarQuery:
+    def _build_query(
+        self,
+        variant: NormalizedVariantQuery,
+        context_scope: EvidenceContextScope,
+    ) -> ClinVarQuery:
         variant_key = variant.variant_key
         if not variant_key:
             raise ValueError("variant_key is required")
-        condition_id = _optional_text(variant, "condition_id")
-        condition_label = _optional_text(variant, "condition_label")
-        condition_fingerprint = f"condition={condition_id or condition_label or '-'}"
+        condition_id = context_scope.disease_id
+        condition_label = None
+        condition_fingerprint = f"condition={condition_id or '-'}"
         accession = _optional_text(variant, "clinvar_accession")
         variation_id = _optional_text(
             variant, "clinvar_variation_id"
@@ -786,6 +824,52 @@ class ClinVarAdapter:
             raw_snapshot_refs=raw_snapshot_refs,
             diagnostics=diagnostics,
         )
+
+
+def _vcv_allele_matches(raw_xml: bytes, variant: NormalizedVariantQuery) -> bool:
+    """Require an authoritative VCV SequenceLocation to equal the request allele."""
+    try:
+        root = ElementTree.fromstring(raw_xml)
+    except ElementTree.ParseError as error:
+        raise ClinVarSchemaError("invalid VCV XML") from error
+    authoritative: list[_AuthoritativeAllele] = []
+    for element in root.iter():
+        if _local_name(element.tag) != "SequenceLocation":
+            continue
+        assembly = element.get("Assembly")
+        accession = element.get("Accession")
+        start = element.get("start")
+        stop = element.get("stop")
+        reference = element.get("referenceAllele")
+        alternate = element.get("alternateAllele")
+        if None in (assembly, accession, start, stop, reference, alternate):
+            continue
+        try:
+            authoritative.append(
+                _AuthoritativeAllele(
+                    assembly=assembly,
+                    accession=accession,
+                    start=int(start),
+                    stop=int(stop),
+                    reference=reference,
+                    alternate=alternate,
+                )
+            )
+        except ValueError as error:
+            raise ClinVarSchemaError(
+                "VCV SequenceLocation coordinates are invalid"
+            ) from error
+    if not authoritative:
+        raise ClinVarSchemaError("VCV response lacks an authoritative SequenceLocation")
+    return any(
+        allele.assembly == variant.genome_build
+        and allele.accession == variant.genomic_accession
+        and allele.start == variant.genomic_start + 1
+        and allele.stop == variant.genomic_end
+        and allele.reference == variant.reference_allele
+        and allele.alternate == variant.alternate_allele
+        for allele in authoritative
+    )
 
 
 def _single_esearch_candidate(raw_xml: bytes) -> str | None:

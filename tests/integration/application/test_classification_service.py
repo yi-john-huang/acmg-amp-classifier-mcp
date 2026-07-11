@@ -198,8 +198,10 @@ class _OfflineCacheMissAdapter:
         self,
         variant: NormalizedVariant,
         *,
+        context_scope: EvidenceContextScope,
         policy: EvidencePolicy,
     ) -> EvidenceSourceResult:
+        del context_scope
         self.calls += 1
         self.policies.append(policy)
         if policy.mode is not EvidencePolicyMode.OFFLINE:
@@ -283,9 +285,10 @@ class _PopulationAdapter:
         self,
         variant: NormalizedVariant,
         *,
+        context_scope: EvidenceContextScope,
         policy: EvidencePolicy,
     ) -> EvidenceSourceResult:
-        del policy
+        del context_scope, policy
         return EvidenceSourceResult(
             source_id=self.source_id,
             evidence_items=(self.item,),
@@ -341,12 +344,7 @@ class _ConflictingCriteriaEngine:
                 CriterionStrength.STRONG,
                 ruleset,
                 evidence_id=self._evidence_id,
-            ),
-            CriterionCode.BS1: _assessment(
-                CriterionCode.BS1,
-                CriterionStrength.STRONG,
-                ruleset,
-                evidence_id=self._evidence_id,
+                status=CriterionStatus.CONFLICTING,
             ),
         }
 
@@ -829,7 +827,7 @@ class ClassificationServiceIntegrationTests(unittest.IsolatedAsyncioTestCase):
         conflict = cast(ConflictClassificationResponse, response)
         self.assertEqual(conflict.status, WorkflowStatus.CONFLICT)
         self.assertIsNone(conflict.classification)
-        self.assertEqual(conflict.decision.conflict.kind.value, "directional")
+        self.assertEqual(conflict.decision.conflict.kind.value, "criterion")
         self.assertIsNone(conflict.explanation.classification)
         self.assertIn("Conflict", conflict.explanation.blocks[0].text)
         self.assertIsNotNone(conflict.classification_id)
@@ -1090,12 +1088,13 @@ def _assessment(
     ruleset: RulesetSpecification,
     *,
     evidence_id: str = "ev_" + "a" * 64,
+    status: CriterionStatus = CriterionStatus.APPLIED,
 ) -> CriterionAssessment:
     return CriterionAssessment(
         code=code,
-        status=CriterionStatus.APPLIED,
+        status=status,
         original_strength=strength,
-        applied_strength=strength,
+        applied_strength=(strength if status is CriterionStatus.APPLIED else None),
         evidence_ids=(evidence_id,),
         comparisons=(),
         rationale_template=f"{code.value} applied",

@@ -14,25 +14,25 @@ This repository is an **experimental** migration release. The source-controlled
 record of implemented interfaces, validation level, and release blockers.
 
 The package starts with local SQLite state and structured CLI/MCP behavior. It
-does **not** ship a controlled signed data catalog or a completed scientific
-classification runtime. Until a compatible catalog is supplied, an attempted
-classification returns the structured `BUNDLE_UNAVAILABLE` status rather than a
-fabricated result.
+does **not** ship a controlled signed data catalog, trusted release keys, or a
+completed scientific classification runtime. The installed interface has no
+catalog-configuration command. On clean first use, classification therefore
+returns `BUNDLE_UNAVAILABLE` rather than a fabricated result; other bootstrap
+or runtime failures retain their own structured error codes.
 
 ## Quick start from a source checkout
 
 Prerequisite: Python 3.12 or 3.13 and [uv](https://docs.astral.sh/uv/).
 
 ```sh
-uv tool install --from . acmg-classifier
+uv tool install .
 acmg --help
 acmg classify 'NM_000059.4(BRCA2):c.7008-1G>A' --no-interactive --format json
 ```
 
 The last command exercises the real entry point. In the current experimental
-release it is expected to return a JSON failure with `BUNDLE_UNAVAILABLE` until
-a compatible signed catalog is configured. That is a safety boundary, not a
-pathogenicity result.
+release it returns a JSON failure with `BUNDLE_UNAVAILABLE`; this is a safety
+boundary, not a pathogenicity result.
 
 For a checked-out development environment, use the equivalent:
 
@@ -61,9 +61,10 @@ installed console entry point:
 ```
 
 The primary tools are `classify_variant`, `explain_classification`, and
-`submit_feedback`. `get_raw_snapshot` is advanced-mode only. Tool schemas,
-resources, and structured response states are recorded in the
-[capability matrix](docs/release/capabilities.md).
+`submit_feedback`. `get_raw_snapshot` exists only for embedded callers of
+`create_server(..., advanced=True)`; the shipped `acmg-mcp` command has no
+advanced-mode switch. Tool schemas, resources, and structured response states
+are recorded in the [capability matrix](docs/release/capabilities.md).
 
 ## Scope and limits
 

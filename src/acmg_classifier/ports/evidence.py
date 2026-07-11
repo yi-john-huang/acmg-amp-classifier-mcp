@@ -7,7 +7,12 @@ from enum import StrEnum
 from typing import Protocol
 
 from acmg_classifier.domain.canonical import canonical_hash
-from acmg_classifier.domain.evidence import EvidenceItem, EvidencePolicy, SourceStatus
+from acmg_classifier.domain.evidence import (
+    EvidenceContextScope,
+    EvidenceItem,
+    EvidencePolicy,
+    SourceStatus,
+)
 
 
 class NormalizedVariantQuery(Protocol):
@@ -21,6 +26,21 @@ class NormalizedVariantQuery(Protocol):
 
     @property
     def genomic_hgvs(self) -> str | None: ...
+
+    @property
+    def genomic_accession(self) -> str: ...
+
+    @property
+    def genomic_start(self) -> int: ...
+
+    @property
+    def genomic_end(self) -> int: ...
+
+    @property
+    def reference_allele(self) -> str: ...
+
+    @property
+    def alternate_allele(self) -> str: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,5 +120,6 @@ class EvidenceAdapter(Protocol):
         self,
         variant: NormalizedVariantQuery,
         *,
+        context_scope: EvidenceContextScope,
         policy: EvidencePolicy,
     ) -> EvidenceSourceResult: ...
