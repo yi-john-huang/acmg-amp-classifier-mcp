@@ -212,11 +212,15 @@ def test_security_workflow_uses_locked_audit_and_fail_closed_secret_scan() -> No
         encoding="utf-8"
     )
     baseline = json.loads((root / ".secrets.baseline").read_text(encoding="utf-8"))
+    pyproject = (root / "pyproject.toml").read_text(encoding="utf-8")
+    lock = (root / "uv.lock").read_text(encoding="utf-8")
 
     assert "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683" in workflow
     assert "actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065" in workflow
     assert "uv export --locked" in workflow
-    assert "pip-audit==2.9.0" in workflow
+    assert 'pip-audit==2.9.0' in pyproject
+    assert 'name = "pip-audit"' in lock
+    assert "uv run --locked --no-dev --group audit pip-audit" in workflow
     assert "detect-secrets==1.5.0" in workflow
     assert "detect-secrets-hook" in workflow
     assert "--baseline .secrets.baseline" in workflow

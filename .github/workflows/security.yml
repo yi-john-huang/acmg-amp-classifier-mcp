@@ -27,7 +27,7 @@ jobs:
       - name: Audit the locked runtime dependency set
         run: |
           uv export --locked --no-dev --format requirements-txt --no-emit-project -o /tmp/runtime-requirements.txt
-          uvx --from "pip-audit==2.9.0" pip-audit --strict --requirement /tmp/runtime-requirements.txt
+          uv run --locked --no-dev --group audit pip-audit --strict --requirement /tmp/runtime-requirements.txt
 
   secret-scan:
     name: Fail-closed local secret scan
