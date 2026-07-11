@@ -13,10 +13,11 @@ build:
 
 # Verify the package using its focused test suite.
 test:
-	$(UV) run pytest tests/packaging
+	$(UV) run pytest --no-cov tests/packaging
 
+# Run the coverage suite separately from isolated wheel installation smoke.
 test-coverage:
-	$(UV) run pytest --cov=acmg_classifier tests/packaging
+	$(UV) run pytest --ignore=tests/packaging
 
 lint:
 	$(UV) run ruff check src tests/packaging
@@ -39,7 +40,7 @@ help:
 	@echo ""
 	@echo "  build          Build source and wheel distributions"
 	@echo "  test           Run package contract tests"
-	@echo "  test-coverage  Run package contract tests with coverage"
+	@echo "  test-coverage  Run the coverage suite without wheel smoke tests"
 	@echo "  lint           Run Ruff on package and package tests"
 	@echo "  docker         Build the stdio MCP container"
 	@echo "  run            Start acmg-mcp over standard input/output"

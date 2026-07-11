@@ -6,7 +6,7 @@
 Use the Python console commands from a source checkout:
 
 ```sh
-uv tool install --from . acmg-classifier
+uv tool install .
 acmg --help
 acmg doctor --format json
 ```

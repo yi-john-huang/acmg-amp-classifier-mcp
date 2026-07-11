@@ -12,7 +12,7 @@ installed.
 Use Python 3.12 or 3.13 and uv:
 
 ```sh
-uv tool install --from . acmg-classifier
+uv tool install .
 acmg --help
 ```
 

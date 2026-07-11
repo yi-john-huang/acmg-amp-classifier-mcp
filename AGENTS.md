@@ -8,7 +8,7 @@ clinical diagnostic device and its output requires professional interpretation.
 
 ## Runtime contract
 
-- Install from the repository with `uv tool install --from . acmg-classifier`.
+- Install from the repository with `uv tool install .`.
 - Launch `acmg-mcp` over standard input/output. It exposes no HTTP service.
 - The supported local state store is SQLite. PostgreSQL, Redis, Docker Swarm,
   Kubernetes, and the legacy Go server are not runtime contracts.

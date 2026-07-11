@@ -24,7 +24,7 @@ fabricated result.
 Prerequisite: Python 3.12 or 3.13 and [uv](https://docs.astral.sh/uv/).
 
 ```sh
-uv tool install --from . acmg-classifier
+uv tool install .
 acmg --help
 acmg classify 'NM_000059.4(BRCA2):c.7008-1G>A' --no-interactive --format json
 ```

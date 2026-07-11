@@ -2,7 +2,7 @@
 
 ## Runtime
 
-- Python 3.12+ package managed with `uv`.
+- Python 3.12 or 3.13 package managed with `uv`.
 - `src/acmg_classifier` is the only runtime implementation.
 - `acmg-mcp` runs FastMCP over standard input/output only.
 - Local persisted state uses SQLite; signed bundles and raw snapshots live under

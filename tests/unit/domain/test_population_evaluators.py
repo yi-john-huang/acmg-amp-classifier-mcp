@@ -177,7 +177,7 @@ def test_bs1_below_frequency_threshold_is_not_applied() -> None:
 def test_bs2_accepts_homozygous_or_hemizygous_boundary_counts() -> None:
     item = _item(
         ancestry="global",
-        allele_frequency=0.001,
+        allele_frequency=0.002,
         homozygote_count=0,
         hemizygote_count=2,
     )
