@@ -212,7 +212,7 @@ class BundleManagerTests(unittest.TestCase):
         self.assertEqual(RangeHandler.ranges, [f"bytes={split}-"])
         self.assertFalse(partial.exists())
 
-    def test_range_fallback_protocol_error_and_download_limit_are_safe(self) -> None:
+    def test_range_fallback_and_failed_downloads_remove_partials(self) -> None:
         from acmg_classifier.infrastructure.bundles.transport import (
             DownloadProtocolError,
             DownloadTooLargeError,
@@ -238,7 +238,7 @@ class BundleManagerTests(unittest.TestCase):
             RangeHandler.wrong_content_range = True
             with self.assertRaises(DownloadProtocolError):
                 manager.install(url, self.manifest, self._signature())
-        self.assertEqual(second_partial.stat().st_size, split)
+        self.assertFalse(second_partial.exists())
 
         limited_root = self.bundle_root / "limited"
         limited = self._manager_for_root(
@@ -251,6 +251,35 @@ class BundleManagerTests(unittest.TestCase):
         ):
             limited.install(url, self.manifest, self._signature())
         self.assertIsNone(limited.status().active_version)
+        self.assertFalse((limited_root / "downloads/2026.7.1.zip.part").exists())
+
+    def test_download_failure_removes_partial_archive(self) -> None:
+        class FailingTransport:
+            def download(
+                self,
+                _: str,
+                destination: Path,
+                *,
+                offset: int,
+                progress: object,
+            ) -> None:
+                del offset, progress
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_bytes(b"partial archive")
+                raise RuntimeError("network interrupted")
+
+        partial = self.bundle_root / "downloads/2026.7.1.zip.part"
+        manager = self._manager_for_root(
+            self.bundle_root,
+            transport=FailingTransport(),
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "network interrupted"):
+            manager.install(
+                "https://example.test/bundle.zip", self.manifest, b"signature"
+            )
+
+        self.assertFalse(partial.exists())
 
     def test_failed_update_preserves_previous_active_bundle(self) -> None:
         from acmg_classifier.infrastructure.bundles.verifier import ArchiveSafetyError

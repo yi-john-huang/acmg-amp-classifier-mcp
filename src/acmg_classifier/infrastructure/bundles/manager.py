@@ -167,12 +167,16 @@ class BundleManager:
 
         partial_path = self.root / "downloads" / f"{version}.zip.part"
         offset = partial_path.stat().st_size if partial_path.exists() else 0
-        self.transport.download(
-            archive_url,
-            partial_path,
-            offset=offset,
-            progress=progress,
-        )
+        try:
+            self.transport.download(
+                archive_url,
+                partial_path,
+                offset=offset,
+                progress=progress,
+            )
+        except Exception:
+            partial_path.unlink(missing_ok=True)
+            raise
 
         staging_path = self.root / "staging" / version
         shutil.rmtree(staging_path, ignore_errors=True)
