@@ -12,7 +12,7 @@ import asyncio
 import hashlib
 import json
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from datetime import UTC, datetime
 from typing import Literal, TypedDict, TypeGuard
 from urllib.parse import quote
@@ -160,7 +160,7 @@ class NCBIVariationNormalizationProvider:
         client: SourceHttpClient,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
         monotonic: Callable[[], float] = time.monotonic,
-        sleep: Callable[[float], None] = time.sleep,
+        async_sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
     ) -> None:
         if client.policy.allowed_hosts != frozenset({_NCBI_VARIATION_HOST}):
             raise ValueError(
@@ -169,10 +169,23 @@ class NCBIVariationNormalizationProvider:
         self._client = client
         self._clock = clock
         self._monotonic = monotonic
-        self._sleep = sleep
+        self._async_sleep = async_sleep
         self._last_request_at: float | None = None
 
     def normalize(
+        self,
+        parsed: ParsedVariant,
+        context: InterpretationContext | None,
+        policy: NormalizationPolicy,
+    ) -> NormalizationProviderResult:
+        """Synchronously normalize only when no event loop is already running."""
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(self.normalize_async(parsed, context, policy))
+        return self._active_event_loop_failure()
+
+    async def normalize_async(
         self,
         parsed: ParsedVariant,
         context: InterpretationContext | None,
@@ -203,7 +216,9 @@ class NCBIVariationNormalizationProvider:
                 details={"query_key": parsed.normalized_input},
             )
 
-        contextual = self._request_json(self._contextual_url(parsed, requested_build))
+        contextual = await self._request_json(
+            self._contextual_url(parsed, requested_build)
+        )
         if isinstance(contextual, NormalizationFailure):
             return contextual
         contextual_payload, contextual_raw = contextual
@@ -217,7 +232,7 @@ class NCBIVariationNormalizationProvider:
         canonical_url = (
             f"{_NCBI_VARIATION_BASE_URL}/spdi/{encoded_spdi}/canonical_representative"
         )
-        canonical = self._request_json(canonical_url)
+        canonical = await self._request_json(canonical_url)
         if isinstance(canonical, NormalizationFailure):
             return canonical
         canonical_payload, canonical_raw = canonical
@@ -289,24 +304,11 @@ class NCBIVariationNormalizationProvider:
         # enforce the provider round-trip invariant.
         return NormalizationSuccess(normalized=normalized, round_trip_key=canonical_key)
 
-    def _request_json(
+    async def _request_json(
         self, url: str
     ) -> tuple[Mapping[str, object], bytes] | NormalizationFailure:
-        try:
-            asyncio.get_running_loop()
-        except RuntimeError:
-            pass
-        else:
-            # The public provider port is synchronous.  Do not create a nested
-            # event loop and risk bypassing the injected client policy.
-            return self._active_event_loop_failure()
-        self._wait_for_ncbi_slot()
-        try:
-            outcome = asyncio.run(
-                self._client.request(HttpRequest("GET", url, read_only=True))
-            )
-        except RuntimeError:
-            return self._active_event_loop_failure()
+        await self._wait_for_ncbi_slot()
+        outcome = await self._client.request(HttpRequest("GET", url, read_only=True))
         failure = self._outcome_failure(outcome)
         if failure is not None:
             return failure
@@ -329,13 +331,13 @@ class NCBIVariationNormalizationProvider:
             details={"reason": "active_event_loop"},
         )
 
-    def _wait_for_ncbi_slot(self) -> None:
+    async def _wait_for_ncbi_slot(self) -> None:
         now = self._monotonic()
         if self._last_request_at is not None:
             delay = _NCBI_MIN_REQUEST_INTERVAL_SECONDS - (now - self._last_request_at)
             if delay > 0:
-                self._sleep(delay)
-                now += delay
+                await self._async_sleep(delay)
+                now = self._monotonic()
         self._last_request_at = now
 
     def _contextual_url(self, parsed: ParsedVariant, build: GenomeBuild | None) -> str:

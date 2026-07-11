@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import replace
 from typing import Literal
 
@@ -153,6 +154,115 @@ class VariantNormalizationService:
                 "successful normalization providers disagree on the canonical allele",
                 False,
                 details=details,
+            )
+        return NormalizationSuccess(self._merge_successes(parsed, successes))
+
+    async def normalize_async(
+        self,
+        value: str | ParsedVariant,
+        *,
+        context: InterpretationContext | None = None,
+        policy: NormalizationPolicy | None = None,
+    ) -> NormalizationProviderResult:
+        """Normalize through async-capable providers without blocking an event loop."""
+        parsed = value if isinstance(value, ParsedVariant) else self.parse(value)
+        if isinstance(parsed, (InvalidVariant, UnsupportedVariant)):
+            return self.normalize(parsed, context=context, policy=policy)
+
+        resolved_context = context or InterpretationContext()
+        resolved_policy = policy or NormalizationPolicy()
+        failures: list[NormalizationFailure] = []
+        successes: list[tuple[str, NormalizationSuccess]] = []
+        for provider in self._eligible_providers(resolved_policy):
+            provider_id = provider.provider_id
+            try:
+                async_normalize = getattr(provider, "normalize_async", None)
+                if callable(async_normalize):
+                    result = await async_normalize(
+                        parsed, resolved_context, resolved_policy
+                    )
+                else:
+                    result = provider.normalize(
+                        parsed, resolved_context, resolved_policy
+                    )
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                failures.append(
+                    NormalizationFailure(
+                        NormalizationFailureCode.PROVIDER_OUTAGE,
+                        "normalization provider failed unexpectedly",
+                        True,
+                        provider_id,
+                    )
+                )
+                continue
+            if isinstance(result, NormalizationFailure):
+                failures.append(
+                    result
+                    if result.provider_id is not None
+                    else replace(result, provider_id=provider_id)
+                )
+                continue
+            if not isinstance(result, NormalizationSuccess):
+                failures.append(
+                    NormalizationFailure(
+                        NormalizationFailureCode.PROVIDER_SCHEMA_DRIFT,
+                        "normalization provider returned an invalid result",
+                        False,
+                        provider_id,
+                    )
+                )
+                continue
+            if (
+                result.round_trip_key is not None
+                and result.round_trip_key != result.normalized.canonical_key
+            ):
+                failures.append(
+                    NormalizationFailure(
+                        NormalizationFailureCode.ROUND_TRIP_MISMATCH,
+                        (
+                            "provider round-trip allele does not match its "
+                            "canonical allele"
+                        ),
+                        False,
+                        provider_id,
+                        details={
+                            "canonical_key": result.normalized.canonical_key.value,
+                            "round_trip_key": result.round_trip_key.value,
+                        },
+                    )
+                )
+                continue
+            successes.append((provider_id, result))
+
+        terminal = self._terminal_failure(failures)
+        if terminal is not None:
+            return terminal
+        if not successes:
+            return NormalizationFailure(
+                NormalizationFailureCode.NORMALIZATION_UNAVAILABLE,
+                "no normalization provider returned a canonical allele",
+                any(failure.retryable for failure in failures),
+                details={"failures": self._failure_diagnostics(failures)},
+            )
+        if not self._agree_on_allele(successes):
+            provider_ids: list[JsonValue] = []
+            provider_ids.extend(sorted(provider_id for provider_id, _ in successes))
+            canonical_keys: list[JsonValue] = []
+            canonical_keys.extend(
+                sorted(
+                    {success.normalized.canonical_key.value for _, success in successes}
+                )
+            )
+            return NormalizationFailure(
+                NormalizationFailureCode.NORMALIZATION_CONFLICT,
+                "successful normalization providers disagree on the canonical allele",
+                False,
+                details={
+                    "providers": provider_ids,
+                    "canonical_keys": canonical_keys,
+                },
             )
         return NormalizationSuccess(self._merge_successes(parsed, successes))
 
