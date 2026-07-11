@@ -5,8 +5,8 @@ on:
   push:
     branches:
       - main
+      - master
       - develop
-
 permissions:
   contents: read
 
@@ -57,5 +57,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
+      - name: Prove history-only credentials remain observable
+        run: python scripts/verify_history_scan_regression.py
       - name: Scan complete Git history for secrets
         uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
