@@ -1,0 +1,9 @@
+{
+  "kind": "de_novo",
+  "confirmation": "confirmed",
+  "occurrence_count": 1,
+  "paternity_confirmed": true,
+  "maternity_confirmed": true,
+  "phenotype_consistent": true,
+  "citation_ids": ["https://doi.org/10.1000/example"]
+}

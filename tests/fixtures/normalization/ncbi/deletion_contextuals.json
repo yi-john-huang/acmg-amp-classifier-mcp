@@ -1,0 +1,13 @@
+{
+  "data": {
+    "spdis": [
+      {
+        "seq_id": "NC_000007.14",
+        "position": 117559592,
+        "deleted_sequence": "CTT",
+        "inserted_sequence": ""
+      }
+    ],
+    "input_hgvs_validity": "valid"
+  }
+}

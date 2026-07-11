@@ -1,0 +1,49 @@
+{
+  "data": {
+    "variant": {
+      "variant_id": "1-55516888-G-GA",
+      "reference_genome": "GRCh38",
+      "chrom": "1",
+      "pos": 55516888,
+      "ref": "G",
+      "alt": "GA",
+      "coverage": {
+        "exome": {"mean": 42.0, "median": 40.0, "over_20": 0.99},
+        "genome": {"mean": 35.0, "median": 33.0, "over_20": 0.98}
+      },
+      "genome": {
+        "ac": 8,
+        "an": 1000,
+        "af": 0.008,
+        "homozygote_count": 1,
+        "hemizygote_count": 2,
+        "filters": [],
+        "populations": [
+          {"id": "afr", "ac": 2, "an": 200, "homozygote_count": 0, "hemizygote_count": 1},
+          {"id": "nfe", "ac": 6, "an": 800, "homozygote_count": 1, "hemizygote_count": 1}
+        ]
+      },
+      "exome": {
+        "ac": 4,
+        "an": 500,
+        "af": 0.008,
+        "homozygote_count": 0,
+        "hemizygote_count": null,
+        "filters": [],
+        "populations": [
+          {"id": "afr", "ac": 1, "an": 100, "homozygote_count": 0, "hemizygote_count": null}
+        ]
+      },
+      "joint": {
+        "ac": 12,
+        "an": 1500,
+        "homozygote_count": 1,
+        "hemizygote_count": 2,
+        "filters": [],
+        "populations": [
+          {"id": "nfe", "ac": 7, "an": 900, "homozygote_count": 1, "hemizygote_count": 1}
+        ]
+      }
+    }
+  }
+}

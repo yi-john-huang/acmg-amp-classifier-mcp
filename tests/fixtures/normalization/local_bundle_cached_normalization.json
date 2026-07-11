@@ -1,0 +1,12 @@
+{
+  "query": "NC_000001.11:g.101A>G",
+  "canonical_key": {
+    "assembly": "GRCh38",
+    "sequence_accession": "NC_000001.11",
+    "start": 100,
+    "end": 101,
+    "deleted_sequence": "A",
+    "inserted_sequence": "G"
+  },
+  "normalized_hgvs": "NC_000001.11:g.101A>G"
+}

@@ -1,0 +1,61 @@
+{
+  "application_version": {
+    "maximum": "0.9.9",
+    "minimum": "0.1.0"
+  },
+  "bundle_version": "2026.7.10",
+  "channel": "candidate",
+  "created_at": "2026-07-10T17:00:42Z",
+  "format_version": "1.0",
+  "genome_builds": [
+    "GRCh38"
+  ],
+  "ruleset": {
+    "citation_url": "https://pubmed.ncbi.nlm.nih.gov/25741868/",
+    "identifier": "acmg-amp",
+    "path": "../rulesets/acmg-amp-2015.1.json",
+    "sha256": "48be5e680a27244cb6d449be068b55188916f249a1605b92d41836e18666015e",
+    "transformation_version": "1.0.0",
+    "version": "2015.1"
+  },
+  "schema_version": {
+    "maximum": "1.0",
+    "minimum": "1.0"
+  },
+  "signer_key_id": "core-release-2026",
+  "sources": [
+    {
+      "filename": "MANE.GRCh38.v1.5.summary.txt.gz",
+      "identifier": "mane-v1.5",
+      "kind": "mane_summary",
+      "license_id": "NCBI-MOLECULAR-DATA-TERMS",
+      "license_reviewed_at": "2026-07-11",
+      "license_reviewed_by": "project-maintainer",
+      "name": "NCBI/EMBL-EBI MANE",
+      "redistribution_allowed": true,
+      "release": "1.5",
+      "retrieved_at": "2026-07-10T17:00:42Z",
+      "sha256": "d10ace2720681a3b2e0eefd9da4f551274a6b4141ac9bfd6a2565dfb6e9ad55c",
+      "terms_url": "https://www.ncbi.nlm.nih.gov/home/about/policies/",
+      "transformation_version": "1.0.0",
+      "url": "https://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_1.5/MANE.GRCh38.v1.5.summary.txt.gz"
+    },
+    {
+      "filename": "Clingen-Gene-Disease-Summary-2026-07-10.csv",
+      "identifier": "clingen-gdv-2026-07-10",
+      "kind": "clingen_gene_disease",
+      "license_id": "CC0-1.0",
+      "license_reviewed_at": "2026-07-11",
+      "license_reviewed_by": "project-maintainer",
+      "name": "ClinGen Gene-Disease Validity",
+      "redistribution_allowed": true,
+      "release": "2026-07-10",
+      "retrieved_at": "2026-07-10T17:00:42Z",
+      "sha256": "446f2609932cf8fcae1169b16485ba9ba8c2ec89c5ec4d9a42d19b99969062d4",
+      "terms_url": "https://www.clinicalgenome.org/docs/terms-of-use/",
+      "transformation_version": "1.0.0",
+      "url": "https://search.clinicalgenome.org/kb/gene-validity/download"
+    }
+  ],
+  "transcript_release": "MANE Select v1.5"
+}

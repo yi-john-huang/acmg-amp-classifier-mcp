@@ -1,0 +1,17 @@
+[
+  {
+    "kind": "phenotype",
+    "term_id": "HP:0003002",
+    "state": "unknown",
+    "specificity": "unknown"
+  },
+  {
+    "kind": "phenotype",
+    "term_id": "HP:0001250",
+    "state": "not_applicable"
+  },
+  {
+    "kind": "de_novo",
+    "confirmation": "not_applicable"
+  }
+]

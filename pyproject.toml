@@ -1,0 +1,72 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "acmg-classifier"
+version = "0.1.0"
+description = "Reproducible, scientist-friendly ACMG/AMP variant classification"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+license = { file = "LICENSE" }
+authors = [{ name = "ACMG-AMP Classifier contributors" }]
+dependencies = [
+  "cryptography>=49,<50",
+  "filelock>=3.29,<4",
+  "platformdirs>=4.3,<5",
+  "httpx>=0.28,<1",
+  "pydantic>=2.11,<3",
+  "typer>=0.16,<1",
+  "rich>=14,<15",
+  "mcp>=1.12,<2",
+]
+
+[project.scripts]
+acmg = "acmg_classifier.presentation.cli.app:main"
+acmg-mcp = "acmg_classifier.presentation.mcp.server:main"
+
+[dependency-groups]
+dev = [
+  "hypothesis>=6.135,<7",
+  "mypy>=1.16,<2",
+  "pytest>=8.4,<9",
+  "pytest-asyncio>=1.0,<2",
+  "pytest-cov>=6.2,<7",
+  "ruff>=0.12,<1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/acmg_classifier"]
+
+[tool.pytest.ini_options]
+addopts = [
+  "--strict-config",
+  "--strict-markers",
+  "--cov=acmg_classifier",
+  "--cov-report=term-missing",
+]
+pythonpath = ["src", "."]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["acmg_classifier"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_covered = true
+
+[tool.ruff]
+line-length = 88
+src = ["src", "tests"]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src", "tests/packaging"]
+mypy_path = "src"

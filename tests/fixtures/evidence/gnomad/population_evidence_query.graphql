@@ -1,0 +1,40 @@
+query PopulationEvidenceVariant($variantId: String!, $dataset: DatasetId!) {
+  variant(variantId: $variantId, dataset: $dataset) {
+    variant_id
+    reference_genome
+    chrom
+    pos
+    ref
+    alt
+    coverage {
+      exome { mean }
+      genome { mean }
+    }
+    exome {
+      ac
+      an
+      af
+      homozygote_count
+      hemizygote_count
+      filters
+      populations { id ac an homozygote_count hemizygote_count }
+    }
+    genome {
+      ac
+      an
+      af
+      homozygote_count
+      hemizygote_count
+      filters
+      populations { id ac an homozygote_count hemizygote_count }
+    }
+    joint {
+      ac
+      an
+      homozygote_count
+      hemizygote_count
+      filters
+      populations { id ac an homozygote_count hemizygote_count }
+    }
+  }
+}

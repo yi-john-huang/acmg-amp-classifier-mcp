@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "dataset_id": "synthetic-validation-smoke",
+  "dataset_version": "1.0.0",
+  "dataset_kind": "synthetic_smoke",
+  "provenance": {
+    "approval_status": "missing",
+    "approval_id": null,
+    "protocol_id": null,
+    "protocol_version": null,
+    "approved_by": null,
+    "approved_at": null,
+    "license": null,
+    "independent_label_basis": null,
+    "source_artifacts": [],
+    "missing_prerequisite": "A provenance-approved independently curated scientific case set with redistribution permission is required before scientific release validation."
+  },
+  "exclusions": [
+    {
+      "case_id": "synthetic-excluded-001",
+      "reason": "Synthetic smoke fixtures are not independently curated clinical cases."
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "synthetic-smoke-001",
+      "request": {
+        "variant": "NM_000059.4(BRCA2):c.7008-1G>A",
+        "context": {
+          "disease_id": "MONDO:0007254"
+        },
+        "source_observations": [
+          {
+            "source_id": "clinvar",
+            "fields": {
+              "classification": "Pathogenic",
+              "record_id": "synthetic-clinvar-record"
+            }
+          }
+        ]
+      },
+      "masked_source_fields": [
+        {
+          "source_id": "clinvar",
+          "field": "classification"
+        }
+      ],
+      "expected": {
+        "classification": "pathogenic",
+        "criteria": {
+          "PVS1": "applied"
+        },
+        "normalization_failure": false
+      }
+    }
+  ]
+}
