@@ -1,0 +1,10 @@
+{
+  "data": {
+    "spdis": [],
+    "input_hgvs_validity": "valid",
+    "errors": {
+      "code": "REFERENCE_MISMATCH",
+      "message": "Reference allele does not match the reference sequence"
+    }
+  }
+}

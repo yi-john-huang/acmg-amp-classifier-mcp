@@ -19,6 +19,18 @@ coverage.html
 # Go workspace file
 go.work
 
+# Python environments, bytecode, test caches, and local tool caches
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+/.cache/
+
 # Dependency directories
 # vendor/
 
@@ -36,6 +48,7 @@ config.*.yaml
 *api*key*
 *api*token*
 *secret*
+!.secrets.baseline
 *password*
 *credential*
 *auth*token*
@@ -319,4 +332,19 @@ docs/api/generated/
 # Local Development Tools
 # =============================================================================
 .serena/
-.spec/
+
+# SDD MCP installer output
+/.agents/
+/.claude/agents/
+/.claude/contexts/
+/.claude/hooks/
+/.claude/rules/
+/.claude/skills/sdd-*/
+/.claude/skills/simple-task/
+/.codex/agents/
+/AGENTS.md
+
+# Keep project steering documents; ignore generated feature specifications.
+/.spec/*
+!/.spec/steering/
+!/.spec/steering/**

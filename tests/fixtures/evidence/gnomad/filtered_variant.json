@@ -1,0 +1,24 @@
+{
+  "data": {
+    "variant": {
+      "variant_id": "1-55516888-G-GA",
+      "reference_genome": "GRCh38",
+      "chrom": "1",
+      "pos": 55516888,
+      "ref": "G",
+      "alt": "GA",
+      "coverage": {"exome": null, "genome": {"mean": 20.0}},
+      "exome": null,
+      "genome": {
+        "ac": 0,
+        "an": 600,
+        "af": 0.0,
+        "homozygote_count": 0,
+        "hemizygote_count": null,
+        "filters": ["AC0"],
+        "populations": []
+      },
+      "joint": null
+    }
+  }
+}

@@ -1,0 +1,175 @@
+{
+  "schema_version": "1.0",
+  "legacy_public_tools": [
+    "classify_variant",
+    "validate_hgvs",
+    "apply_rule",
+    "combine_evidence",
+    "query_evidence",
+    "batch_query_evidence",
+    "query_clinvar",
+    "query_gnomad",
+    "query_cosmic",
+    "generate_report",
+    "format_report",
+    "validate_report",
+    "submit_feedback",
+    "query_feedback",
+    "export_feedback",
+    "import_feedback",
+    "list_feedback"
+  ],
+  "cases": [
+    {
+      "name": "safe_hgvs_and_transcript_aliases",
+      "legacy_tool": "classify_variant",
+      "request": {
+        "hgvs_notation": "NM_000492.3:c.1521_1523delCTT",
+        "transcript_id": "NM_000492.3",
+        "include_evidence": false
+      },
+      "expected": {
+        "status": "mapped",
+        "error_code": null,
+        "compatibility_decision": "MAP_SAFE_CLASSIFY_REQUEST",
+        "replacement_tool": "classify_variant",
+        "mapped_request": {
+          "variant": "NM_000492.3:c.1521_1523delCTT",
+          "transcript": "NM_000492.3"
+        }
+      }
+    },
+    {
+      "name": "preferred_isoform_is_a_compatible_transcript_alias",
+      "legacy_tool": "classify_variant",
+      "request": {
+        "hgvs_notation": "NM_007294.4:c.68_69delAG",
+        "preferred_isoform": "NM_007294.4"
+      },
+      "expected": {
+        "status": "mapped",
+        "error_code": null,
+        "compatibility_decision": "MAP_SAFE_CLASSIFY_REQUEST",
+        "replacement_tool": "classify_variant",
+        "mapped_request": {
+          "variant": "NM_007294.4:c.68_69delAG",
+          "transcript": "NM_007294.4"
+        }
+      }
+    },
+    {
+      "name": "ambiguous_gene_symbol_notation",
+      "legacy_tool": "classify_variant",
+      "request": {
+        "gene_symbol_notation": "BRCA1"
+      },
+      "expected": {
+        "status": "rejected",
+        "error_code": "AMBIGUOUS_LEGACY_REQUEST",
+        "compatibility_decision": "REJECT_AMBIGUOUS_VARIANT_INPUT",
+        "replacement_tool": "classify_variant"
+      }
+    },
+    {
+      "name": "deprecated_clinical_context",
+      "legacy_tool": "classify_variant",
+      "request": {
+        "hgvs_notation": "NM_000546.6:c.818G>A",
+        "clinical_context": "breast cancer"
+      },
+      "expected": {
+        "status": "rejected",
+        "error_code": "DEPRECATED_FIELD",
+        "compatibility_decision": "REJECT_DEPRECATED_FIELD",
+        "replacement_tool": "classify_variant"
+      }
+    },
+    {
+      "name": "missing_hgvs_notation",
+      "legacy_tool": "classify_variant",
+      "request": {
+        "transcript_id": "NM_000492.3"
+      },
+      "expected": {
+        "status": "rejected",
+        "error_code": "INVALID_LEGACY_REQUEST",
+        "compatibility_decision": "REJECT_MISSING_VARIANT",
+        "replacement_tool": "classify_variant"
+      }
+    },
+    {
+      "name": "mock_classification_cannot_be_preserved",
+      "legacy_tool": "classify_variant",
+      "request": {
+        "hgvs_notation": "NM_000001.1:c.100A>G",
+        "mock_evidence": {
+          "clinvar": "Pathogenic"
+        },
+        "classification": "VUS",
+        "recommendations": ["Refer patient for clinical management"]
+      },
+      "expected": {
+        "status": "rejected",
+        "error_code": "UNSUPPORTED_LEGACY_BEHAVIOR",
+        "compatibility_decision": "REJECT_MOCK_OR_FABRICATED_CONTENT",
+        "replacement_tool": "classify_variant"
+      }
+    },
+    {
+      "name": "unsupported_copy_number_variant",
+      "legacy_tool": "classify_variant",
+      "request": {
+        "hgvs_notation": "NC_000017.11:g.43044295_43125482del",
+        "variant_type": "CNV"
+      },
+      "expected": {
+        "status": "rejected",
+        "error_code": "UNSUPPORTED_LEGACY_BEHAVIOR",
+        "compatibility_decision": "REJECT_UNSUPPORTED_VARIANT_TYPE",
+        "replacement_tool": "classify_variant"
+      }
+    },
+    {
+      "name": "low_level_evidence_tool",
+      "legacy_tool": "query_evidence",
+      "request": {
+        "hgvs_notation": "NM_000492.3:c.1521_1523delCTT"
+      },
+      "expected": {
+        "status": "rejected",
+        "error_code": "UNAVAILABLE_SOURCE",
+        "compatibility_decision": "REJECT_LOW_LEVEL_EVIDENCE_TOOL",
+        "replacement_tool": "classify_variant"
+      }
+    },
+    {
+      "name": "phi_like_report_request",
+      "legacy_tool": "generate_report",
+      "request": {
+        "patient_id": "patient-001",
+        "report_template": "clinical"
+      },
+      "expected": {
+        "status": "rejected",
+        "error_code": "PRIVACY_REJECTED",
+        "compatibility_decision": "REJECT_PHI_LIKE_REPORT_REQUEST",
+        "replacement_tool": "explain_classification"
+      }
+    },
+    {
+      "name": "unanchored_legacy_feedback",
+      "legacy_tool": "submit_feedback",
+      "request": {
+        "variant": "NM_000492.3:c.1521_1523delCTT",
+        "suggested_classification": "VUS",
+        "user_classification": "VUS"
+      },
+      "expected": {
+        "status": "rejected",
+        "error_code": "MISSING_CLASSIFICATION_ID",
+        "compatibility_decision": "REJECT_UNANCHORED_FEEDBACK",
+        "replacement_tool": "submit_feedback"
+      }
+    }
+  ]
+}

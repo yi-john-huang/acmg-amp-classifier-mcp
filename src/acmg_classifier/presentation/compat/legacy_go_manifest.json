@@ -1,0 +1,185 @@
+{
+  "schema_version": "1.0",
+  "legacy_runtime": "go",
+  "primary_public_tools": [
+    "classify_variant",
+    "explain_classification",
+    "submit_feedback"
+  ],
+  "tools": {
+    "classify_variant": {
+      "decision": "MAP_SAFE_CLASSIFY_REQUEST",
+      "replacement": {
+        "tool": "classify_variant",
+        "field_aliases": {
+          "hgvs_notation": "variant",
+          "transcript_id": "transcript",
+          "preferred_isoform": "transcript"
+        }
+      },
+      "limitations": [
+        "Only HGVS requests for supported germline SNVs and small indels can be translated.",
+        "The adapter does not classify a variant or preserve legacy result content."
+      ]
+    },
+    "validate_hgvs": {
+      "decision": "REJECT_DEPRECATED_TOOL",
+      "replacement": {
+        "tool": "classify_variant"
+      },
+      "limitations": [
+        "Validation is part of the current classification workflow and is not exposed separately."
+      ]
+    },
+    "apply_rule": {
+      "decision": "REJECT_DEPRECATED_TOOL",
+      "replacement": {
+        "tool": "classify_variant"
+      },
+      "limitations": [
+        "Criterion evaluation is an internal deterministic workflow step."
+      ]
+    },
+    "combine_evidence": {
+      "decision": "REJECT_DEPRECATED_TOOL",
+      "replacement": {
+        "tool": "classify_variant"
+      },
+      "limitations": [
+        "Evidence combination is an internal deterministic workflow step."
+      ]
+    },
+    "query_evidence": {
+      "decision": "REJECT_LOW_LEVEL_EVIDENCE_TOOL",
+      "replacement": {
+        "tool": "classify_variant"
+      },
+      "limitations": [
+        "Low-level evidence access is not a public compatibility surface."
+      ]
+    },
+    "batch_query_evidence": {
+      "decision": "REJECT_LOW_LEVEL_EVIDENCE_TOOL",
+      "replacement": {
+        "tool": "classify_variant"
+      },
+      "limitations": [
+        "Batch evidence access is not a public compatibility surface."
+      ]
+    },
+    "query_clinvar": {
+      "decision": "REJECT_LOW_LEVEL_EVIDENCE_TOOL",
+      "replacement": {
+        "tool": "classify_variant"
+      },
+      "limitations": [
+        "Direct source queries are not a public compatibility surface."
+      ]
+    },
+    "query_gnomad": {
+      "decision": "REJECT_LOW_LEVEL_EVIDENCE_TOOL",
+      "replacement": {
+        "tool": "classify_variant"
+      },
+      "limitations": [
+        "Direct source queries are not a public compatibility surface."
+      ]
+    },
+    "query_cosmic": {
+      "decision": "REJECT_LOW_LEVEL_EVIDENCE_TOOL",
+      "replacement": {
+        "tool": "classify_variant"
+      },
+      "limitations": [
+        "Direct source queries are not a public compatibility surface."
+      ]
+    },
+    "generate_report": {
+      "decision": "REJECT_DEPRECATED_REPORT_TOOL",
+      "replacement": {
+        "tool": "explain_classification",
+        "required_fields": [
+          "classification_id"
+        ]
+      },
+      "limitations": [
+        "The system is research-use-only and does not generate clinical reports."
+      ]
+    },
+    "format_report": {
+      "decision": "REJECT_DEPRECATED_REPORT_TOOL",
+      "replacement": {
+        "tool": "explain_classification",
+        "required_fields": [
+          "classification_id"
+        ]
+      },
+      "limitations": [
+        "The system is research-use-only and does not format clinical reports."
+      ]
+    },
+    "validate_report": {
+      "decision": "REJECT_DEPRECATED_REPORT_TOOL",
+      "replacement": {
+        "tool": "explain_classification",
+        "required_fields": [
+          "classification_id"
+        ]
+      },
+      "limitations": [
+        "The system is research-use-only and does not validate clinical reports."
+      ]
+    },
+    "submit_feedback": {
+      "decision": "REJECT_UNANCHORED_FEEDBACK",
+      "replacement": {
+        "tool": "submit_feedback",
+        "required_fields": [
+          "classification_id",
+          "feedback_type",
+          "rationale",
+          "actor_id"
+        ]
+      },
+      "limitations": [
+        "Legacy feedback lacks the immutable classification anchor required for preservation."
+      ]
+    },
+    "query_feedback": {
+      "decision": "REJECT_DEPRECATED_TOOL",
+      "replacement": {
+        "tool": "submit_feedback"
+      },
+      "limitations": [
+        "Feedback retrieval is not exposed through the migration adapter."
+      ]
+    },
+    "export_feedback": {
+      "decision": "REJECT_DEPRECATED_TOOL",
+      "replacement": {
+        "tool": "submit_feedback"
+      },
+      "limitations": [
+        "Legacy feedback exports cannot be preserved without immutable anchors."
+      ]
+    },
+    "import_feedback": {
+      "decision": "REJECT_DEPRECATED_TOOL",
+      "replacement": {
+        "tool": "submit_feedback"
+      },
+      "limitations": [
+        "Legacy feedback imports cannot be preserved without immutable anchors."
+      ]
+    },
+    "list_feedback": {
+      "decision": "REJECT_DEPRECATED_TOOL",
+      "replacement": {
+        "tool": "submit_feedback"
+      },
+      "limitations": [
+        "Feedback listing is not exposed through the migration adapter."
+      ]
+    }
+  }
+}

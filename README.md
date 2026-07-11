@@ -1,811 +1,106 @@
-# ACMG-AMP MCP Server: AI-Powered Variant Classification
+# ACMG/AMP Classifier
 
-**(Project Status: Production Ready - MCP Integration Complete)**
+> **Research and educational use only. Not for clinical diagnostic use, patient care, or treatment decisions.**
 
-🔬 **Research & Educational Use Only** | ⚖️ **Non-Commercial License** | 🏥 **Not for Clinical Use**
+`acmg-classifier` is a Python package for reproducible ACMG/AMP-oriented
+variant-classification workflows. It keeps scientific inputs, ruleset versions,
+evidence snapshots, and workflow status explicit. It does not make a clinical
+diagnosis or recommend treatment.
 
-## Overview
+## Release status
 
-The ACMG-AMP MCP Server is a **Model Context Protocol (MCP)** compliant service that provides AI agents like Claude with direct access to professional-grade genetic variant classification tools. It implements the complete **ACMG/AMP 2015 guidelines** with all 28 evidence criteria, enabling AI assistants to perform standardized variant interpretation through natural language interactions.
+This repository is an **experimental** migration release. The source-controlled
+[capability support matrix](docs/release/capabilities.md) is the authoritative
+record of implemented interfaces, validation level, and release blockers.
 
-**🚀 Key Features:**
-- **Native MCP Integration**: Direct tool access for Claude, ChatGPT, and other MCP-compatible AI agents
-- **Complete ACMG/AMP Implementation**: All 28 rules (PVS1-BP7) with evidence combination logic
-- **Gene Symbol Query Support**: Input variants using gene symbols (e.g., "BRCA1:c.123A>G") with automatic transcript resolution
-- **6 External Database Sources**: ClinVar, gnomAD, COSMIC, PubMed, LOVD, HGMD integration
-- **3 Gene Database APIs**: HGNC, RefSeq, Ensembl for gene symbol validation and transcript mapping
-- **Real-time Classification**: Full workflow from HGVS or gene symbol input to clinical recommendations
-- **Production-grade Architecture**: PostgreSQL database, Redis caching, comprehensive logging
+The package starts with local SQLite state and structured CLI/MCP behavior. It
+does **not** ship a controlled signed data catalog, trusted release keys, or a
+completed scientific classification runtime. The installed interface has no
+catalog-configuration command. On clean first use, classification therefore
+returns `BUNDLE_UNAVAILABLE` rather than a fabricated result; other bootstrap
+or runtime failures retain their own structured error codes.
 
-## Purpose
+## Quick start from a source checkout
 
-The ACMG-AMP MCP Server enables:
+Prerequisite: Python 3.12 or 3.13 and [uv](https://docs.astral.sh/uv/).
 
-1. **AI-Native Genetic Analysis**: Claude and other AI agents can directly access professional genetic tools
-2. **Standardized ACMG/AMP Classification**: All 28 evidence criteria implemented with proper combination logic
-3. **Evidence-Based Interpretation**: Automated evidence gathering from 6 major databases (ClinVar, gnomAD, etc.)
-4. **Natural Language Interface**: Ask Claude about variants in plain English and get structured clinical reports
-5. **Reproducible Results**: Consistent application of ACMG/AMP guidelines across all analyses
-
-## 🎯 Implementation Status: **PRODUCTION READY**
-
-### ✅ **MCP Core (100% Complete)**
-- **MCP Protocol Integration**: Full JSON-RPC 2.0 compliance with Go SDK
-- **Transport Layer**: Stdio and HTTP-SSE transport for AI agent connectivity
-- **Tool Registry**: All ACMG/AMP tools registered and functional
-- **Session Management**: Client tracking, rate limiting, and graceful shutdown
-
-### ✅ **ACMG/AMP Classification Engine (100% Complete)**
-- **All 28 ACMG/AMP Rules**: PVS1, PS1-PS4, PM1-PM6, PP1-PP5, BA1, BS1-BS4, BP1-BP7
-- **Evidence Combination Logic**: Complete 2015 ACMG/AMP guidelines implementation
-- **Classification Service**: Full workflow orchestration with confidence assessment
-- **HGVS Parser**: Medical-grade variant notation validation and normalization
-
-### ✅ **External Database Integration (100% Complete)**
-- **6 Major Databases**: ClinVar, gnomAD, COSMIC, PubMed, LOVD, HGMD clients
-- **Resilient Architecture**: Circuit breakers, retry logic, fallback mechanisms
-- **Evidence Aggregation**: Automated gathering and quality scoring
-- **Caching Layer**: Optimized response times with intelligent cache invalidation
-
-### ✅ **Production Infrastructure (100% Complete)**
-- **PostgreSQL Database**: Advanced schema with JSONB support and audit trails
-- **Comprehensive Logging**: Structured logging with correlation IDs
-- **Health Monitoring**: Service and dependency health checks
-- **Container Support**: Docker and Kubernetes deployment ready
-
-## 🛠️ Available MCP Tools
-
-The server provides these tools that AI agents can access directly:
-
-### **Core Classification Tools**
-- **`classify_variant`**: Complete ACMG/AMP workflow - input HGVS notation, get full classification report
-- **`validate_hgvs`**: Validate and normalize HGVS variant notation
-- **`apply_rule`**: Apply specific ACMG/AMP rules (e.g., PVS1, PS1) to a variant
-- **`combine_evidence`**: Combine multiple rule results using ACMG/AMP guidelines
-
-### **Evidence Gathering Tools**
-- **`query_evidence`**: Gather evidence from all 6 external databases
-- **`batch_query_evidence`**: Batch query evidence for multiple variants with caching
-- **`query_clinvar`**: Search ClinVar for variant clinical significance
-- **`query_gnomad`**: Get population frequency data from gnomAD
-- **`query_cosmic`**: Search COSMIC for somatic mutation data
-
-### **Report Generation Tools**
-- **`generate_report`**: Create structured clinical interpretation reports
-- **`format_report`**: Export reports in multiple formats (JSON, text, PDF)
-- **`validate_report`**: Quality assurance for generated reports
-
-### **Feedback Tools**
-- **`submit_feedback`**: Save user correction or agreement on a classification
-- **`query_feedback`**: Check for previous classification feedback for a variant
-- **`list_feedback`**: List all stored feedback with pagination
-- **`export_feedback`**: Export all feedback to a JSON backup file
-- **`import_feedback`**: Import feedback from a JSON backup file
-
-## 🏗️ MCP Architecture
-
-The server implements the **Model Context Protocol (MCP)** for direct AI agent integration:
-
-```mermaid
-graph TD
-    subgraph "AI Agent Layer"
-        Claude[Claude Desktop/API] 
-        ChatGPT[ChatGPT with MCP]
-        CustomAI[Custom MCP Client]
-    end
-
-    subgraph "MCP Server Layer"
-        Transport[MCP Transport<br/>stdio/HTTP-SSE]
-        Protocol[JSON-RPC 2.0<br/>Protocol Handler]
-        ToolRegistry[MCP Tool Registry]
-    end
-
-    subgraph "Classification Engine"
-        ClassifierService[ACMG/AMP<br/>Classifier Service]
-        RuleEngine[28 ACMG/AMP Rules<br/>PVS1-BP7]
-        EvidenceCombiner[Evidence Combination<br/>Logic]
-    end
-
-    subgraph "Evidence Layer"
-        ClinVar[ClinVar API]
-        gnomAD[gnomAD API]
-        COSMIC[COSMIC API]
-        PubMed[PubMed API]
-        LOVD[LOVD API]
-        HGMD[HGMD API]
-    end
-
-    subgraph "Data Layer"
-        PostgreSQL[(PostgreSQL<br/>Variants & Results)]
-        Redis[(Redis<br/>API Cache)]
-    end
-
-    Claude --> Transport
-    ChatGPT --> Transport
-    CustomAI --> Transport
-    
-    Transport --> Protocol
-    Protocol --> ToolRegistry
-    
-    ToolRegistry --> ClassifierService
-    ClassifierService --> RuleEngine
-    ClassifierService --> EvidenceCombiner
-    
-    ClassifierService --> ClinVar
-    ClassifierService --> gnomAD
-    ClassifierService --> COSMIC
-    ClassifierService --> PubMed
-    ClassifierService --> LOVD
-    ClassifierService --> HGMD
-    
-    ClassifierService --> PostgreSQL
-    ClassifierService --> Redis
+```sh
+uv tool install .
+acmg --help
+acmg classify 'NM_000059.4(BRCA2):c.7008-1G>A' --no-interactive --format json
 ```
 
-## Target Audience
+The last command exercises the real entry point. In the current experimental
+release it returns a JSON failure with `BUNDLE_UNAVAILABLE`; this is a safety
+boundary, not a pathogenicity result.
 
-* Clinical Geneticists
-* Molecular Pathologists
-* Oncologists
-* Genetic Counselors
-* Bioinformaticians
-* Medical Researchers
+For a checked-out development environment, use the equivalent:
 
-## Project Structure
-
-```
-/
-├── cmd/                          # Main applications
-│   ├── mcp-server/              # Full MCP server (PostgreSQL + Redis)
-│   └── mcp-server-lite/         # Lite MCP server (SQLite, no dependencies)
-├── internal/                    # Private application code
-│   ├── config/                 # Configuration management
-│   ├── domain/                 # Business logic and entities
-│   ├── feedback/               # User feedback storage (SQLite & PostgreSQL)
-│   ├── mcp/                    # MCP protocol implementation
-│   │   ├── protocol/          # JSON-RPC 2.0 protocol core
-│   │   ├── transport/         # Transport layer (stdio/HTTP-SSE)
-│   │   ├── tools/             # ACMG/AMP tool implementations
-│   │   ├── resources/         # MCP resource providers
-│   │   └── prompts/           # MCP prompt templates
-│   ├── service/               # Application services
-│   └── setup/                 # Setup CLI and configuration utilities
-├── migrations/                 # PostgreSQL database migrations
-├── pkg/                        # Public library code
-│   └── external/              # External API clients (6 databases)
-├── deployments/               # Deployment configurations
-│   └── kubernetes/           # Kubernetes manifests
-├── docs/                      # Documentation
-├── examples/                  # Usage examples and integrations
-│   └── ai-agents/            # AI agent integration examples
-├── scripts/                   # Deployment and utility scripts
-│   └── install.sh            # One-liner installation script
-├── .env.example              # Environment configuration template
-├── docker-compose.yml        # Docker Compose configuration
-└── Dockerfile               # Container build configuration
+```sh
+uv sync
+uv run acmg doctor --format json
 ```
 
-## Core Interfaces
+See [scientist onboarding](docs/onboarding.md) for current commands and how to
+interpret readiness states.
 
-The service is built around well-defined interfaces:
+## MCP stdio
 
-- **APIGateway**: HTTP request handling and coordination
-- **InputParser**: HGVS validation and variant standardization  
-- **InterpretationEngine**: ACMG/AMP rule application and classification
-- **KnowledgeBaseAccess**: External database integration
-- **ReportGenerator**: Structured report generation
+The supported MCP transport is stdio. A desktop-client configuration uses the
+installed console entry point:
 
-## 🚀 Quick Start Guide
-
-> **📖 For detailed installation and usage instructions, see the [User Guide](docs/USER_GUIDE.md)**
-
-### Prerequisites
-
-**For Lite Server (Recommended for most users):**
-- **Go 1.24+** - For building the MCP server
-- No external databases required!
-
-**For Full Server (Production deployments):**
-- **Go 1.24+** - For building the MCP server
-- **PostgreSQL 15+** - For variant and results storage
-- **Docker & Docker Compose** - For easy deployment
-
----
-
-### ⚡ One-Liner Installation (Recommended)
-
-The fastest way to get started:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/yi-john-huang/acmg-amp-classifier-mcp/main/scripts/install.sh | bash
+```json
+{
+  "mcpServers": {
+    "acmg-amp-classifier": {
+      "command": "acmg-mcp",
+      "args": []
+    }
+  }
+}
 ```
 
-This will:
-1. Download the correct binary for your platform (macOS/Linux, Intel/ARM)
-2. Install to `~/.local/bin/`
-3. Add to your PATH
-4. Run the interactive setup wizard to configure Claude Desktop
+The primary tools are `classify_variant`, `explain_classification`, and
+`submit_feedback`. `get_raw_snapshot` exists only for embedded callers of
+`create_server(..., advanced=True)`; the shipped `acmg-mcp` command has no
+advanced-mode switch. Tool schemas, resources, and structured response states
+are recorded in the [capability matrix](docs/release/capabilities.md).
 
----
+## Scope and limits
 
-### 🔧 Setup Command
+- Intended scope: germline Mendelian SNVs and small indels.
+- Out of scope: somatic, CNV, structural, fusion, mitochondrial, and
+  pharmacogenomic interpretation.
+- Do not submit patient identifiers, credentials, or treatment questions.
+- Offline replay and degraded status are implementation-tested, but usable
+  offline classification requires a compatible local signed bundle/cache.
+- Independent scientific golden data, live performance measurements,
+  multi-platform first-use evidence, and participant usability evidence remain
+  external prerequisites.
 
-Both server binaries include a built-in setup command for configuration:
+Read [known limits](docs/known-limits.md),
+[safety and privacy](docs/safety-and-privacy.md), and the
+[release evidence ledger](docs/release/capabilities.json) before relying on an
+output.
 
-```bash
-# Interactive setup wizard (recommended for new users)
-mcp-server-lite setup wizard
+## Documentation
 
-# Configure Claude Desktop directly
-mcp-server-lite setup claude-desktop
+- [Onboarding](docs/onboarding.md): install, readiness, CLI, and MCP use.
+- [Capability support matrix](docs/release/capabilities.md): machine-checked
+  interface and validation status.
+- [Migration guide](docs/migration.md): legacy Go contract decisions and
+  replacements.
+- [Support policy](docs/support-policy.md): explicit support and deprecation
+  prerequisites.
+- [Safety and privacy](docs/safety-and-privacy.md): research-use boundaries and
+  data-handling controls.
 
-# Check current setup status
-mcp-server-lite setup status
+## Development checks
 
-# Validate configuration
-mcp-server-lite setup validate
+```sh
+uv run pytest --no-cov tests/contract/test_release_documentation.py -q
+uv run pytest --no-cov tests/integration/presentation tests/packaging -q
 ```
 
-**Setup Command Options:**
-
-| Command | Description |
-|---------|-------------|
-| `setup wizard` | Interactive step-by-step setup |
-| `setup claude-desktop` | Configure Claude Desktop integration |
-| `setup claude-desktop --binary /path/to/binary` | Use specific binary path |
-| `setup claude-desktop --auto` | Skip confirmation prompts |
-| `setup status` | Show current configuration status |
-| `setup validate` | Validate configuration is working |
-
----
-
-### 📦 Method 1: Lite Server (Zero Dependencies - Recommended)
-
-The **Lite Server** is the easiest way to get started. It requires **no external databases** - uses SQLite for persistence and in-memory caching.
-
-#### Option A: Pre-built Binary
-
-1. **Download the latest release**
-   ```bash
-   # macOS (Apple Silicon)
-   curl -L -o mcp-server-lite https://github.com/yi-john-huang/acmg-amp-classifier-mcp/releases/latest/download/mcp-server-lite-darwin-arm64
-   chmod +x mcp-server-lite
-
-   # macOS (Intel)
-   curl -L -o mcp-server-lite https://github.com/yi-john-huang/acmg-amp-classifier-mcp/releases/latest/download/mcp-server-lite-darwin-amd64
-   chmod +x mcp-server-lite
-
-   # Linux (x64)
-   curl -L -o mcp-server-lite https://github.com/yi-john-huang/acmg-amp-classifier-mcp/releases/latest/download/mcp-server-lite-linux-amd64
-   chmod +x mcp-server-lite
-   ```
-
-2. **Configure Claude Desktop**
-
-   Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
-
-   ```json
-   {
-     "mcpServers": {
-       "acmg-amp-classifier": {
-         "command": "/path/to/mcp-server-lite",
-         "args": [],
-         "env": {}
-       }
-     }
-   }
-   ```
-
-3. **Test with Claude**
-
-   Ask Claude: *"Classify the variant BRCA1:c.5266dupC using ACMG/AMP guidelines"*
-
-#### Option B: Build from Source
-
-```bash
-# Clone the repository
-git clone https://github.com/yi-john-huang/acmg-amp-classifier-mcp.git
-cd acmg-amp-classifier-mcp
-
-# Build the lite server
-make build-lite
-
-# The binary is in build/mcp-server-lite
-./build/mcp-server-lite
-```
-
-#### Option C: Docker (Lite)
-
-```bash
-# Build the lite Docker image
-make docker-lite
-
-# Run with stdio transport (for Claude Desktop)
-docker run -it --rm \
-  -v ~/.acmg-amp-mcp:/data \
-  acmg-amp-mcp-server-lite:latest
-```
-
-#### Lite Server Configuration
-
-The lite server uses environment variables for configuration (all optional):
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `ACMG_DATA_DIR` | `~/.acmg-amp-mcp` | Data directory for SQLite and exports |
-| `ACMG_TRANSPORT` | `stdio` | Transport type: `stdio` or `http` |
-| `ACMG_HTTP_PORT` | `8080` | HTTP port (if transport is http) |
-| `ACMG_LOG_LEVEL` | `info` | Log level: `debug`, `info`, `warn`, `error` |
-| `ACMG_CACHE_MAX_ITEMS` | `1000` | Maximum items in memory cache |
-| `ACMG_CACHE_TTL` | `24h` | Cache time-to-live |
-| `CLINVAR_API_KEY` | *(none)* | NCBI API key for higher rate limits |
-| `COSMIC_API_KEY` | *(none)* | COSMIC API key |
-
-#### Lite Server Features
-
-- **User Feedback Storage**: Store classification corrections and agreements
-- **Export/Import**: Backup feedback to JSON files
-- **No Dependencies**: Works immediately without PostgreSQL or Redis
-- **Portable**: Single binary, runs anywhere
-
-#### Feedback Tools
-
-Both the Lite and Full servers include 5 MCP tools for managing user feedback:
-
-| Tool | Description |
-|------|-------------|
-| `submit_feedback` | Save user correction or agreement on a classification |
-| `query_feedback` | Check for previous classification for a variant |
-| `list_feedback` | List all stored feedback with pagination |
-| `export_feedback` | Export all feedback to a JSON backup file |
-| `import_feedback` | Import feedback from a JSON backup file |
-
-**Storage backends:**
-- **Lite Server**: SQLite (stored in `~/.acmg-amp-mcp/feedback.db`)
-- **Full Server**: PostgreSQL (same database as variants/interpretations)
-
-Example usage with Claude:
-- *"Submit feedback: I agree with the Pathogenic classification for BRCA1:c.5266dupC"*
-- *"Check if we have previous feedback for TP53:p.R273H"*
-- *"Export all feedback to a backup file"*
-
----
-
-### 📦 Method 2: Full Server with Docker (Production)
-
-1. **Clone and configure**
-   ```bash
-   git clone https://github.com/your-username/acmg-amp-classifier-mcp.git
-   cd acmg-amp-classifier-mcp
-   
-   # Copy and edit environment configuration
-   cp .env.example .env
-   ```
-
-2. **Configure environment variables**
-   
-   Edit `.env` file with your secure credentials:
-   ```bash
-   # Required: Set secure passwords
-   POSTGRES_PASSWORD=your_secure_postgres_password_here
-   REDIS_PASSWORD=your_secure_redis_password_here
-   
-   # Optional: External database API keys (for production use)
-   CLINVAR_API_KEY=your_ncbi_api_key_here
-   GNOMAD_API_KEY=your_gnomad_api_key_here  
-   COSMIC_USERNAME=your_cosmic_username_here
-   COSMIC_PASSWORD=your_cosmic_password_here
-   
-   # Optional: Adjust ports if needed
-   POSTGRES_PORT=5432
-   REDIS_PORT=6379
-   MCP_HTTP_PORT=8080
-   ```
-
-3. **Start the services**
-   ```bash
-   # Start PostgreSQL, Redis, and MCP server
-   docker-compose up -d
-   
-   # Check all services are running
-   docker-compose ps
-   
-   # Check server health
-   curl http://localhost:8080/health
-   
-   # View logs (optional)
-   docker-compose logs -f mcp-server
-   ```
-
-4. **Verify deployment**
-   ```bash
-   # Test database connection
-   docker-compose exec postgres psql -U mcpuser -d acmg_amp_mcp -c "SELECT version();"
-   
-   # Test Redis connection  
-   docker-compose exec redis redis-cli -a $REDIS_PASSWORD ping
-   
-   # Test MCP server tools
-   curl http://localhost:8080/tools/list
-   ```
-
-5. **Configure Claude Desktop**
-   
-   Add to your Claude Desktop MCP settings (`~/Library/Application Support/Claude/claude_desktop_config.json`):
-   ```json
-   {
-     "mcpServers": {
-       "acmg-amp-classifier": {
-         "command": "docker",
-         "args": ["exec", "acmg-amp-mcp-server", "/app/mcp-server"],
-         "env": {}
-       }
-     }
-   }
-   ```
-
-6. **Test with Claude**
-   
-   Ask Claude: *"Can you classify the variant NM_000492.3:c.1521_1523delCTT using ACMG/AMP guidelines?"*
-
-### 🔧 Docker Compose Services
-
-The provided `docker-compose.yml` includes:
-
-**PostgreSQL Database (`postgres`)**
-- Image: `postgres:15-alpine`
-- Port: `5432` (configurable via `POSTGRES_PORT`)
-- Persistent storage with health checks
-- Automatic database initialization scripts
-- Resource limits for production use
-
-**Redis Cache (`redis`)**  
-- Image: `redis:7-alpine`
-- Port: `6379` (configurable via `REDIS_PORT`)
-- Password-protected with persistence enabled
-- Memory limit (512MB) with LRU eviction policy
-- Append-only file for data durability
-
-**MCP Server (`mcp-server`)**
-- Built from local Dockerfile
-- Port: `8080` (configurable via `MCP_HTTP_PORT`)  
-- Automatic database migrations on startup
-- Health checks and restart policies
-- Comprehensive logging and monitoring
-
-**Key Features:**
-- **Production-ready**: Resource limits, health checks, restart policies
-- **Secure**: Password-protected services, non-root users
-- **Persistent**: Data volumes for PostgreSQL and Redis
-- **Scalable**: Network isolation and configurable resources
-- **Monitored**: Health checks and logging integration
-
-### 🛠️ Environment Variables Reference
-
-The `.env` file supports comprehensive configuration:
-
-```bash
-# =============================================================================
-# Database Configuration
-# =============================================================================
-POSTGRES_DB=acmg_amp_mcp              # Database name
-POSTGRES_USER=mcpuser                 # Database username  
-POSTGRES_PASSWORD=secure_password     # Database password (REQUIRED)
-POSTGRES_PORT=5432                    # Database port
-
-# =============================================================================
-# Redis Configuration  
-# =============================================================================
-REDIS_PASSWORD=secure_redis_password  # Redis password (REQUIRED)
-REDIS_PORT=6379                       # Redis port
-
-# =============================================================================
-# MCP Server Configuration
-# =============================================================================
-MCP_TRANSPORT=http                    # Transport type (http/stdio)
-MCP_HTTP_PORT=8080                    # HTTP server port
-MCP_LOG_LEVEL=info                    # Log level (debug/info/warn/error)
-MCP_MAX_CONNECTIONS=1000              # Max concurrent connections
-MCP_CACHE_ENABLED=true                # Enable caching
-
-# =============================================================================
-# External Database APIs (Optional - for enhanced functionality)
-# =============================================================================
-CLINVAR_API_KEY=your_ncbi_key         # NCBI E-utilities API key
-GNOMAD_API_KEY=your_gnomad_key        # gnomAD API key  
-COSMIC_USERNAME=your_cosmic_user      # COSMIC database username
-COSMIC_PASSWORD=your_cosmic_pass      # COSMIC database password
-LOVD_API_KEY=your_lovd_key           # LOVD API key
-HGMD_API_KEY=your_hgmd_key           # HGMD API key
-
-# =============================================================================
-# Security Configuration (Production)
-# =============================================================================
-MCP_TLS_ENABLED=false                 # Enable HTTPS/TLS
-MCP_TLS_CERT_PATH=/app/certs/server.crt
-MCP_TLS_KEY_PATH=/app/certs/server.key
-```
-
-### 🔧 Method 3: Local Development (Full Server)
-
-1. **Setup dependencies**
-   ```bash
-   # Install Go dependencies
-   go mod download
-   
-   # Start local PostgreSQL and Redis
-   brew install postgresql redis
-   brew services start postgresql redis
-   
-   # Create database
-   createdb acmg_amp_dev
-   ```
-
-2. **Configure and run**
-   ```bash
-   # Copy and edit environment variables
-   cp .env.example .env
-   # Edit .env with your local database settings
-   
-   # Set environment variables for local development
-   export DATABASE_URL="postgres://mcpuser:password@localhost:5432/acmg_amp_dev"
-   export REDIS_URL="redis://localhost:6379/0"
-   
-   # Run database migrations (if migration command exists)
-   # go run cmd/migrate/main.go up
-   
-   # Start the MCP server
-   go run cmd/mcp-server/main.go --stdio
-   ```
-
-3. **Connect to Claude Desktop**
-   
-   Configure Claude Desktop to use stdio transport:
-   ```json
-   {
-     "mcpServers": {
-       "acmg-amp-classifier": {
-         "command": "/path/to/your/built/mcp-server",
-         "args": ["--stdio"],
-         "env": {
-           "DATABASE_URL": "postgres://mcpuser:password@localhost:5432/acmg_amp_dev",
-           "REDIS_URL": "redis://localhost:6379/0"
-         }
-       }
-     }
-   }
-   ```
-
-   Or use `go run` directly:
-   ```json
-   {
-     "mcpServers": {
-       "acmg-amp-classifier": {
-         "command": "go",
-         "args": ["run", "/path/to/acmg-amp-classifier-mcp/cmd/mcp-server/main.go", "--stdio"],
-         "cwd": "/path/to/acmg-amp-classifier-mcp",
-         "env": {
-           "DATABASE_URL": "postgres://mcpuser:password@localhost:5432/acmg_amp_dev",
-           "REDIS_URL": "redis://localhost:6379/0"
-         }
-       }
-     }
-   }
-   ```
-
-### Security & Compliance Notice
-
-⚠️ **This is medical software handling genetic data. Security and compliance are critical:**
-
-**Security Requirements:**
-- **Never commit `.env` files** or secrets to version control (added to `.gitignore`)
-- **Use strong, unique passwords** for all services (minimum 16 characters)
-- **Enable TLS/HTTPS** in production environments (`MCP_TLS_ENABLED=true`)
-- **Regularly rotate API keys** and database passwords
-- **Monitor audit logs** for suspicious activity 
-- **Use environment variables** for all sensitive configuration
-- See [SECURITY.md](SECURITY.md) for complete security guidelines
-
-**Production Deployment Checklist:**
-- [ ] Set secure `POSTGRES_PASSWORD` and `REDIS_PASSWORD` in `.env`
-- [ ] Configure external database API keys for enhanced functionality  
-- [ ] Enable TLS/HTTPS for production (`MCP_TLS_ENABLED=true`)
-- [ ] Set appropriate resource limits in `docker-compose.yml`
-- [ ] Configure monitoring and log aggregation
-- [ ] Set up regular database backups
-- [ ] Review and apply security patches regularly
-
-**License Compliance:**
-- ✅ Ensure your use case complies with the Non-Commercial License
-- ❌ Commercial use requires separate licensing agreement
-- 🏥 Clinical use is prohibited without regulatory approval
-- 📚 Keep this README and LICENSE files with any distribution
-
-## 💬 Example Usage with Claude
-
-Once configured, you can ask Claude to perform genetic variant analysis:
-
-### **Basic Variant Classification (HGVS)**
-```
-"Can you classify the variant NM_000492.3:c.1521_1523delCTT and explain the ACMG/AMP rules that apply?"
-```
-
-### **Gene Symbol Classification (NEW)**
-```
-"Classify the BRCA1:c.5266dupC variant and explain the pathogenicity."
-```
-
-```
-"What is the ACMG/AMP classification for TP53 p.R273H?"
-```
-
-### **Evidence Gathering**
-```
-"What evidence is available for the BRCA1 variant chr17:g.43094692G>A from ClinVar and gnomAD?"
-```
-
-### **Rule-Specific Analysis**
-```
-"Apply the PVS1 rule to the variant NM_000492.3:c.1521_1523delCTT and explain whether it meets the criteria."
-```
-
-### **Batch Analysis**
-```
-"Can you classify these variants and compare their pathogenicity:
-1. NM_000492.3:c.1521_1523delCTT
-2. BRCA1:c.5266dupC
-3. TP53 p.R273H"
-```
-
-### **Report Generation**
-```
-"Generate a clinical interpretation report for CFTR:c.1521_1523delCTT including recommendations for genetic counseling."
-```
-
-## Configuration
-
-The service uses Viper for configuration management with support for:
-- YAML configuration files
-- Environment variables (prefixed with `ACMG_AMP_`)
-- Sensible defaults for development
-
-Key configuration sections:
-- **Server**: HTTP server settings (port, timeouts, CORS)
-- **Database**: PostgreSQL connection settings with connection pooling
-- **Redis**: Cache configuration for external API responses
-- **External**: API keys and settings for ClinVar, gnomAD, COSMIC
-- **Logging**: Structured logging with configurable levels
-
-### Database Configuration
-
-The service uses PostgreSQL 15+ with advanced features:
-- **Connection Pooling**: pgx v5 driver with configurable pool settings (min/max connections, lifetime management)
-- **UUID Generation**: Native `gen_random_uuid()` for distributed system compatibility
-- **JSONB Support**: Advanced JSONB storage and indexing for evidence and rule data
-- **Health Monitoring**: Built-in connection health checks and pool statistics
-- **Audit Triggers**: Automatic timestamp updates with PL/pgSQL functions
-
-### Database Schema
-
-Production-ready schema with two core tables:
-
-**variants table:**
-- UUID primary keys with HGVS notation uniqueness constraints
-- Genomic coordinate validation and indexing
-- Support for both germline and somatic variants
-- Automatic audit trail with created_at/updated_at timestamps
-
-**interpretations table:**
-- Foreign key relationships with cascade delete
-- ACMG/AMP classification enumeration with validation
-- Advanced JSONB storage for rules, evidence, and report data
-- Processing time tracking and client audit fields
-- GIN indexes for efficient JSONB queries
-
-**Migration Features:**
-- Automated migration on startup with version tracking
-- Transaction-wrapped migrations for consistency
-- Up/down migration support for rollbacks
-- Comprehensive indexing strategy for performance
-
-## 🔧 MCP Tool Reference
-
-### **classify_variant**
-Complete ACMG/AMP variant classification workflow with support for both HGVS and gene symbol input.
-
-**Parameters:**
-- `hgvs_notation` (optional*): HGVS variant notation (e.g., "NM_000492.3:c.1521_1523delCTT")
-- `gene_symbol_notation` (optional*): Gene symbol with variant (e.g., "BRCA1:c.123A>G", "TP53 p.R273H")
-- `preferred_isoform` (optional): Preferred transcript isoform when multiple exist
-- `gene_symbol` (optional): HGNC gene symbol for additional context
-- `variant_type` (optional): "SNV", "indel", "CNV", "SV"
-- `clinical_context` (optional): Clinical context information
-
-*At least one of `hgvs_notation` or `gene_symbol_notation` is required.
-
-**Supported Gene Symbol Formats:**
-- `BRCA1:c.123A>G` - Gene symbol with coding variant
-- `TP53 p.R273H` - Gene symbol with protein change
-- `CFTR` - Standalone gene symbol (for gene-level queries)
-
-**Example Claude Requests:**
-- *"Use classify_variant to analyze NM_000492.3:c.1521_1523delCTT"*
-- *"Classify the BRCA1:c.5266dupC variant using ACMG/AMP guidelines"*
-- *"What is the classification for TP53 p.R273H?"*
-
----
-
-### **apply_rule**
-Apply a specific ACMG/AMP rule to a variant.
-
-**Parameters:**
-- `rule_code` (required): ACMG/AMP rule (e.g., "PVS1", "PS1", "PM2", "PP3")
-- `variant_data` (required): Variant information object
-- `evidence_data` (optional): Additional evidence
-
-**Example Claude Request:**
-*"Apply the PVS1 rule to variant NM_000492.3:c.1521_1523delCTT"*
-
----
-
-### **validate_hgvs**
-Validate and normalize HGVS notation.
-
-**Parameters:**
-- `hgvs_notation` (required): HGVS string to validate
-- `strict_mode` (optional): Enable strict validation
-
-**Example Claude Request:**
-*"Validate this HGVS notation: NM_000492.3:c.1521_1523delCTT"*
-
----
-
-### **combine_evidence**
-Combine multiple ACMG/AMP rules according to guidelines.
-
-**Parameters:**
-- `applied_rules` (required): Array of rule evaluation results
-- `guidelines` (optional): Guidelines version ("ACMG2015")
-
-**Example Claude Request:**
-*"Combine these ACMG/AMP rule results into a final classification"*
-
-## License
-
-This software is released under a **Non-Commercial License**. 
-
-### ✅ **Permitted Uses (Non-Commercial)**
-- Academic research and education
-- Personal experimentation and learning
-- Non-profit organization internal research
-- Open source contributions and improvements
-- Clinical research (non-patient care)
-
-### ❌ **Prohibited Uses (Commercial)**
-- Clinical practice and patient care
-- Integration into commercial products or services
-- Paid consulting or analysis services
-- Revenue-generating operations
-- Commercial distribution or resale
-
-### 📋 **Medical Software Disclaimer**
-
-⚠️ **IMPORTANT: This software is for research and educational purposes only.**
-
-- **NOT approved for clinical use or patient care**
-- **NOT a medical device or diagnostic tool**
-- **Requires additional validation for clinical settings**
-- **Should not be used as sole basis for medical decisions**
-- **Requires regulatory approval for clinical use**
-
-Any clinical application requires appropriate medical oversight, validation studies, and regulatory compliance.
-
-## Contact for Commercial Licensing
-
-If you wish to use the MCP Service for commercial purposes, please contact:
-
-**[Yi John Huang]**
-**[yi.john.huang@me.com]**
-
----
-*This README was last updated on: 2026-01-17*
+These checks prove documented local contracts. They do not establish clinical
+validation, production readiness, certification, or live-source performance.

@@ -1,0 +1,11 @@
+{
+  "kind": "case_control",
+  "study_id": "PMID:23456789",
+  "case_count": 100,
+  "control_count": 1000,
+  "case_allele_count": 6,
+  "control_allele_count": 1,
+  "odds_ratio": 4.2,
+  "p_value": 0.01,
+  "citation_ids": ["PMID:23456789"]
+}

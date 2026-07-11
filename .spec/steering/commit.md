@@ -30,21 +30,22 @@ All commit messages must begin with one of these type prefixes:
 
 The scope provides additional context about which part of the codebase is affected:
 
-- **cluster**: Changes to EKS cluster configuration
-- **db**: Database-related changes
-- **iam**: Identity and access management changes
-- **net**: Networking changes (VPC, security groups, etc.)
-- **k8s**: Kubernetes resource changes
-- **module**: Changes to reusable Terraform modules
+- **bundles**: Signed bundle construction, verification, or lifecycle changes
+- **evidence**: Source adapters, evidence models, or provenance changes
+- **normalization**: Variant parsing or canonicalization changes
+- **rules**: ACMG/AMP rule or evaluator changes
+- **storage**: SQLite records, cache, or immutable artifact changes
+- **cli** / **mcp**: User-interface or protocol-surface changes
+- **packaging** / **security**: Release, dependency, or security-boundary changes
 
 ## Examples
 
 ```
-feat(cluster): add node autoscaling for billing namespace
-fix(db): correct MySQL parameter group settings
-docs(k8s): update network policy documentation
-chore: update terraform provider versions
-refactor(module): simplify EKS node group module
+feat(bundles): verify signed release archive
+fix(normalization): reject ambiguous transcript input
+docs(mcp): clarify routine resource availability
+chore(packaging): update locked wheel smoke test
+refactor(storage): centralize immutable record serialization
 ```
 
 ## Best Practices

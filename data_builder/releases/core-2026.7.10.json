@@ -1,0 +1,21 @@
+{
+  "archive_byte_size": 4153461,
+  "archive_sha256": "371ace24c1c2f4ea0a1f0dc71c4f6d17f1dacc127c75434fac63874565e61fa5",
+  "bundle_version": "2026.7.10",
+  "candidate_status": "reproducible",
+  "gene_disease_count": 3646,
+  "license_review_status": "approved_for_redistribution",
+  "manifest_sha256": "dea87fc9cbe3f4d85a4b486bd1478353638cfed0225fd33487c38e91d675ada2",
+  "recipe_sha256": "e4760d06eaefb936071945bb0f8d6b9eb8510af5eebe21b207c39678493e741e",
+  "release_signature_status": "requires_controlled_release_key",
+  "scientific_release_gate": "pending_task_10.2",
+  "source_sha256": {
+    "clingen-gdv-2026-07-10": "446f2609932cf8fcae1169b16485ba9ba8c2ec89c5ec4d9a42d19b99969062d4",
+    "mane-v1.5": "d10ace2720681a3b2e0eefd9da4f551274a6b4141ac9bfd6a2565dfb6e9ad55c"
+  },
+  "toolchain": {
+    "python": "3.13.14",
+    "sqlite": "3.53.1"
+  },
+  "transcript_count": 19385
+}

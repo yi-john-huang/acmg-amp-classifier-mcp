@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ClinVarResult-Set>
+  <VariationArchive VariationID="14206" VariationName="NM_000492.4(CFTR):c.1521_1523del" VariationType="Deletion" DateCreated="2000-01-01" Accession="VCV000014206" Version="4" RecordType="classified">
+    <SimpleAllele><Location><SequenceLocation Assembly="GRCh38" Accession="NC_000007.14" start="117559593" stop="117559595" referenceAllele="CTT" alternateAllele="C" /></Location></SimpleAllele>
+    <ClinicalAssertionList>
+      <ClinicalAssertion>
+        <ClinVarAccession Accession="SCV000000002" Version="1" Type="SCV" DateCreated="2020-01-01" DateLastUpdated="2026-01-02" ContributesToAggregateClassification="true" />
+        <ClinVarSubmissionID SubmitterName="Submitter B" OrgID="2" OrganizationCategory="clinical testing" />
+        <ClinicalSignificance DateLastEvaluated="2025-01-01"><Description>Benign</Description><ReviewStatus>criteria provided, single submitter</ReviewStatus></ClinicalSignificance>
+        <TraitSet><Trait Type="Disease"><Name><ElementValue Type="Preferred">Cystic fibrosis</ElementValue></Name><XRef DB="MONDO" ID="0009061" /></Trait></TraitSet>
+      </ClinicalAssertion>
+      <ClinicalAssertion>
+        <ClinVarAccession Accession="SCV000000003" Version="2" Type="SCV" DateCreated="2020-01-01" DateLastUpdated="2026-01-02" ContributesToAggregateClassification="true" />
+        <ClinVarSubmissionID SubmitterName="Submitter A" OrgID="1" OrganizationCategory="clinical testing" />
+        <ClinicalSignificance DateLastEvaluated="2025-02-01"><Description>Pathogenic</Description><ReviewStatus>reviewed by expert panel</ReviewStatus></ClinicalSignificance>
+        <TraitSet><Trait Type="Disease"><Name><ElementValue Type="Preferred">Cystic fibrosis</ElementValue></Name><XRef DB="MONDO" ID="0009061" /></Trait></TraitSet>
+      </ClinicalAssertion>
+    </ClinicalAssertionList>
+  </VariationArchive>
+</ClinVarResult-Set>

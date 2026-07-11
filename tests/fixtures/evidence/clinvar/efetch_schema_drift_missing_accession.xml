@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ClinVarResult-Set>
+  <VariationArchive VariationID="14206" VariationName="NM_000492.4(CFTR):c.1521_1523del" VariationType="Deletion" DateCreated="2000-01-01" Version="4" RecordType="classified">
+    <SimpleAllele><Location><SequenceLocation Assembly="GRCh38" Accession="NC_000007.14" start="117559593" stop="117559595" referenceAllele="CTT" alternateAllele="C" /></Location></SimpleAllele>
+    <ClinicalAssertionList>
+      <ClinicalAssertion>
+        <ClinicalSignificance><Description>Pathogenic</Description><ReviewStatus>criteria provided, single submitter</ReviewStatus></ClinicalSignificance>
+      </ClinicalAssertion>
+    </ClinicalAssertionList>
+  </VariationArchive>
+</ClinVarResult-Set>
