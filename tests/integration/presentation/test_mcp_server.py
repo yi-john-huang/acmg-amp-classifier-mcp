@@ -225,17 +225,20 @@ async def test_resources_are_identifier_scoped_and_advanced_tools_are_opt_in() -
     routine = create_server(services)
     advanced = create_server(services, advanced=True)
 
-    templates = await routine.list_resource_templates()
-    template_uris = {template.uriTemplate for template in templates}
+    routine_templates = await routine.list_resource_templates()
+    advanced_templates = await advanced.list_resource_templates()
+    routine_template_uris = {template.uriTemplate for template in routine_templates}
+    advanced_template_uris = {template.uriTemplate for template in advanced_templates}
     routine_tools = {tool.name for tool in await routine.list_tools()}
     advanced_tools = {tool.name for tool in await advanced.list_tools()}
     evidence_content = tuple(await routine.read_resource("acmg://evidence/es_test"))
-    raw_content = tuple(await routine.read_resource("acmg://raw/raw_test"))
+    raw_content = tuple(await advanced.read_resource("acmg://raw/raw_test"))
 
-    assert "acmg://classifications/{classification_id}" in template_uris
-    assert "acmg://evidence/{snapshot_id}" in template_uris
-    assert "acmg://rulesets/{ruleset_id}/{version}" in template_uris
-    assert "acmg://raw/{raw_snapshot_ref}" in template_uris
+    assert "acmg://classifications/{classification_id}" in routine_template_uris
+    assert "acmg://evidence/{snapshot_id}" in routine_template_uris
+    assert "acmg://rulesets/{ruleset_id}/{version}" in routine_template_uris
+    assert "acmg://raw/{raw_snapshot_ref}" not in routine_template_uris
+    assert "acmg://raw/{raw_snapshot_ref}" in advanced_template_uris
     assert "get_raw_snapshot" not in routine_tools
     assert "get_raw_snapshot" in advanced_tools
     assert json.loads(evidence_content[0].content) == {

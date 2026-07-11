@@ -277,17 +277,17 @@ def create_server(
             return _resource_json(_failed("RULESET_NOT_FOUND"))
         return _resource_json(dict(content))
 
-    @server.resource(
-        "acmg://raw/{raw_snapshot_ref}",
-        name="raw_snapshot",
-        description="Raw source payload by explicit content-addressed reference.",
-        mime_type="application/json",
-    )
-    def raw_resource(raw_snapshot_ref: str) -> str:
-        """Expose raw content only under an explicit identifier-scoped URI."""
-        return _resource_json(_raw_snapshot_content(services, raw_snapshot_ref))
-
     if advanced:
+        @server.resource(
+            "acmg://raw/{raw_snapshot_ref}",
+            name="raw_snapshot",
+            description="Raw source payload by explicit content-addressed reference.",
+            mime_type="application/json",
+        )
+        def raw_resource(raw_snapshot_ref: str) -> str:
+            """Expose raw content only under an explicit identifier-scoped URI."""
+            return _resource_json(_raw_snapshot_content(services, raw_snapshot_ref))
+
         _register_advanced_tools(server, services)
     return server
 
