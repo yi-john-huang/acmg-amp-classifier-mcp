@@ -4,8 +4,8 @@ import hashlib
 import os
 import shutil
 import stat
-import tempfile
 import struct
+import tempfile
 import zipfile
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -149,7 +149,13 @@ class BundleVerifier:
         try:
             archive_size = archive_path.stat().st_size
             with archive_path.open("rb") as archive:
-                archive.seek(-min(archive_size, end_record_size + maximum_comment_size), 2)
+                archive.seek(
+                    -min(
+                        archive_size,
+                        end_record_size + maximum_comment_size,
+                    ),
+                    2,
+                )
                 trailer = archive.read(end_record_size + maximum_comment_size)
         except OSError as error:
             raise ArchiveSafetyError("Bundle archive cannot be read") from error
