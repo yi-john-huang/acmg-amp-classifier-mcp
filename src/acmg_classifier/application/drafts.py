@@ -54,6 +54,9 @@ class DraftStoreRecord(Protocol):
     @property
     def completed_classification_id(self) -> str | None: ...
 
+    @property
+    def revision(self) -> int: ...
+
 
 class DraftStore(Protocol):
     """The minimal mutable-draft storage boundary used by this service."""
@@ -62,7 +65,13 @@ class DraftStore(Protocol):
 
     def get_draft(self, draft_id: str) -> DraftStoreRecord: ...
 
-    def update_draft(self, draft_id: str, request: JsonValue) -> None: ...
+    def update_draft(
+        self,
+        draft_id: str,
+        request: JsonValue,
+        *,
+        expected_revision: int,
+    ) -> int: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -182,7 +191,11 @@ class WorkflowDraftService:
             answer_states,
         )
         try:
-            self._store.update_draft(draft_id, payload)
+            self._store.update_draft(
+                draft_id,
+                payload,
+                expected_revision=stored.revision,
+            )
         except Exception as error:
             raise _store_error(error) from error
         return DraftContinuation(
@@ -227,7 +240,11 @@ class WorkflowDraftService:
                 answer_states,
             )
             try:
-                self._store.update_draft(draft_id, payload)
+                self._store.update_draft(
+                    draft_id,
+                    payload,
+                    expected_revision=stored.revision,
+                )
             except Exception as error:
                 raise _store_error(error) from error
         return ResumedWorkflowDraft(

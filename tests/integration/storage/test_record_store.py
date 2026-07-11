@@ -33,8 +33,11 @@ class SQLiteRecordStoreTests(unittest.TestCase):
             expires_at=self.now + timedelta(hours=1),
         )
 
+        initial = store.get_draft(draft_id)
         store.update_draft(
-            draft_id, {"variant": "NM_007294.4:c.5266dupC", "build": "GRCh38"}
+            draft_id,
+            {"variant": "NM_007294.4:c.5266dupC", "build": "GRCh38"},
+            expected_revision=initial.revision,
         )
         draft = store.get_draft(draft_id)
 
@@ -47,7 +50,42 @@ class SQLiteRecordStoreTests(unittest.TestCase):
         with self.assertRaises(DraftExpiredError):
             store.get_draft(draft_id)
         with self.assertRaises(DraftExpiredError):
-            store.update_draft(draft_id, {"variant": "changed"})
+            store.update_draft(
+                draft_id,
+                {"variant": "changed"},
+                expected_revision=initial.revision + 1,
+            )
+
+    def test_draft_update_rejects_a_stale_revision(self) -> None:
+        from acmg_classifier.infrastructure.storage.records import (
+            DraftRevisionConflictError,
+        )
+
+        store = self._store()
+        draft_id = store.create_draft(
+            {"variant": "NM_007294.4:c.5266dupC"},
+            expires_at=self.now + timedelta(hours=1),
+        )
+        initial = store.get_draft(draft_id)
+        store.update_draft(
+            draft_id,
+            {"variant": "NM_007294.4:c.5266dupC", "build": "GRCh38"},
+            expected_revision=initial.revision,
+        )
+
+        with self.assertRaises(DraftRevisionConflictError):
+            store.update_draft(
+                draft_id,
+                {"variant": "NM_007294.4:c.5266dupC", "build": "GRCh37"},
+                expected_revision=initial.revision,
+            )
+
+        draft = store.get_draft(draft_id)
+        self.assertEqual(draft.revision, initial.revision + 1)
+        self.assertEqual(
+            draft.request_json,
+            b'{"build":"GRCh38","variant":"NM_007294.4:c.5266dupC"}',
+        )
 
     def test_finalization_completes_draft_and_record_is_immutable(self) -> None:
         from acmg_classifier.infrastructure.storage.records import (
@@ -71,7 +109,11 @@ class SQLiteRecordStoreTests(unittest.TestCase):
             classification_id,
         )
         with self.assertRaises(DraftCompletedError):
-            store.update_draft(draft_id, {"variant": "changed"})
+            store.update_draft(
+                draft_id,
+                {"variant": "changed"},
+                expected_revision=0,
+            )
         with (
             closing(sqlite3.connect(self.database_path)) as connection,
             self.assertRaisesRegex(sqlite3.IntegrityError, "immutable"),

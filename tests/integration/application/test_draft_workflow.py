@@ -170,6 +170,7 @@ class WorkflowDraftServiceIntegrationTests(unittest.TestCase):
             normalized_variant=_normalized(),
             questions=(_disease_question(),),
         )
+        revision = self.store.get_draft(continuation.draft_id).revision
         self.store.update_draft(
             continuation.draft_id,
             {
@@ -179,6 +180,7 @@ class WorkflowDraftServiceIntegrationTests(unittest.TestCase):
                 "questions": [_disease_question().to_canonical_content()],
                 "answer_states": {},
             },
+            expected_revision=revision,
         )
 
         with self.assertRaisesRegex(DraftResumeError, "DRAFT_CONTENT_INVALID"):

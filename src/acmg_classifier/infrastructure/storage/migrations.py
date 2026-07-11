@@ -215,4 +215,14 @@ DEFAULT_MIGRATIONS = (
             """,
         ),
     ),
+    Migration(
+        version=5,
+        name="add_draft_revision",
+        statements=(
+            """
+            ALTER TABLE draft_requests
+            ADD COLUMN revision INTEGER NOT NULL DEFAULT 0 CHECK (revision >= 0)
+            """,
+        ),
+    ),
 )
