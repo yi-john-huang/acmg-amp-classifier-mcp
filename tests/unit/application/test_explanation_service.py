@@ -89,6 +89,33 @@ class ExplanationServiceTests(unittest.TestCase):
                 "pathogenic and benign evidence conflict",
             ),
         )
+    def test_conflicting_assessment_renders_in_standard_and_full_conflicts(self) -> None:
+        decision = ClassificationDecision(
+            algorithm_id="acmg-2015",
+            algorithm_version="1.0.0",
+            classification=None,
+            conflict=ClassificationConflict(
+                kind=ConflictKind.CRITERION,
+                criterion_codes=(CriterionCode.PS1,),
+                limitations=("criterion-level evidence conflict requires review",),
+            ),
+            assessments=(
+                _assessment(CriterionCode.PS1, status=CriterionStatus.CONFLICTING),
+            ),
+        )
+
+        for detail in (ExplanationDetail.STANDARD, ExplanationDetail.FULL):
+            with self.subTest(detail=detail):
+                explanation = self.service.render_decision(decision, detail=detail)
+
+                criterion_block = next(
+                    block
+                    for block in explanation.blocks
+                    if block.criterion_code == CriterionCode.PS1.value
+                )
+                self.assertIn("conflicting", criterion_block.text)
+                self.assertIsNone(explanation.classification)
+
 
     def test_templates_fail_closed_for_missing_or_unsafe_fact_references(self) -> None:
         missing_value = _assessment(
@@ -124,14 +151,19 @@ def _decision(
 def _assessment(
     code: CriterionCode,
     *,
+    status: CriterionStatus = CriterionStatus.APPLIED,
     template: str = "frequency={frequency}",
     values: dict[str, object] | None = None,
 ) -> CriterionAssessment:
     return CriterionAssessment(
         code=code,
-        status=CriterionStatus.APPLIED,
+        status=status,
         original_strength=CriterionStrength.MODERATE,
-        applied_strength=CriterionStrength.MODERATE,
+        applied_strength=(
+            CriterionStrength.MODERATE
+            if status is CriterionStatus.APPLIED
+            else None
+        ),
         evidence_ids=(_EVIDENCE_ID,),
         comparisons=(
             CriterionComparison(

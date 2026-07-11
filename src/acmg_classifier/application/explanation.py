@@ -259,4 +259,5 @@ def _status_label(status: CriterionStatus) -> str:
         CriterionStatus.NOT_APPLIED: "not applied",
         CriterionStatus.NOT_EVALUABLE: "not evaluable",
         CriterionStatus.DISABLED: "disabled",
+        CriterionStatus.CONFLICTING: "conflicting",
     }[status]
