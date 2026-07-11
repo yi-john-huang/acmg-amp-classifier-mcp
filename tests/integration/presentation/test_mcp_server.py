@@ -98,6 +98,15 @@ class _Resources:
         return raw_snapshot_ref.encode()
 
 
+class _Review:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def orchestrate_with_host(self, *_: object, **__: object) -> Never:
+        self.calls += 1
+        raise AssertionError("routine classification must not invoke review")
+
+
 @pytest.mark.asyncio
 async def test_primary_mcp_tools_expose_compact_schema_and_share_workflow_content() -> (
     None
@@ -122,6 +131,7 @@ async def test_primary_mcp_tools_expose_compact_schema_and_share_workflow_conten
     classify = next(tool for tool in tools if tool.name == "classify_variant")
     assert "variant" in classify.inputSchema["properties"]
     assert "resume_token" in classify.inputSchema["properties"]
+    assert "agent_review" in classify.inputSchema["properties"]
 
     result = await server.call_tool(
         "classify_variant",
@@ -142,6 +152,34 @@ async def test_primary_mcp_tools_expose_compact_schema_and_share_workflow_conten
         "limitations": [],
     }
     assert classifier.requests[0].context.genome_build is GenomeBuild.GRCH38
+
+
+@pytest.mark.asyncio
+async def test_agent_review_opt_in_skips_routine_workflow_without_host_call() -> None:
+    review = _Review()
+    server = create_server(
+        PresentationServices(
+            classifier=_Classifier(),
+            bootstrap=_Bootstrap(),
+            replay=_Replay(),
+            review=review,
+        )
+    )
+
+    result = await server.call_tool(
+        "classify_variant",
+        {
+            "variant": "NC_000001.11:g.101A>G",
+            "genome_build": "GRCh38",
+            "interactive": False,
+            "agent_review": True,
+        },
+    )
+
+    assert isinstance(result, tuple)
+    _, structured = result
+    assert structured["optional_review"] == {"status": "not_recommended"}
+    assert review.calls == 0
 
 
 @pytest.mark.asyncio

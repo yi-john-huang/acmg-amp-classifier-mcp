@@ -21,6 +21,7 @@ from acmg_classifier.application.evidence_orchestrator import (
 )
 from acmg_classifier.application.explanation import Explanation, ExplanationService
 from acmg_classifier.application.normalization import VariantNormalizationService
+from acmg_classifier.application.review import ReviewPacket, ReviewPacketBuilder
 from acmg_classifier.domain.combination import (
     ClassificationCombiner,
     ClassificationDecision,
@@ -163,6 +164,7 @@ class CompletedClassificationResponse:
     record: ClassificationRecord
     explanation: Explanation
     limitations: tuple[str, ...] = ()
+    review_packet: ReviewPacket | None = None
 
     def __post_init__(self) -> None:
         if self.status is not WorkflowStatus.COMPLETED:
@@ -225,6 +227,9 @@ class ConflictClassificationResponse:
     explanation: Explanation
     snapshot_id: str
     limitations: tuple[str, ...] = ()
+    classification_id: str | None = None
+    record: ClassificationRecord | None = None
+    review_packet: ReviewPacket | None = None
     classification: None = None
 
     def __post_init__(self) -> None:
@@ -232,6 +237,12 @@ class ConflictClassificationResponse:
             raise ValueError("conflict response requires conflict status")
         if self.decision.classification is not None or self.decision.conflict is None:
             raise ValueError("conflict response requires an unresolved decision")
+        if (self.classification_id is None) != (self.record is None):
+            raise ValueError(
+                "conflict record and classification ID must be present together"
+            )
+        if self.review_packet is not None and self.classification_id is None:
+            raise ValueError("conflict review packet requires a persisted record")
 
 
 @dataclass(frozen=True, slots=True)
@@ -294,6 +305,7 @@ class ClassificationService:
         user_evidence_store: UserEvidenceStore | None = None,
         draft_service: WorkflowDraftService | None = None,
         explanation_service: ExplanationService | None = None,
+        review_packet_builder: ReviewPacketBuilder | None = None,
     ) -> None:
         if not bundle_version:
             raise ValueError("bundle_version must not be empty")
@@ -307,6 +319,7 @@ class ClassificationService:
         self._user_evidence_store = user_evidence_store
         self._draft_service = draft_service
         self._explanation_service = explanation_service or ExplanationService()
+        self._review_packet_builder = review_packet_builder or ReviewPacketBuilder()
         self._bundle_version = bundle_version
         self._clock = clock
         self._readiness = readiness
@@ -478,6 +491,47 @@ class ClassificationService:
         except ValueError:
             return self._failed("EXPLANATION_RENDERING_FAILED")
         if decision.conflict is not None:
+            if self._record_store is None:
+                return ConflictClassificationResponse(
+                    status=WorkflowStatus.CONFLICT,
+                    normalized_variant=normalized,
+                    context=context,
+                    decision=decision,
+                    explanation=explanation,
+                    snapshot_id=snapshot_id,
+                    limitations=limitations,
+                )
+            try:
+                record = ClassificationRecord(
+                    request=request,
+                    normalized_variant=normalized,
+                    context=context,
+                    evidence_snapshot=acquired.snapshot,
+                    decision=decision,
+                    explanation=explanation,
+                    ruleset=ruleset,
+                    bundle_version=self._bundle_version,
+                    created_at=self._clock(),
+                )
+                conflict_finalization_kwargs: dict[str, object] = {}
+                if draft_id is not None:
+                    conflict_finalization_kwargs["draft_id"] = draft_id
+                if request.previous_classification_id is not None:
+                    conflict_finalization_kwargs["previous_classification_id"] = (
+                        request.previous_classification_id
+                    )
+                classification_id = self._record_store.finalize_classification(
+                    record.to_canonical_content(),
+                    **conflict_finalization_kwargs,
+                )
+                if not classification_id:
+                    raise RuntimeError(
+                        "record store returned an empty classification ID"
+                    )
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                return self._failed("CLASSIFICATION_PERSISTENCE_FAILED")
             return ConflictClassificationResponse(
                 status=WorkflowStatus.CONFLICT,
                 normalized_variant=normalized,
@@ -486,6 +540,16 @@ class ClassificationService:
                 explanation=explanation,
                 snapshot_id=snapshot_id,
                 limitations=limitations,
+                classification_id=classification_id,
+                record=record,
+                review_packet=self._build_review_packet(
+                    classification_id=classification_id,
+                    record=record,
+                    decision=decision,
+                    evidence_items=acquired.evidence_items,
+                    snapshot_id=snapshot_id,
+                    ruleset=ruleset,
+                ),
             )
         if acquired.degraded:
             return DegradedClassificationResponse(
@@ -540,7 +604,42 @@ class ClassificationService:
             record=record,
             explanation=explanation,
             limitations=limitations,
+            review_packet=self._build_review_packet(
+                classification_id=classification_id,
+                record=record,
+                decision=decision,
+                evidence_items=acquired.evidence_items,
+                snapshot_id=snapshot_id,
+                ruleset=ruleset,
+            ),
         )
+
+    def _build_review_packet(
+        self,
+        *,
+        classification_id: str,
+        record: ClassificationRecord,
+        decision: ClassificationDecision,
+        evidence_items: tuple[EvidenceItem, ...],
+        snapshot_id: str,
+        ruleset: RulesetSpecification,
+    ) -> ReviewPacket | None:
+        """Build optional review context without affecting the durable decision."""
+        try:
+            request = record.to_canonical_content()["request"]
+            if not isinstance(request, dict):
+                return None
+            return self._review_packet_builder.build(
+                classification_id=classification_id,
+                decision=decision,
+                evidence_items=evidence_items,
+                request=request,
+                snapshot_id=snapshot_id,
+                ruleset_id=ruleset.ruleset_id,
+                ruleset_version=ruleset.version,
+            )
+        except (TypeError, ValueError):
+            return None
 
     def _needs_context(
         self,

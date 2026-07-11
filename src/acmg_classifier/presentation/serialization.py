@@ -20,6 +20,7 @@ from acmg_classifier.application.explanation import (
     ExplanationDetail,
     ExplanationService,
 )
+from acmg_classifier.application.review import ReviewPacket
 from acmg_classifier.domain.combination import ClassificationDecision
 from acmg_classifier.domain.errors import JsonValue
 
@@ -50,6 +51,7 @@ def workflow_content(response: ClassificationWorkflowResponse) -> dict[str, Json
                 "id": response.ruleset.ruleset_id,
                 "version": response.ruleset.version,
             },
+            **_review_recommendation_content(response.review_packet),
         }
     if isinstance(response, NeedsContextClassificationResponse):
         return {
@@ -90,6 +92,12 @@ def workflow_content(response: ClassificationWorkflowResponse) -> dict[str, Json
             "conflict": (
                 conflict.to_canonical_content() if conflict is not None else None
             ),
+            **(
+                {"classification_id": response.classification_id}
+                if response.classification_id is not None
+                else {}
+            ),
+            **_review_recommendation_content(response.review_packet),
         }
     if isinstance(response, UnsupportedClassificationResponse):
         return {**common, "classification": None, "reason": response.reason}
@@ -142,6 +150,21 @@ def bootstrap_content(report: BootstrapReport) -> dict[str, JsonValue]:
         "bundle_version": report.bundle_version,
         "state_database": cast(JsonValue, state_database),
         "issue": issue,
+    }
+
+
+def _review_recommendation_content(packet: ReviewPacket | None) -> dict[str, JsonValue]:
+    if packet is None:
+        return {}
+    return {
+        "review_recommendation": {
+            "task_type": packet.task_type.value,
+            "reason": packet.reason.value,
+            "evidence_ids": list(packet.selected_evidence_ids),
+            "input_hash": packet.input_hash,
+            "requested_output_schema": packet.requested_output_schema.value,
+            "token_cap": packet.token_cap,
+        }
     }
 
 

@@ -14,6 +14,11 @@ from acmg_classifier.application.classification import (
 from acmg_classifier.application.drafts import DraftAnswer
 from acmg_classifier.application.feedback import FeedbackRecord, FeedbackSubmission
 from acmg_classifier.application.reinterpretation import ReplayedClassification
+from acmg_classifier.application.review import (
+    HostAgentPort,
+    ReviewAttempt,
+    ReviewPacket,
+)
 from acmg_classifier.domain.errors import JsonValue
 
 
@@ -76,6 +81,17 @@ class ResourceWorkflow(Protocol):
     def get_raw_snapshot(self, raw_snapshot_ref: str) -> bytes: ...
 
 
+class OptionalReviewWorkflow(Protocol):
+    """Request-scoped, non-authoritative specialist review orchestration."""
+
+    async def orchestrate_with_host(
+        self,
+        packet: ReviewPacket | None,
+        *,
+        host: HostAgentPort | None,
+    ) -> ReviewAttempt: ...
+
+
 @dataclass(frozen=True, slots=True)
 class PresentationServices:
     """Explicitly composed application services for one presentation process."""
@@ -85,6 +101,7 @@ class PresentationServices:
     replay: ReplayWorkflow
     feedback: FeedbackWorkflow | None = None
     resources: ResourceWorkflow | None = None
+    review: OptionalReviewWorkflow | None = None
 
 
 class RuntimeConfigurationError(RuntimeError):

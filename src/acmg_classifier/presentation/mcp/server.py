@@ -9,7 +9,11 @@ from typing import Any
 from mcp.server.fastmcp import Context, FastMCP
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from acmg_classifier.application.classification import ClassificationRequest
+from acmg_classifier.application.classification import (
+    ClassificationRequest,
+    CompletedClassificationResponse,
+    ConflictClassificationResponse,
+)
 from acmg_classifier.application.drafts import DraftAnswer, DraftAnswerState
 from acmg_classifier.application.explanation import ExplanationDetail
 from acmg_classifier.application.feedback import FeedbackSubmission
@@ -18,6 +22,7 @@ from acmg_classifier.domain.enums import AnalysisIntent, GenomeBuild, Inheritanc
 from acmg_classifier.domain.evidence import EvidencePolicy, EvidencePolicyMode
 from acmg_classifier.domain.feedback import FeedbackType
 from acmg_classifier.domain.models import InterpretationContext
+from acmg_classifier.presentation.mcp.review import McpSamplingHostAgent
 from acmg_classifier.presentation.serialization import (
     stored_explanation_content,
     workflow_content,
@@ -74,6 +79,7 @@ def create_server(
         analysis_intent: AnalysisIntent = AnalysisIntent.GERMLINE_MENDELIAN,
         offline: bool = False,
         interactive: bool = True,
+        agent_review: bool = False,
         resume_token: str | None = None,
         answers: list[ResumeAnswerInput] | None = None,
     ) -> dict[str, Any]:
@@ -122,7 +128,36 @@ def create_server(
         except ValueError as error:
             return _invalid_input(str(error))
         await _report_progress(ctx, 100, 100, "classification complete")
-        return workflow_content(response)
+        payload = workflow_content(response)
+        if not agent_review:
+            return payload
+        packet = (
+            response.review_packet
+            if isinstance(
+                response,
+                (CompletedClassificationResponse, ConflictClassificationResponse),
+            )
+            else None
+        )
+        if packet is None:
+            payload["optional_review"] = {"status": "not_recommended"}
+            return payload
+        if services.review is None:
+            payload["optional_review"] = {"status": "disabled"}
+            return payload
+        try:
+            attempt = await services.review.orchestrate_with_host(
+                packet,
+                host=McpSamplingHostAgent(ctx),
+            )
+        except Exception:
+            payload["optional_review"] = {"status": "host_failure"}
+            return payload
+        payload["optional_review"] = {
+            "status": attempt.status.value,
+            "review_id": attempt.review_id,
+        }
+        return payload
 
     @server.tool(
         name="explain_classification",

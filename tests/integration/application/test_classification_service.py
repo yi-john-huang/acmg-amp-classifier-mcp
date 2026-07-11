@@ -29,6 +29,7 @@ from acmg_classifier.application.evidence_orchestrator import (
     EvidenceAcquisitionResult,
     EvidenceOrchestrator,
 )
+from acmg_classifier.application.review import ReviewPacket
 from acmg_classifier.domain.combination import ClassificationCombiner
 from acmg_classifier.domain.context import (
     ContextField,
@@ -86,6 +87,7 @@ from acmg_classifier.ports.normalization import (
     NormalizationFailure,
     NormalizationSuccess,
 )
+from acmg_classifier.presentation.serialization import workflow_content
 
 _NOW = datetime(2026, 7, 11, 12, 0, tzinfo=UTC)
 
@@ -246,6 +248,9 @@ class _FailingRecordStore:
 
 
 class _ConflictingCriteriaEngine:
+    def __init__(self, evidence_id: str) -> None:
+        self._evidence_id = evidence_id
+
     def evaluate(
         self,
         facts: object,
@@ -258,11 +263,13 @@ class _ConflictingCriteriaEngine:
                 CriterionCode.PS1,
                 CriterionStrength.STRONG,
                 ruleset,
+                evidence_id=self._evidence_id,
             ),
             CriterionCode.BS1: _assessment(
                 CriterionCode.BS1,
                 CriterionStrength.STRONG,
                 ruleset,
+                evidence_id=self._evidence_id,
             ),
         }
 
@@ -306,6 +313,7 @@ class ClassificationServiceIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
             self.assertIsInstance(response, CompletedClassificationResponse)
             completed = cast(CompletedClassificationResponse, response)
+            self.assertIsNone(completed.review_packet)
             self.assertEqual(completed.status, WorkflowStatus.COMPLETED)
             self.assertEqual(
                 completed.decision.classification,
@@ -620,17 +628,24 @@ class ClassificationServiceIntegrationTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(degraded.explanation.classification, "Uncertain Significance")
 
-    async def test_conflict_returns_no_five_tier_classification(self) -> None:
+    async def test_conflict_persists_review_anchor_without_classification(self) -> None:
         normalized = _normalized_variant()
-        service = _service(
-            normalized=normalized,
-            evidence=_StaticEvidence(_evidence_result(normalized)),
-            criteria_engine=_ConflictingCriteriaEngine(),
-            ruleset=_ruleset({CriterionCode.PS1, CriterionCode.BS1}),
-            evaluator_versions={"test": "1.0.0"},
-        )
+        with TemporaryDirectory() as directory:
+            database = Path(directory) / "state.sqlite3"
+            SQLiteStateStore(database).initialize()
+            acquired = _evidence_result(normalized)
+            evidence_id = acquired.evidence_items[0].evidence_id
+            self.assertIsNotNone(evidence_id)
+            service = _service(
+                normalized=normalized,
+                evidence=_StaticEvidence(acquired),
+                criteria_engine=_ConflictingCriteriaEngine(cast(str, evidence_id)),
+                record_store=SQLiteRecordStore(database, clock=lambda: _NOW),
+                ruleset=_ruleset({CriterionCode.PS1, CriterionCode.BS1}),
+                evaluator_versions={"test": "1.0.0"},
+            )
 
-        response = await service.classify(_request())
+            response = await service.classify(_request())
 
         self.assertIsInstance(response, ConflictClassificationResponse)
         conflict = cast(ConflictClassificationResponse, response)
@@ -639,6 +654,21 @@ class ClassificationServiceIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(conflict.decision.conflict.kind.value, "directional")
         self.assertIsNone(conflict.explanation.classification)
         self.assertIn("Conflict", conflict.explanation.blocks[0].text)
+        self.assertIsNotNone(conflict.classification_id)
+        self.assertTrue(cast(str, conflict.classification_id).startswith("cls_"))
+        self.assertIsNotNone(conflict.record)
+        self.assertIsNotNone(conflict.review_packet)
+        review_packet = cast(ReviewPacket, conflict.review_packet)
+        self.assertEqual(
+            review_packet.selected_evidence_ids,
+            (cast(str, evidence_id),),
+        )
+        serialized = workflow_content(conflict)
+        self.assertEqual(serialized["classification_id"], conflict.classification_id)
+        recommendation = cast(dict[str, object], serialized["review_recommendation"])
+        self.assertEqual(recommendation["task_type"], "evidence_conflict")
+        self.assertEqual(recommendation["evidence_ids"], [cast(str, evidence_id)])
+        self.assertNotIn("observations", recommendation)
 
     async def test_persistence_failure_is_typed_and_cancellation_propagates(
         self,
@@ -880,13 +910,15 @@ def _assessment(
     code: CriterionCode,
     strength: CriterionStrength,
     ruleset: RulesetSpecification,
+    *,
+    evidence_id: str = "ev_" + "a" * 64,
 ) -> CriterionAssessment:
     return CriterionAssessment(
         code=code,
         status=CriterionStatus.APPLIED,
         original_strength=strength,
         applied_strength=strength,
-        evidence_ids=("ev_" + "a" * 64,),
+        evidence_ids=(evidence_id,),
         comparisons=(),
         rationale_template=f"{code.value} applied",
         rationale_values={},
