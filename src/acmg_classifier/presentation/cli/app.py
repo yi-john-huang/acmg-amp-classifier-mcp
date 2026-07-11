@@ -283,7 +283,6 @@ def import_feedback(
                 "schema_version": "1.0",
                 "status": "failed",
                 "error_code": "INVALID_FEEDBACK_IMPORT",
-                "limitations": [str(error)],
             },
             output_format,
         )

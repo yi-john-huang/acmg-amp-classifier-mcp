@@ -426,6 +426,27 @@ def test_feedback_import_rejects_oversized_file_before_parsing(
     assert json.loads(result.stdout)["error_code"] == "INVALID_FEEDBACK_IMPORT"
 
 
+def test_feedback_import_redacts_rejected_path_value(tmp_path: Path) -> None:
+    input_path = tmp_path / "api_key=secret-marker.json"
+    runner = CliRunner()
+
+    result = runner.invoke(
+        app,
+        ["feedback-import", str(input_path), "--format", "json"],
+        obj={
+            "services": PresentationServices(
+                classifier=_Classifier(),
+                bootstrap=_Bootstrap(),
+                replay=_Replay(),
+                feedback=_Feedback(),
+            )
+        },
+    )
+
+    assert result.exit_code == 2
+    assert "api_key=secret-marker" not in result.stdout
+    assert json.loads(result.stdout)["error_code"] == "INVALID_FEEDBACK_IMPORT"
+
 def test_doctor_writes_json_to_stdout_and_honors_repair() -> None:
     bootstrap = _Bootstrap()
     runner = CliRunner()
