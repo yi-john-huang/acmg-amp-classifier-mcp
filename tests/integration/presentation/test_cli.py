@@ -185,6 +185,12 @@ class _Feedback:
         return tuple(record.feedback_id for record in records)
 
 
+class _FailingFeedback:
+    def submit(self, submission: FeedbackSubmission) -> FeedbackRecord:
+        del submission
+        raise ValueError("database password=do-not-disclose")
+
+
 def test_noninteractive_classify_emits_only_shared_json_contract() -> None:
     classifier = _Classifier()
     runner = CliRunner()
@@ -322,6 +328,38 @@ def test_feedback_command_uses_append_only_service_and_emits_json() -> None:
     payload = json.loads(result.stdout)
     assert payload["feedback_id"] == "fb_" + "c" * 32
     assert feedback.submissions[0].feedback_type is FeedbackType.CORRECTION
+
+
+def test_feedback_command_redacts_service_error_details() -> None:
+    runner = CliRunner()
+
+    result = runner.invoke(
+        app,
+        [
+            "feedback",
+            "cls_" + "b" * 32,
+            "--type",
+            "agreement",
+            "--rationale",
+            "Reviewed.",
+            "--actor-id",
+            "usr_scientist-1",
+            "--format",
+            "json",
+        ],
+        obj={
+            "services": PresentationServices(
+                classifier=_Classifier(),
+                bootstrap=_Bootstrap(),
+                replay=_Replay(),
+                feedback=cast(object, _FailingFeedback()),
+            )
+        },
+    )
+
+    assert result.exit_code == 2
+    assert "database password" not in result.stdout
+    assert json.loads(result.stdout)["error_code"] == "INVALID_FEEDBACK"
 
 
 def test_feedback_export_and_import_preserve_feedback_content(tmp_path: Path) -> None:

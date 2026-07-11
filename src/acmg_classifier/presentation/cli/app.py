@@ -207,13 +207,13 @@ def submit_feedback(
                 actor_id=actor_id,
             )
         )
-    except ValueError as error:
+    except Exception:
         _emit(
             {
                 "schema_version": "1.0",
                 "status": "failed",
                 "error_code": "INVALID_FEEDBACK",
-                "limitations": [str(error)],
+                "limitations": ["feedback could not be accepted"],
             },
             output_format,
         )

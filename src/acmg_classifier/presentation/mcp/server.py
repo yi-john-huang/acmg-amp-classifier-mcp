@@ -219,8 +219,8 @@ def create_server(
                     actor_id=actor_id,
                 )
             )
-        except ValueError as error:
-            return _invalid_input(str(error))
+        except Exception:
+            return _failed("INVALID_FEEDBACK")
         await _report_progress(ctx, 100, 100, "feedback saved")
         return {
             "schema_version": "1.0",
