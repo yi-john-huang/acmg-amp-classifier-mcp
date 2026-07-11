@@ -277,7 +277,7 @@ def import_feedback(
             raise ValueError("feedback export must contain a feedback array")
         records = tuple(FeedbackRecord.model_validate(value) for value in values)
         imported_ids = services.feedback.import_records(records)
-    except (OSError, TypeError, ValueError, json.JSONDecodeError) as error:
+    except (OSError, TypeError, ValueError, json.JSONDecodeError):
         _emit(
             {
                 "schema_version": "1.0",
