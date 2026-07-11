@@ -467,11 +467,20 @@ class EvidenceItem(EvidenceModel):
         variant_key: str,
         context_scope: EvidenceContextScope,
     ) -> None:
-        """Reject using evidence outside the exact requested biological scope."""
+        """Reject evidence whose source-specific scope conflicts with the request."""
         if self.variant_key != variant_key:
             raise ValueError("evidence variant_key does not match requested variant")
-        if self.context_scope != context_scope:
-            raise ValueError("evidence context_scope does not match requested context")
+        for field_name in (
+            "genome_build",
+            "transcript",
+            "disease_id",
+            "inheritance",
+        ):
+            source_value = getattr(self.context_scope, field_name)
+            if source_value is not None and source_value != getattr(
+                context_scope, field_name
+            ):
+                raise ValueError("evidence context_scope is incompatible with request")
 
 
 class SourceStatus(EvidenceModel):

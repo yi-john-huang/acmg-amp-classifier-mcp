@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from acmg_classifier.domain.enums import GenomeBuild
+from acmg_classifier.domain.enums import GenomeBuild, InheritanceMode
 from acmg_classifier.domain.evidence import (
     EvidenceContextScope,
     EvidenceDerivation,
@@ -27,6 +27,12 @@ from acmg_classifier.ports.evidence import CacheState, EvidenceSourceResult
 NOW = datetime(2026, 7, 11, 12, 0, tzinfo=UTC)
 VARIANT_KEY = "ga4gh:VA.orchestrator"
 SCOPE = EvidenceContextScope(genome_build=GenomeBuild.GRCH38)
+COMPLETE_SCOPE = EvidenceContextScope(
+    genome_build=GenomeBuild.GRCH38,
+    transcript="NM_007294.4",
+    disease_id="MONDO:0011450",
+    inheritance=InheritanceMode.AUTOSOMAL_DOMINANT,
+)
 POLICY = EvidencePolicy(mode="live")
 
 
@@ -37,7 +43,12 @@ class FakeVariant:
     genomic_hgvs: str | None = "NC_000017.11:g.43071077G>A"
 
 
-def item_for(source_id: str, record_id: str) -> EvidenceItem:
+def item_for(
+    source_id: str,
+    record_id: str,
+    *,
+    context_scope: EvidenceContextScope = SCOPE,
+) -> EvidenceItem:
     return EvidenceItem(
         variant_key=VARIANT_KEY,
         kind=ObservationKind.POPULATION,
@@ -50,7 +61,7 @@ def item_for(source_id: str, record_id: str) -> EvidenceItem:
             allele_frequency=0.0,
             filter_status="pass",
         ),
-        context_scope=SCOPE,
+        context_scope=context_scope,
         provenance=SourceProvenance(
             kind=EvidenceDerivation.SOURCE,
             source_id=source_id,
@@ -93,12 +104,18 @@ class FakeAdapter:
         self._started_count = started_count
         self._all_started = all_started
         self.calls = 0
+        self.context_scopes: list[EvidenceContextScope] = []
         self.cancelled = False
 
     async def query(
-        self, variant: FakeVariant, *, policy: EvidencePolicy
+        self,
+        variant: FakeVariant,
+        *,
+        context_scope: EvidenceContextScope,
+        policy: EvidencePolicy,
     ) -> EvidenceSourceResult:
         self.calls += 1
+        self.context_scopes.append(context_scope)
         if self._started is not None:
             self._started.set()
         if self._started_count is not None:
@@ -152,6 +169,40 @@ class EvidenceOrchestratorTests(unittest.IsolatedAsyncioTestCase):
             clock=lambda: NOW,
             total_deadline_seconds=deadline,
         )
+
+    async def test_complete_context_reaches_adapters_with_source_specific_scopes(
+        self,
+    ) -> None:
+        clinvar_scope = EvidenceContextScope(
+            genome_build=GenomeBuild.GRCH38, disease_id="MONDO:0011450"
+        )
+        clinvar = FakeAdapter(
+            "clinvar",
+            result_for(
+                "clinvar",
+                items=(
+                    item_for(
+                        "clinvar", "clinical", context_scope=clinvar_scope
+                    ),
+                ),
+            ),
+        )
+        gnomad = FakeAdapter(
+            "gnomad",
+            result_for(
+                "gnomad",
+                items=(item_for("gnomad", "population", context_scope=SCOPE),),
+            ),
+        )
+
+        result = await self.orchestrator(clinvar, gnomad).gather(
+            FakeVariant(), COMPLETE_SCOPE, POLICY
+        )
+
+        self.assertFalse(result.degraded)
+        self.assertEqual(len(result.evidence_items), 2)
+        self.assertEqual(clinvar.context_scopes, [COMPLETE_SCOPE])
+        self.assertEqual(gnomad.context_scopes, [COMPLETE_SCOPE])
 
     async def test_adapters_start_concurrently_without_completion_timing(self) -> None:
         release = asyncio.Event()

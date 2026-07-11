@@ -7,7 +7,12 @@ from enum import StrEnum
 from typing import Protocol
 
 from acmg_classifier.domain.canonical import canonical_hash
-from acmg_classifier.domain.evidence import EvidenceItem, EvidencePolicy, SourceStatus
+from acmg_classifier.domain.evidence import (
+    EvidenceContextScope,
+    EvidenceItem,
+    EvidencePolicy,
+    SourceStatus,
+)
 
 
 class NormalizedVariantQuery(Protocol):
@@ -100,5 +105,6 @@ class EvidenceAdapter(Protocol):
         self,
         variant: NormalizedVariantQuery,
         *,
+        context_scope: EvidenceContextScope,
         policy: EvidencePolicy,
     ) -> EvidenceSourceResult: ...

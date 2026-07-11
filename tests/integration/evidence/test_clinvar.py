@@ -7,7 +7,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from acmg_classifier.domain.enums import GenomeBuild
 from acmg_classifier.domain.evidence import (
+    EvidenceContextScope,
     EvidencePolicy,
     EvidencePolicyMode,
     SourceStatusValue,
@@ -36,8 +38,6 @@ class Variant:
     genomic_hgvs = "NC_000007.14:g.117559593_117559595del"
 
 
-class ConditionVariant(Variant):
-    condition_id = "MONDO:0009999"
 
 
 class RecordedTransport:
@@ -112,8 +112,21 @@ class ClinVarAdapterTests(unittest.TestCase):
             clock=lambda: FIXED_NOW,
         )
 
-    def query(self, adapter: object, variant: object = Variant()) -> object:
-        return asyncio.run(adapter.query(variant, policy=self.policy))
+    def query(
+        self,
+        adapter: object,
+        variant: object = Variant(),
+        *,
+        context_scope: EvidenceContextScope | None = None,
+    ) -> object:
+        return asyncio.run(
+            adapter.query(
+                variant,
+                context_scope=context_scope
+                or EvidenceContextScope(genome_build=GenomeBuild.GRCH38),
+                policy=self.policy,
+            )
+        )
 
     def test_no_record_is_fresh_negative_result_not_evidence(self) -> None:
         transport = RecordedTransport(
@@ -190,11 +203,46 @@ class ClinVarAdapterTests(unittest.TestCase):
             ]
         )
 
-        result = self.query(self.adapter(transport), ConditionVariant())
+        result = self.query(
+            self.adapter(transport),
+            context_scope=EvidenceContextScope(
+                genome_build=GenomeBuild.GRCH38, disease_id="MONDO:0009999"
+            ),
+        )
 
         self.assertEqual(result.evidence_items, ())
         self.assertEqual(result.source_status.status, SourceStatusValue.FRESH)
         self.assertEqual(result.source_status.detail, "condition_mismatch_excluded")
+
+    def test_requested_disease_filters_evidence_and_separates_cache_identity(
+        self,
+    ) -> None:
+        transport = RecordedTransport(
+            [
+                ESEARCH_ONE_RECORD,
+                (FIXTURE_ROOT / "efetch_single_assertion.xml").read_bytes(),
+                ESEARCH_ONE_RECORD,
+                (FIXTURE_ROOT / "efetch_single_assertion.xml").read_bytes(),
+            ]
+        )
+        adapter = self.adapter(transport)
+        matching_scope = EvidenceContextScope(
+            genome_build=GenomeBuild.GRCH38, disease_id="MONDO:0009061"
+        )
+        mismatching_scope = EvidenceContextScope(
+            genome_build=GenomeBuild.GRCH38, disease_id="MONDO:0011450"
+        )
+
+        matching = self.query(adapter, context_scope=matching_scope)
+        mismatching = self.query(adapter, context_scope=mismatching_scope)
+
+        self.assertEqual(len(matching.evidence_items), 1)
+        self.assertEqual(matching.evidence_items[0].context_scope, matching_scope)
+        self.assertEqual(mismatching.evidence_items, ())
+        self.assertEqual(
+            mismatching.source_status.detail, "condition_mismatch_excluded"
+        )
+        self.assertEqual(len(transport.requests), 4)
 
     def test_schema_drift_is_not_misreported_as_no_record(self) -> None:
         transport = RecordedTransport(

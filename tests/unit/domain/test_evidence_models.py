@@ -717,15 +717,15 @@ class EvidenceModelTests(unittest.TestCase):
                 }
             )
 
-    def test_evidence_application_requires_exact_variant_and_context_scope(
+    def test_evidence_application_requires_exact_variant_and_compatible_context_scope(
         self,
     ) -> None:
         from acmg_classifier.domain.evidence import EvidenceContextScope, EvidenceItem
 
-        item = EvidenceItem.model_validate(
-            evidence_payload(OBSERVATION_PAYLOADS["population"])
-        )
-        scope = EvidenceContextScope.model_validate(
+        source_scoped_payload = evidence_payload(OBSERVATION_PAYLOADS["population"])
+        source_scoped_payload["context_scope"] = {"genome_build": "GRCh38"}
+        item = EvidenceItem.model_validate(source_scoped_payload)
+        requested_scope = EvidenceContextScope.model_validate(
             {
                 "genome_build": "GRCh38",
                 "transcript": "NM_007294.4",
@@ -733,18 +733,20 @@ class EvidenceModelTests(unittest.TestCase):
                 "inheritance": "autosomal_dominant",
             }
         )
-        item.assert_applies_to(variant_key="ga4gh:VA.example", context_scope=scope)
+        item.assert_applies_to(
+            variant_key="ga4gh:VA.example", context_scope=requested_scope
+        )
         with self.assertRaises(ValueError):
             item.assert_applies_to(
                 variant_key="ga4gh:VA.other-allele",
-                context_scope=scope,
+                context_scope=requested_scope,
             )
         with self.assertRaises(ValueError):
             item.assert_applies_to(
                 variant_key="ga4gh:VA.example",
                 context_scope=EvidenceContextScope.model_validate(
                     {
-                        "genome_build": "GRCh38",
+                        "genome_build": "GRCh37",
                         "transcript": "NM_007294.4",
                         "disease_id": "MONDO:0011450",
                         "inheritance": "autosomal_recessive",

@@ -130,6 +130,7 @@ class ClinVarAdapter:
         self,
         variant: NormalizedVariantQuery,
         *,
+        context_scope: EvidenceContextScope,
         policy: EvidencePolicy,
     ) -> EvidenceSourceResult:
         """Return VCV/SCV observations or one honest source status.
@@ -141,8 +142,11 @@ class ClinVarAdapter:
         """
         checked_at = _as_utc(self._clock())
         try:
-            query = self._build_query(variant)
-            scope = EvidenceContextScope(genome_build=GenomeBuild(variant.genome_build))
+            query = self._build_query(variant, context_scope)
+            scope = EvidenceContextScope(
+                genome_build=GenomeBuild(variant.genome_build),
+                disease_id=context_scope.disease_id,
+            )
         except (TypeError, ValueError):
             return self._unavailable_result(
                 checked_at=checked_at,
@@ -300,13 +304,17 @@ class ClinVarAdapter:
             raw_snapshot_refs=tuple(raw_refs),
         )
 
-    def _build_query(self, variant: NormalizedVariantQuery) -> ClinVarQuery:
+    def _build_query(
+        self,
+        variant: NormalizedVariantQuery,
+        context_scope: EvidenceContextScope,
+    ) -> ClinVarQuery:
         variant_key = variant.variant_key
         if not variant_key:
             raise ValueError("variant_key is required")
-        condition_id = _optional_text(variant, "condition_id")
-        condition_label = _optional_text(variant, "condition_label")
-        condition_fingerprint = f"condition={condition_id or condition_label or '-'}"
+        condition_id = context_scope.disease_id
+        condition_label = None
+        condition_fingerprint = f"condition={condition_id or '-'}"
         accession = _optional_text(variant, "clinvar_accession")
         variation_id = _optional_text(
             variant, "clinvar_variation_id"
