@@ -1,9 +1,13 @@
 """Resumable bundle download transport."""
 
+import http.client
+import ipaddress
 import os
+import socket
 import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
 from typing import Protocol
 from urllib.parse import urlparse
@@ -50,6 +54,53 @@ class _ValidatedRedirectHandler(urllib.request.HTTPRedirectHandler):
             new_url, allow_loopback_http=self._allow_loopback_http
         )
         return super().redirect_request(request, fp, code, msg, headers, new_url)
+
+
+def _connect_to_pinned_address(
+    pinned_address: str,
+    target: tuple[str, int],
+    timeout: object,
+    source_address: tuple[str, int] | None,
+) -> socket.socket:
+    return socket.create_connection(
+        (pinned_address, target[1]), timeout, source_address
+    )
+
+
+class _PinnedHTTPSConnection(http.client.HTTPSConnection):
+    """HTTPS connection whose TCP peer is a previously validated address."""
+
+    def __init__(
+        self, host: str, *, pinned_address: str, **kwargs: object
+    ) -> None:
+        super().__init__(host, **kwargs)
+        self._create_connection = partial(
+            _connect_to_pinned_address, pinned_address
+        )
+
+
+class _PinnedHTTPSHandler(urllib.request.HTTPSHandler):
+    """Resolve and pin each HTTPS peer before connecting."""
+
+    def __init__(self, *, allow_loopback_http: bool = False) -> None:
+        super().__init__()
+        self._allow_loopback_http = allow_loopback_http
+
+    def https_open(self, request: urllib.request.Request) -> object:
+        pinned_address = _validate_download_url(
+            request.full_url, allow_loopback_http=self._allow_loopback_http
+        )
+        if pinned_address is None:
+            return super().https_open(request)
+        connection_factory = partial(
+            _PinnedHTTPSConnection, pinned_address=pinned_address
+        )
+        return self.do_open(
+            connection_factory,
+            request,
+            context=self._context,
+            check_hostname=self._check_hostname,
+        )
 
 
 type ProgressSink = Callable[[ProgressEvent], None]
@@ -102,7 +153,8 @@ class HttpDownloadTransport:
         request = urllib.request.Request(url, headers=headers)
         destination.parent.mkdir(parents=True, exist_ok=True)
         opener = urllib.request.build_opener(
-            _ValidatedRedirectHandler(allow_loopback_http=self.allow_loopback_http)
+            _PinnedHTTPSHandler(allow_loopback_http=self.allow_loopback_http),
+            _ValidatedRedirectHandler(allow_loopback_http=self.allow_loopback_http),
         )
         with opener.open(request, timeout=self.timeout_seconds) as response:
             _validate_download_url(
@@ -137,14 +189,39 @@ class HttpDownloadTransport:
                 os.fsync(output.fileno())
 
 
-def _validate_download_url(url: str, *, allow_loopback_http: bool = False) -> None:
+
+def _validate_public_host(hostname: str | None, port: int) -> str:
+    """Resolve and return a public address, or reject the host."""
+    if hostname is None:
+        raise ValueError("Bundle download host must be publicly routable")
+    try:
+        addresses = socket.getaddrinfo(hostname, port, type=socket.SOCK_STREAM)
+        resolved_addresses = [
+            ipaddress.ip_address(address_info[4][0]) for address_info in addresses
+        ]
+    except (IndexError, OSError, ValueError) as error:
+        raise ValueError("Bundle download host must be publicly routable") from error
+    if not resolved_addresses or any(
+        not address.is_global for address in resolved_addresses
+    ):
+        raise ValueError("Bundle download host must be publicly routable")
+    return str(resolved_addresses[0])
+
+
+def _validate_download_url(
+    url: str, *, allow_loopback_http: bool = False
+) -> str | None:
     parsed = urlparse(url)
-    if parsed.scheme == "https":
-        return
     if (
         allow_loopback_http
         and parsed.scheme == "http"
         and parsed.hostname in {"127.0.0.1", "localhost", "::1"}
     ):
         return
-    raise ValueError("Bundle downloads require HTTPS")
+    if parsed.scheme != "https":
+        raise ValueError("Bundle downloads require HTTPS")
+    try:
+        port = parsed.port or 443
+    except ValueError as error:
+        raise ValueError("Bundle download host must be publicly routable") from error
+    return _validate_public_host(parsed.hostname, port)
