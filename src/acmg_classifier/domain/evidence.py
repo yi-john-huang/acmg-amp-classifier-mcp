@@ -141,6 +141,14 @@ class PopulationObservation(EvidenceModel):
             and self.allele_count > self.allele_number
         ):
             raise ValueError("allele_count must not exceed allele_number")
+        if self.allele_count is not None:
+            genotype_allele_count = 2 * (self.homozygote_count or 0) + (
+                self.hemizygote_count or 0
+            )
+            if genotype_allele_count > self.allele_count:
+                raise ValueError(
+                    "homozygote and hemizygote counts exceed allele_count"
+                )
         if (
             self.allele_count is not None
             and self.allele_number is not None

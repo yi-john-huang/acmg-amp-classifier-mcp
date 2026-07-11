@@ -279,6 +279,8 @@ class EvidenceModelTests(unittest.TestCase):
             {"allele_count": "1"},
             {"allele_count": 2, "allele_number": 1},
             {"allele_count": 1, "allele_number": 100, "allele_frequency": 0.2},
+            {"allele_count": 1, "homozygote_count": 1},
+            {"allele_count": 1, "hemizygote_count": 2},
             {"allele_frequency": math.nan},
             {"allele_frequency": 1.1},
         ):
