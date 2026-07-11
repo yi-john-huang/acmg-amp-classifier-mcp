@@ -88,6 +88,19 @@ def test_capability_matrix_matches_installed_package_and_mcp_surface() -> None:
     }
     assert documented_tools <= actual_tools
     assert matrix["interfaces"]["mcp"]["advanced_tools"] == ["get_raw_snapshot"]
+    routine_resources = {
+        resource.uriTemplate
+        for resource in asyncio.run(server.list_resource_templates())
+    }
+    advanced_server = create_server(default_services(), advanced=True)
+    advanced_resources = {
+        resource.uriTemplate
+        for resource in asyncio.run(advanced_server.list_resource_templates())
+    }
+    assert set(matrix["interfaces"]["mcp"]["routine_resources"]) == routine_resources
+    assert set(matrix["interfaces"]["mcp"]["advanced_resources"]) == (
+        advanced_resources - routine_resources
+    )
 
 
 def test_capability_matrix_matches_cli_command_metadata() -> None:

@@ -400,10 +400,12 @@
         "explain_classification",
         "submit_feedback"
       ],
-      "resources": [
+      "routine_resources": [
         "acmg://classifications/{classification_id}",
         "acmg://evidence/{snapshot_id}",
-        "acmg://rulesets/{ruleset_id}/{version}",
+        "acmg://rulesets/{ruleset_id}/{version}"
+      ],
+      "advanced_resources": [
         "acmg://raw/{raw_snapshot_ref}"
       ],
       "source_path": "src/acmg_classifier/presentation/mcp/server.py",
