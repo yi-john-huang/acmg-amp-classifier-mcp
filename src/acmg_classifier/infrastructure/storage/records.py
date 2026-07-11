@@ -145,9 +145,23 @@ class SQLiteRecordStore:
         record: JsonValue,
         *,
         draft_id: str | None = None,
+        expected_draft_revision: int | None = None,
         previous_classification_id: str | None = None,
     ) -> str:
         """Atomically create a classification and complete its draft."""
+        if draft_id is None:
+            if expected_draft_revision is not None:
+                raise ValueError(
+                    "expected_draft_revision requires a draft_id"
+                )
+        elif (
+            not isinstance(expected_draft_revision, int)
+            or isinstance(expected_draft_revision, bool)
+            or expected_draft_revision < 0
+        ):
+            raise ValueError(
+                "draft finalization requires a non-negative expected_draft_revision"
+            )
         classification_id = _new_id("cls")
         with closing(self._connect()) as connection:
             connection.execute("BEGIN IMMEDIATE")
@@ -173,16 +187,28 @@ class SQLiteRecordStore:
                     ),
                 )
                 if draft_id is not None:
+                    assert expected_draft_revision is not None
                     draft = self._load_draft(connection, draft_id)
                     self._ensure_draft_mutable(draft)
-                    connection.execute(
+                    result = connection.execute(
                         """
                         UPDATE draft_requests
                         SET completed_classification_id = ?, updated_at = ?
                         WHERE draft_id = ?
+                          AND revision = ?
+                          AND completed_classification_id IS NULL
                         """,
-                        (classification_id, _utc_text(self._now()), draft_id),
+                        (
+                            classification_id,
+                            _utc_text(self._now()),
+                            draft_id,
+                            expected_draft_revision,
+                        ),
                     )
+                    if result.rowcount != 1:
+                        raise DraftRevisionConflictError(
+                            f"Draft revision conflict: {draft_id}"
+                        )
                 connection.commit()
             except Exception:
                 connection.rollback()

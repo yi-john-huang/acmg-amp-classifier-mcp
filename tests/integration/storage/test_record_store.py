@@ -87,6 +87,32 @@ class SQLiteRecordStoreTests(unittest.TestCase):
             b'{"build":"GRCh38","variant":"NM_007294.4:c.5266dupC"}',
         )
 
+    def test_finalization_rejects_a_stale_draft_revision(self) -> None:
+        from acmg_classifier.infrastructure.storage.records import (
+            DraftRevisionConflictError,
+        )
+
+        store = self._store()
+        draft_id = store.create_draft(
+            {"variant": "NM_007294.4:c.5266dupC"},
+            expires_at=self.now + timedelta(hours=1),
+        )
+        initial = store.get_draft(draft_id)
+        store.update_draft(
+            draft_id,
+            {"variant": "NM_007294.4:c.5266dupC", "build": "GRCh38"},
+            expected_revision=initial.revision,
+        )
+
+        with self.assertRaises(DraftRevisionConflictError):
+            store.finalize_classification(
+                {"classification": "pathogenic"},
+                draft_id=draft_id,
+                expected_draft_revision=initial.revision,
+            )
+
+        self.assertIsNone(store.get_draft(draft_id).completed_classification_id)
+
     def test_finalization_completes_draft_and_record_is_immutable(self) -> None:
         from acmg_classifier.infrastructure.storage.records import (
             DraftCompletedError,
@@ -101,6 +127,7 @@ class SQLiteRecordStoreTests(unittest.TestCase):
         classification_id = store.finalize_classification(
             {"classification": "pathogenic", "ruleset": "acmg-2015"},
             draft_id=draft_id,
+            expected_draft_revision=0,
         )
 
         self.assertTrue(classification_id.startswith("cls_"))
@@ -154,6 +181,7 @@ class SQLiteRecordStoreTests(unittest.TestCase):
             store.finalize_classification(
                 {"classification": "vus"},
                 draft_id="draft_missing",
+                expected_draft_revision=0,
             )
         with self.assertRaisesRegex(RecordNotFoundError, "cls_missing"):
             store.finalize_classification(

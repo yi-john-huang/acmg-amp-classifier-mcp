@@ -281,6 +281,7 @@ class WorkflowDraftServiceIntegrationTests(unittest.TestCase):
         self.store.finalize_classification(
             {"classification": "uncertain_significance"},
             draft_id=continuation.draft_id,
+            expected_draft_revision=0,
         )
         with self.assertRaisesRegex(DraftResumeError, "DRAFT_ALREADY_COMPLETED"):
             self.service.resume(continuation.resume_token, answers=())

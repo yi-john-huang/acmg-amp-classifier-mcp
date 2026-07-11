@@ -414,6 +414,7 @@ class ClassificationService:
             request,
             normalized_override=resumed.normalized_variant,
             draft_id=resumed.draft_id,
+            draft_revision=resumed.revision,
             answer_states=resumed.answer_states,
         )
 
@@ -423,6 +424,7 @@ class ClassificationService:
         *,
         normalized_override: NormalizedVariant | None = None,
         draft_id: str | None = None,
+        draft_revision: int | None = None,
         answer_states: Mapping[str, str] | None = None,
     ) -> ClassificationWorkflowResponse:
         """Execute a new or resumed workflow after normalized state is available."""
@@ -569,6 +571,11 @@ class ClassificationService:
                 )
                 conflict_finalization_kwargs: dict[str, object] = {}
                 if draft_id is not None:
+                    if draft_revision is None:
+                        raise RuntimeError("resumed draft revision is unavailable")
+                    conflict_finalization_kwargs["expected_draft_revision"] = (
+                        draft_revision
+                    )
                     conflict_finalization_kwargs["draft_id"] = draft_id
                 if request.previous_classification_id is not None:
                     conflict_finalization_kwargs["previous_classification_id"] = (
@@ -636,6 +643,9 @@ class ClassificationService:
             )
             finalization_kwargs: dict[str, object] = {}
             if draft_id is not None:
+                if draft_revision is None:
+                    raise RuntimeError("resumed draft revision is unavailable")
+                finalization_kwargs["expected_draft_revision"] = draft_revision
                 finalization_kwargs["draft_id"] = draft_id
             if request.previous_classification_id is not None:
                 finalization_kwargs["previous_classification_id"] = (

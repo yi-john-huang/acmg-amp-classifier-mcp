@@ -110,6 +110,7 @@ class ResumedWorkflowDraft:
     request: Mapping[str, JsonValue]
     normalized_variant: NormalizedVariant
     answer_states: Mapping[str, str]
+    revision: int
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "request", MappingProxyType(dict(self.request)))
@@ -231,6 +232,7 @@ class WorkflowDraftService:
             raise DraftResumeError("DRAFT_CONTENT_INVALID") from error
         questions = _payload_questions(payload)
         answer_states = _payload_answer_states(payload)
+        revision = stored.revision
         merged_request = _merge_answers(request, questions, answer_states, answers)
         if answers:
             payload = _draft_payload(
@@ -240,7 +242,7 @@ class WorkflowDraftService:
                 answer_states,
             )
             try:
-                self._store.update_draft(
+                revision = self._store.update_draft(
                     draft_id,
                     payload,
                     expected_revision=stored.revision,
@@ -253,6 +255,7 @@ class WorkflowDraftService:
             request=merged_request,
             normalized_variant=normalized,
             answer_states=answer_states,
+            revision=revision,
         )
 
     def _expires_at(self) -> datetime:
