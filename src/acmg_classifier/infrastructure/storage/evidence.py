@@ -158,27 +158,15 @@ class SQLiteEvidenceStore:
         )
 
     def get_raw_snapshot(self, snapshot_hash: str) -> bytes:
-        """Read raw content and verify its content address."""
-        with closing(self._connect()) as connection:
-            row = connection.execute(
-                "SELECT relative_path FROM raw_snapshots WHERE snapshot_hash = ?",
-                (snapshot_hash,),
-            ).fetchone()
-        if row is None:
-            raise RawSnapshotMissingError(f"Raw snapshot not found: {snapshot_hash}")
-        path = self.raw_root / str(row[0])
-        try:
-            content = path.read_bytes()
-        except FileNotFoundError as error:
-            raise RawSnapshotMissingError(
-                f"Raw snapshot file is missing: {snapshot_hash}"
-            ) from error
-        actual_hash = f"raw_{hashlib.sha256(content).hexdigest()}"
-        if actual_hash != snapshot_hash:
-            raise RawSnapshotIntegrityError(
-                f"Raw snapshot hash mismatch: {snapshot_hash}"
-            )
-        return content
+        """Read raw content and verify its content address and stored size."""
+        reference = self._get_raw_snapshot_reference(snapshot_hash)
+        return self._read_verified_raw_snapshot(reference)
+
+    def verify_raw_snapshot(self, snapshot_hash: str) -> RawSnapshotReference:
+        """Verify persisted raw content and return immutable stored metadata."""
+        reference = self._get_raw_snapshot_reference(snapshot_hash)
+        self._read_verified_raw_snapshot(reference)
+        return reference
 
     def put_evidence_snapshot(
         self,
@@ -282,6 +270,65 @@ class SQLiteEvidenceStore:
             evidence_ids=evidence_ids,
             source_status_json=bytes(row[0]),
         )
+
+    def _get_raw_snapshot_reference(self, snapshot_hash: str) -> RawSnapshotReference:
+        with closing(self._connect()) as connection:
+            row = connection.execute(
+                """
+                SELECT media_type, byte_size, relative_path
+                FROM raw_snapshots
+                WHERE snapshot_hash = ?
+                """,
+                (snapshot_hash,),
+            ).fetchone()
+        if row is None:
+            raise RawSnapshotMissingError(f"Raw snapshot not found: {snapshot_hash}")
+        media_type, byte_size, relative_path = row
+        if (
+            not isinstance(media_type, str)
+            or not media_type
+            or not isinstance(byte_size, int)
+            or isinstance(byte_size, bool)
+            or byte_size < 0
+            or not isinstance(relative_path, str)
+        ):
+            raise RawSnapshotIntegrityError(
+                f"Raw snapshot metadata is invalid: {snapshot_hash}"
+            )
+        relative = Path(relative_path)
+        if relative.is_absolute() or ".." in relative.parts:
+            raise RawSnapshotIntegrityError(
+                f"Raw snapshot path is invalid: {snapshot_hash}"
+            )
+        return RawSnapshotReference(
+            snapshot_hash=snapshot_hash,
+            media_type=media_type,
+            byte_size=byte_size,
+            relative_path=relative,
+        )
+
+    def _read_verified_raw_snapshot(self, reference: RawSnapshotReference) -> bytes:
+        path = self.raw_root / reference.relative_path
+        try:
+            content = path.read_bytes()
+        except FileNotFoundError as error:
+            raise RawSnapshotMissingError(
+                f"Raw snapshot file is missing: {reference.snapshot_hash}"
+            ) from error
+        except OSError as error:
+            raise RawSnapshotIntegrityError(
+                f"Raw snapshot file is unreadable: {reference.snapshot_hash}"
+            ) from error
+        actual_hash = f"raw_{hashlib.sha256(content).hexdigest()}"
+        if actual_hash != reference.snapshot_hash:
+            raise RawSnapshotIntegrityError(
+                f"Raw snapshot hash mismatch: {reference.snapshot_hash}"
+            )
+        if len(content) != reference.byte_size:
+            raise RawSnapshotIntegrityError(
+                f"Raw snapshot size mismatch: {reference.snapshot_hash}"
+            )
+        return content
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self.database_path)

@@ -106,7 +106,7 @@ class ClinVarAdapterTests(unittest.TestCase):
         self.database_path = root / "state.sqlite3"
         SQLiteStateStore(self.database_path).initialize()
         self.store = SQLiteEvidenceStore(self.database_path, root / "raw")
-        self.cache = SQLiteSourceCache(self.database_path)
+        self.cache = SQLiteSourceCache(self.database_path, self.store)
         self.policy = EvidencePolicy(mode=EvidencePolicyMode.LIVE)
 
     def adapter(self, transport: object) -> object:

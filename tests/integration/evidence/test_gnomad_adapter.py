@@ -88,10 +88,11 @@ class GnomADAdapterTests(unittest.IsolatedAsyncioTestCase):
                 max_retries=0,
             ),
         )
+        evidence_store = SQLiteEvidenceStore(self.database_path, self.raw_root)
         return GnomADAdapter(
             client=client,
-            cache=SQLiteSourceCache(self.database_path),
-            evidence_store=SQLiteEvidenceStore(self.database_path, self.raw_root),
+            cache=SQLiteSourceCache(self.database_path, evidence_store),
+            evidence_store=evidence_store,
             clock=lambda: NOW,
             settings=settings,
         )
