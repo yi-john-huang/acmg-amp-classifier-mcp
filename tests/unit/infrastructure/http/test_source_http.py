@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 import unittest
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
@@ -161,6 +163,46 @@ class SourceHttpClientTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(result.kind, HttpStatusKind.RESPONSE_TOO_LARGE)
         self.assertEqual(result.body, b"")
+        self.assertTrue(closed)
+
+    async def test_streaming_response_cannot_outlive_request_deadline(self) -> None:
+        from acmg_classifier.infrastructure.http.policy import (
+            HttpRequest,
+            HttpResponse,
+            HttpStatusKind,
+            SourceHttpClient,
+        )
+
+        closed = False
+
+        async def slow_body() -> AsyncIterator[bytes]:
+            await asyncio.sleep(0.05)
+            yield b"ok"
+
+        async def close() -> None:
+            nonlocal closed
+            closed = True
+
+        client = SourceHttpClient(
+            transport=ScriptedTransport(
+                [
+                    HttpResponse(
+                        status_code=200,
+                        headers={},
+                        body=slow_body(),
+                        close=close,
+                    )
+                ]
+            ),
+            policy=self.make_policy(deadline_seconds=0.01, max_retries=0),
+        )
+
+        result = await client.request(
+            HttpRequest(method="GET", url="https://api.example.org/x")
+        )
+
+        self.assertEqual(result.kind, HttpStatusKind.TIMEOUT)
+        self.assertEqual(result.attempts, 1)
         self.assertTrue(closed)
 
     async def test_non_https_and_unapproved_redirect_are_rejected_before_following(

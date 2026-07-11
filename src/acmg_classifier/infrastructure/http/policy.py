@@ -242,7 +242,21 @@ class SourceHttpClient:
                 response = await asyncio.wait_for(
                     self.transport.request(current), timeout=timeout
                 )
-                outcome, redirect = await self._consume_response(response, current.url)
+                if self.policy.deadline_seconds is None:
+                    outcome, redirect = await self._consume_response(
+                        response, current.url
+                    )
+                else:
+                    remaining = self.policy.deadline_seconds - (
+                        self._monotonic() - started_at
+                    )
+                    if remaining <= 0:
+                        await response.aclose()
+                        raise TimeoutError
+                    outcome, redirect = await asyncio.wait_for(
+                        self._consume_response(response, current.url),
+                        timeout=remaining,
+                    )
             except TimeoutError:
                 outcome, redirect = HttpOutcome(HttpStatusKind.TIMEOUT), None
             except Exception:
