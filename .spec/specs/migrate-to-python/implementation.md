@@ -749,3 +749,160 @@ Used canonical allele keys and copied stored interpretation context for lookup, 
 - `uv run pytest --no-cov tests/integration/storage/test_record_store.py tests/integration/application/test_feedback.py tests/integration/presentation/test_cli.py tests/integration/presentation/test_mcp_server.py tests/integration/presentation/test_mcp_stdio.py tests/unit/application/test_resources.py tests/unit/presentation/test_serialization.py -q`: 23 passed.
 - `uv run mypy src`: `OK`.
 - Focused Ruff checks for all Phase 8 source and test paths: `OK`.
+
+## Task 9.1: Thin classify skill and schema contract
+
+**Status:** Complete  
+**Date:** 2026-07-11
+
+### RED
+
+Added a contract test that loads the classify skill, checks its primary MCP schema names, parses the variant-only JSON request, enforces the 500-word limit, and rejects the legacy low-level tool chain.
+
+### GREEN
+
+Replaced the previous multi-tool, synthetic-example workflow with one `classify_variant` call, context continuation by opaque token, explicit state rendering, and optional agent review only when the scientist enables it.
+
+### REFACTOR
+
+Removed guessed `GRCh38` context from the variant-only request so genomic variants preserve the workflow's missing-build handling instead of silently selecting an assembly.
+
+## Task 9.2: Review recommendation and packet construction
+
+**Status:** Complete  
+**Date:** 2026-07-11
+
+### RED
+
+Added tests for routine no-review, conflict priority, cited functional/case-control synthesis, explicit full-detail review, unreferenced cited evidence exclusion, canonical input hashing, immutable request data, unknown evidence rejection, and raw-payload exclusion.
+
+### GREEN
+
+Added immutable typed review recommendations and packets. A declarative policy selects exactly one trigger in conflict, cited-literature, then full-explanation order. Packets bind request, evidence snapshot, and ruleset identity with a canonical hash; include only selected evidence projections; and cap context at 1,200 tokens.
+
+### REFACTOR
+
+Kept packet construction outside criteria evaluation and serialized only compact recommendation metadata in normal workflow responses. Conflicts now persist an immutable no-classification anchor so a linked review can be audited without creating a five-tier result.
+
+## Task 9.3: Specialist agent orchestration and output validation
+
+**Status:** Complete  
+**Date:** 2026-07-11
+
+### RED
+
+Added fake-host and MCP-session coverage for absent/disabled/unsupported review, validated success, timeout/failure, mismatched task/hash, unknown evidence IDs, direct and nested override attempts, untyped output, oversized output, text-only sampling, and bounded input.
+
+### GREEN
+
+Added an SDK-free review orchestrator with request-scoped host adapters, hard 32 KiB input/output bounds, timeout handling, strict versioned output schema, recursive override rejection, exact evidence reference checks, and append-only validated review storage. The MCP adapter performs one plain-text sampling request without inherited server context. `classify_variant` exposes opt-in `agent_review`; ordinary classifications never invoke a host.
+
+### REFACTOR
+
+Separated host capability detection, output validation, and storage. Optional review status is attached after deterministic workflow serialization and cannot modify its classification, decision, evidence, criteria, or stored record.
+
+### Agent efficiency phase verification
+
+- `uv run pytest --no-cov tests/contract/test_classify_skill_contract.py tests/unit/application/test_review.py tests/integration/application/test_review_orchestration.py tests/integration/application/test_classification_service.py tests/integration/presentation/test_mcp_review_adapter.py tests/integration/presentation/test_mcp_server.py -q`: 45 passed.
+- `uv run mypy src`: `OK`.
+- Focused Ruff checks for all Phase 9 source and test paths: `OK`.
+
+## Task 10.1: Legacy Go compatibility decisions
+
+**Status:** Complete  
+**Date:** 2026-07-11
+
+### RED / GREEN
+
+Captured all legacy public Go tool contracts in a versioned manifest and added an SDK-free, opt-in adapter. It translates only safe versioned HGVS/transcript aliases and otherwise returns a stable machine-readable rejection. Legacy mock evidence, fabricated results, report content, unsupported variant classes, PHI-like report fields, low-level source tools, and unanchored feedback are not preserved.
+
+### REFACTOR
+
+Kept compatibility decisions outside application/domain models. The adapter neither registers aliases nor executes a request.
+
+## Task 10.2: Golden scientific validation framework
+
+**Status:** Framework complete; scientific release evidence blocked  
+**Date:** 2026-07-11
+
+### RED / GREEN
+
+Added strict provenance-aware fixture ingestion, source-label masking, real application-client execution, deterministic five-tier/criterion metrics, and a machine-readable report. The included fixture is explicitly `synthetic_smoke`, `release_eligible: false`, and names the required independently curated provenance-approved case set with redistribution permission.
+
+### REFACTOR
+
+Separated fixture validation, client execution, metric calculation, and report rendering so a future independently curated dataset can be evaluated without changing scientific workflow code.
+
+## Task 10.3: Offline replay and degraded-operation gate
+
+**Status:** Complete  
+**Date:** 2026-07-11
+
+### RED / GREEN
+
+Offline evidence policy now reaches normalization before provider selection, denies remote normalization, and preserves exact snapshot replay without sockets. Failed declared sources mark dependent criteria not-evaluable and serialize deterministic source-to-criterion impact; unavailable evidence never becomes absence evidence.
+
+### REFACTOR
+
+Online and offline paths retain one classification core and read source dependencies only from explicit ruleset configuration.
+
+## Task 10.4: Packaging and first-use runtime
+
+**Status:** Local implementation complete; cross-platform release evidence blocked  
+**Date:** 2026-07-11
+
+### RED / GREEN
+
+Added default local composition with application-owned paths, SQLite bootstrap, and an explicit empty catalog. The installed CLI/MCP paths now return an actionable typed `BUNDLE_UNAVAILABLE` result instead of a configuration exception or fabricated classification. Wheel build/install/help smoke coverage runs outside the source tree.
+
+### REFACTOR
+
+The wheel ships no signing key, synthetic bundle, or false scientific runtime. Linux/Windows clean-install evidence, reference first-use timing, and participant usability evidence remain external prerequisites.
+
+## Task 10.5: Security, privacy, and supply-chain gate
+
+**Status:** Local gate complete; external assessment blocked  
+**Date:** 2026-07-11
+
+### RED / GREEN
+
+Added centralized bounded recursive report redaction, resource-size safe failures, serialization-boundary protection, focused credential/PHI/TLS/malicious-bundle/research-safety coverage, a locked dependency audit workflow, and a reviewed tracked-file secret baseline. New tracked secret findings fail the CI hook.
+
+### REFACTOR
+
+Redaction occurs at shared outward serialization rather than mutating canonical records. The project makes no external security certification or assessment claim.
+
+## Task 10.6: Performance and token-efficiency framework
+
+**Status:** Framework complete; live benchmark evidence blocked  
+**Date:** 2026-07-11
+
+### RED / GREEN
+
+Added deterministic budget artifacts for UTF-8 compact result size, one routine classification-tool call, review token cap, and nearest-rank latency percentiles. Missing measurements fail closed; synthetic timing is labeled non-production.
+
+### REFACTOR
+
+The framework records method, provenance, exclusions, and unavailable values instead of manufacturing latency evidence. Retained live workload/platform samples are required for NFR performance claims.
+
+## Task 10.7: Documentation, support matrix, and migration release
+
+**Status:** Complete  
+**Date:** 2026-07-11
+
+### RED / GREEN
+
+Added documentation contracts and a single source-controlled capability matrix tied to package metadata, actual CLI/MCP registrations, legacy manifest decisions, bundle metadata, release evidence, current scope, and known limitations. Rewrote user, operator, architecture, API, security, data-builder, and agent-example docs around the current Python/SQLite/stdio research-use surface. Obsolete production, clinical, Go-runtime, service-configuration, and legacy tool claims were removed from release-facing documentation.
+
+### REFACTOR
+
+Every documented capability is labeled `experimental`, `unavailable`, `deprecated`, or `external_prerequisite`; no current capability claims `validated_for_research`.
+
+### Release validation verification
+
+- `uv run pytest --no-cov tests/contract/test_legacy_go_compatibility.py tests/contract/test_release_documentation.py tests/unit/validation tests/integration/validation tests/benchmarks tests/security tests/unit/bundles/test_verifier.py tests/unit/infrastructure/http/test_source_http.py tests/unit/presentation/test_serialization.py tests/integration/application/test_classification_service.py tests/integration/application/test_reinterpretation.py tests/integration/presentation tests/packaging -q`: 118 passed.
+- `uv run mypy src tests/packaging`: `OK`.
+- Focused Ruff format/check for all release source and test paths: `OK`.
+- CamelCase/separator-insensitive source-label and credential-key masking regression tests: passed.
+- `git ls-files -z | xargs -0 uvx --from detect-secrets==1.5.0 detect-secrets-hook --baseline .secrets.baseline`: passed with no output.
+- `uv run acmg classify "NM_000059.4(BRCA2):c.7008-1G>A" --no-interactive --format json`: returned structured `BUNDLE_UNAVAILABLE`, as documented.
