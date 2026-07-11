@@ -221,6 +221,9 @@ def test_security_workflow_uses_locked_audit_and_fail_closed_secret_scan() -> No
     assert "detect-secrets-hook" in workflow
     assert "--baseline .secrets.baseline" in workflow
     assert "git ls-files -z" in workflow
+    assert "branches:" in workflow
+    assert "      - develop" in workflow
+    assert "gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7" in workflow
     assert "contents: read" in workflow
     assert baseline["version"] == "1.5.0"
     assert baseline["results"]["data_builder/recipes/core-2026.7.10.json"]

@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - develop
 
 permissions:
   contents: read
@@ -46,3 +47,15 @@ jobs:
       - name: Scan all tracked repository content against reviewed baseline
         run: |
           git ls-files -z | xargs -0 uvx --from "detect-secrets==1.5.0" detect-secrets-hook --baseline .secrets.baseline
+
+  history-secret-scan:
+    name: Fail-closed complete Git history secret scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out complete history for scanning
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Scan complete Git history for secrets
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
