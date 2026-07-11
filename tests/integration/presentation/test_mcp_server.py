@@ -229,14 +229,17 @@ async def test_resources_are_identifier_scoped_and_advanced_tools_are_opt_in() -
     template_uris = {template.uriTemplate for template in templates}
     routine_tools = {tool.name for tool in await routine.list_tools()}
     advanced_tools = {tool.name for tool in await advanced.list_tools()}
-    content = tuple(await routine.read_resource("acmg://evidence/es_test"))
+    evidence_content = tuple(await routine.read_resource("acmg://evidence/es_test"))
+    raw_content = tuple(await routine.read_resource("acmg://raw/raw_test"))
 
     assert "acmg://classifications/{classification_id}" in template_uris
     assert "acmg://evidence/{snapshot_id}" in template_uris
     assert "acmg://rulesets/{ruleset_id}/{version}" in template_uris
+    assert "acmg://raw/{raw_snapshot_ref}" in template_uris
     assert "get_raw_snapshot" not in routine_tools
     assert "get_raw_snapshot" in advanced_tools
-    assert json.loads(content[0].content) == {
+    assert json.loads(evidence_content[0].content) == {
         "evidence_ids": ["ev_test"],
         "snapshot_id": "es_test",
     }
+    assert json.loads(raw_content[0].content)["content"] == "cmF3X3Rlc3Q="
