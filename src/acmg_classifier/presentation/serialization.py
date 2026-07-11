@@ -20,12 +20,18 @@ from acmg_classifier.application.explanation import (
     ExplanationDetail,
     ExplanationService,
 )
+from acmg_classifier.application.redaction import redact_for_report
 from acmg_classifier.application.review import ReviewPacket
 from acmg_classifier.domain.combination import ClassificationDecision
 from acmg_classifier.domain.errors import JsonValue
 
 
 def workflow_content(response: ClassificationWorkflowResponse) -> dict[str, JsonValue]:
+    """Return the privacy-safe shared CLI/MCP representation of a workflow state."""
+    return _report_content(_workflow_content(response))
+
+
+def _workflow_content(response: ClassificationWorkflowResponse) -> dict[str, JsonValue]:
     """Serialize every workflow state with the same schema used by both adapters."""
     common: dict[str, JsonValue] = {
         "schema_version": "1.0",
@@ -78,6 +84,9 @@ def workflow_content(response: ClassificationWorkflowResponse) -> dict[str, Json
             "explanation": response.explanation.to_canonical_content(),
             "snapshot_id": response.snapshot_id,
             "unavailable_sources": list(response.unavailable_sources),
+            "source_impacts": [
+                impact.to_canonical_content() for impact in response.source_impacts
+            ],
         }
     if isinstance(response, ConflictClassificationResponse):
         conflict = response.decision.conflict
@@ -119,7 +128,7 @@ def stored_explanation_content(
         decision = ClassificationDecision.model_validate(decision_content)
     except ValueError as error:
         raise ValueError("stored classification decision is invalid") from error
-    return (
+    return _report_content(
         ExplanationService()
         .render_decision(
             decision,
@@ -144,13 +153,20 @@ def bootstrap_content(report: BootstrapReport) -> dict[str, JsonValue]:
             "component": report.issue.component,
             "details": list(report.issue.details),
         }
-    return {
-        "schema_version": "1.0",
-        "ready": report.ready,
-        "bundle_version": report.bundle_version,
-        "state_database": cast(JsonValue, state_database),
-        "issue": issue,
-    }
+    return _report_content(
+        {
+            "schema_version": "1.0",
+            "ready": report.ready,
+            "bundle_version": report.bundle_version,
+            "state_database": cast(JsonValue, state_database),
+            "issue": issue,
+        }
+    )
+
+
+def _report_content(content: Mapping[str, JsonValue]) -> dict[str, JsonValue]:
+    """Redact bounded, untrusted report values without changing canonical records."""
+    return cast(dict[str, JsonValue], redact_for_report(content))
 
 
 def _review_recommendation_content(packet: ReviewPacket | None) -> dict[str, JsonValue]:

@@ -1,0 +1,738 @@
+{
+  "candidate_bundle": {
+    "archive_sha256": "371ace24c1c2f4ea0a1f0dc71c4f6d17f1dacc127c75434fac63874565e61fa5",
+    "bundle_version": "2026.7.10",
+    "candidate_status": "reproducible",
+    "limitations": "Candidate metadata is not an installed signed distribution or scientific validation evidence.",
+    "manifest_sha256": "dea87fc9cbe3f4d85a4b486bd1478353638cfed0225fd33487c38e91d675ada2",
+    "release_signature_status": "requires_controlled_release_key",
+    "scientific_release_gate": "pending_task_10.2",
+    "sources": [
+      {
+        "filename": "MANE.GRCh38.v1.5.summary.txt.gz",
+        "identifier": "mane-v1.5",
+        "kind": "mane_summary",
+        "license_id": "NCBI-MOLECULAR-DATA-TERMS",
+        "license_reviewed_at": "2026-07-11",
+        "license_reviewed_by": "project-maintainer",
+        "name": "NCBI/EMBL-EBI MANE",
+        "redistribution_allowed": true,
+        "release": "1.5",
+        "retrieved_at": "2026-07-10T17:00:42Z",
+        "sha256": "d10ace2720681a3b2e0eefd9da4f551274a6b4141ac9bfd6a2565dfb6e9ad55c",
+        "terms_url": "https://www.ncbi.nlm.nih.gov/home/about/policies/",
+        "transformation_version": "1.0.0",
+        "url": "https://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_1.5/MANE.GRCh38.v1.5.summary.txt.gz"
+      },
+      {
+        "filename": "Clingen-Gene-Disease-Summary-2026-07-10.csv",
+        "identifier": "clingen-gdv-2026-07-10",
+        "kind": "clingen_gene_disease",
+        "license_id": "CC0-1.0",
+        "license_reviewed_at": "2026-07-11",
+        "license_reviewed_by": "project-maintainer",
+        "name": "ClinGen Gene-Disease Validity",
+        "redistribution_allowed": true,
+        "release": "2026-07-10",
+        "retrieved_at": "2026-07-10T17:00:42Z",
+        "sha256": "446f2609932cf8fcae1169b16485ba9ba8c2ec89c5ec4d9a42d19b99969062d4",
+        "terms_url": "https://www.clinicalgenome.org/docs/terms-of-use/",
+        "transformation_version": "1.0.0",
+        "url": "https://search.clinicalgenome.org/kb/gene-validity/download"
+      }
+    ],
+    "status": "external_prerequisite"
+  },
+  "capabilities": [
+    {
+      "evidence": "tests/integration/presentation/test_default_runtime.py",
+      "id": "default-classification-runtime",
+      "limitations": "The wheel ships no signed release catalog or completed scientific runtime; first use returns BUNDLE_UNAVAILABLE.",
+      "source_path": "src/acmg_classifier/presentation/runtime.py",
+      "status": "unavailable",
+      "validation_level": "structured-failure-tested"
+    },
+    {
+      "evidence": "tests/integration/application/test_bootstrap.py; tests/integration/bundles/test_manager.py",
+      "id": "signed-bundle-bootstrap",
+      "limitations": "A controlled release key and compatible signed catalog are external prerequisites for an installed bundle.",
+      "source_path": "src/acmg_classifier/application/bootstrap.py",
+      "status": "experimental",
+      "validation_level": "integration-tested"
+    },
+    {
+      "evidence": "tests/integration/application/test_classification_service.py; tests/integration/application/test_reinterpretation.py",
+      "id": "offline-replay-and-degraded-status",
+      "limitations": "Offline operation requires compatible locally installed bundle/cache inputs; unavailable sources report criterion impact.",
+      "source_path": "src/acmg_classifier/application/classification.py",
+      "status": "experimental",
+      "validation_level": "socket-denial-and-replay-tested"
+    },
+    {
+      "evidence": "tests/contract/test_legacy_go_compatibility.py",
+      "id": "legacy-go-compatibility-decisions",
+      "limitations": "The adapter is opt-in, does not register aliases or execute requests, and preserves no fabricated legacy output.",
+      "source_path": "src/acmg_classifier/presentation/compat/legacy_go.py",
+      "status": "experimental",
+      "validation_level": "contract-tested"
+    },
+    {
+      "dataset_kind": "synthetic_smoke",
+      "evidence": "tests/fixtures/golden/synthetic_smoke_manifest.json; tests/unit/validation/test_golden_fixtures_and_metrics.py",
+      "id": "golden-validation",
+      "limitations": "A provenance-approved independently curated scientific case set with redistribution permission is required before scientific release validation.",
+      "release_eligible": false,
+      "source_path": "src/acmg_classifier/validation",
+      "status": "external_prerequisite",
+      "validation_level": "synthetic-smoke-only"
+    },
+    {
+      "evidence": "tests/security/test_security_gate.py; .github/workflows/security.yml",
+      "id": "security-and-privacy-controls",
+      "limitations": "External security assessment and certification evidence are not available.",
+      "source_path": "src/acmg_classifier/application/redaction.py",
+      "status": "experimental",
+      "validation_level": "focused-security-suite-and-local-audit"
+    },
+    {
+      "evidence": "tests/benchmarks/test_benchmarks.py",
+      "id": "performance-and-token-budgets",
+      "limitations": "Live platform/workload benchmark samples are required before latency claims.",
+      "source_path": "src/acmg_classifier/validation/benchmarks.py",
+      "status": "external_prerequisite",
+      "validation_level": "deterministic-synthetic-budget-evaluation"
+    }
+  ],
+  "criteria": [
+    {
+      "evidence": "tests/unit/domain and tests/integration/application criterion coverage; no independent clinical validation evidence",
+      "id": "PVS1",
+      "limitations": "Evaluator implementation is not an independently clinically validated claim.",
+      "source_path": "src/acmg_classifier/domain/evaluators/registry.py",
+      "status": "experimental",
+      "validation_level": "implementation-tested"
+    },
+    {
+      "evidence": "tests/unit/domain and tests/integration/application criterion coverage; no independent clinical validation evidence",
+      "id": "PS1",
+      "limitations": "Evaluator implementation is not an independently clinically validated claim.",
+      "source_path": "src/acmg_classifier/domain/evaluators/registry.py",
+      "status": "experimental",
+      "validation_level": "implementation-tested"
+    },
+    {
+      "evidence": "tests/unit/domain and tests/integration/application criterion coverage; no independent clinical validation evidence",
+      "id": "PS2",
+      "limitations": "Evaluator implementation is not an independently clinically validated claim.",
+      "source_path": "src/acmg_classifier/domain/evaluators/registry.py",
+      "status": "experimental",
+      "validation_level": "implementation-tested"
+    },
+    {
+      "evidence": "tests/unit/domain and tests/integration/application criterion coverage; no independent clinical validation evidence",
+      "id": "PS3",
+      "limitations": "Evaluator implementation is not an independently clinically validated claim.",
+      "source_path": "src/acmg_classifier/domain/evaluators/registry.py",
+      "status": "experimental",
+      "validation_level": "implementation-tested"
+    },
+    {
+      "evidence": "tests/unit/domain and tests/integration/application criterion coverage; no independent clinical validation evidence",
+      "id": "PS4",
+      "limitations": "Evaluator implementation is not an independently clinically validated claim.",
+      "source_path": "src/acmg_classifier/domain/evaluators/registry.py",
+      "status": "experimental",
+      "validation_level": "implementation-tested"
+    },
+    {
+      "evidence": "tests/unit/domain and tests/integration/application criterion coverage; no independent clinical validation evidence",
+      "id": "PM1",
+      "limitations": "Evaluator implementation is not an independently clinically validated claim.",
+      "source_path": "src/acmg_classifier/domain/evaluators/registry.py",
+      "status": "experimental",
+      "validation_level": "implementation-tested"
+    },
+    {
+      "evidence": "tests/unit/domain and tests/integration/application criterion coverage; no independent clinical validation evidence",
+      "id": "PM2",
+      "limitations": "Evaluator implementation is not an independently clinically validated claim.",
+      "source_path": "src/acmg_classifier/domain/evaluators/registry.py",
+      "status": "experimental",
+      "validation_level": "implementation-tested"
+    },
+    {
+      "evidence": "tests/unit/domain and tests/integration/application criterion coverage; no independent clinical validation evidence",
+      "id": "PM3",
+      "limitations": "Evaluator implementation is not an independently clinically validated claim.",
+      "source_path": "src/acmg_classifier/domain/evaluators/registry.py",
+      "status": "experimental",
+      "validation_level": "implementation-tested"
+    },
+    {
+      "evidence": "tests/unit/domain and tests/integration/application criterion coverage; no independent clinical validation evidence",
+      "id": "PM4",
+      "limitations": "Evaluator implementation is not an independently clinically validated claim.",
+      "source_path": "src/acmg_classifier/domain/evaluators/registry.py",
+      "status": "experimental",
+      "validation_level": "implementation-tested"
+    },
+    {
+      "evidence": "tests/unit/domain and tests/integration/application criterion coverage; no independent clinical validation evidence",
+      "id": "PM5",
+      "limitations": "Evaluator implementation is not an independently clinically validated claim.",
+      "source_path": "src/acmg_classifier/domain/evaluators/registry.py",
+      "status": "experimental",
+      "validation_level": "implementation-tested"
+    },
+    {
+      "evidence": "tests/unit/domain and tests/integration/application criterion coverage; no independent clinical validation evidence",
+      "id": "PM6",
+      "limitations": "Evaluator implementation is not an independently clinically validated claim.",
+      "source_path": "src/acmg_classifier/domain/evaluators/registry.py",
+      "status": "experimental",
+      "validation_level": "implementation-tested"
+    },
+    {
+      "evidence": "tests/unit/domain and tests/integration/application criterion coverage; no independent clinical validation evidence",
+      "id": "PP1",
+      "limitations": "Evaluator implementation is not an independently clinically validated claim.",
+      "source_path": "src/acmg_classifier/domain/evaluators/registry.py",
+      "status": "experimental",
+      "validation_level": "implementation-tested"
+    },
+    {
+      "evidence": "tests/unit/domain and tests/integration/application criterion coverage; no independent clinical validation evidence",
+      "id": "PP2",
+      "limitations": "Evaluator implementation is not an independently clinically validated claim.",
+      "source_path": "src/acmg_classifier/domain/evaluators/registry.py",
+      "status": "experimental",
+      "validation_level": "implementation-tested"
+    },
+    {
+      "evidence": "tests/unit/domain and tests/integration/application criterion coverage; no independent clinical validation evidence",
+      "id": "PP3",
+      "limitations": "Evaluator implementation is not an independently clinically validated claim.",
+      "source_path": "src/acmg_classifier/domain/evaluators/registry.py",
+      "status": "experimental",
+      "validation_level": "implementation-tested"
+    },
+    {
+      "evidence": "tests/unit/domain and tests/integration/application criterion coverage; no independent clinical validation evidence",
+      "id": "PP4",
+      "limitations": "Evaluator implementation is not an independently clinically validated claim.",
+      "source_path": "src/acmg_classifier/domain/evaluators/registry.py",
+      "status": "experimental",
+      "validation_level": "implementation-tested"
+    },
+    {
+      "evidence": "tests/unit/domain and tests/integration/application criterion coverage; no independent clinical validation evidence",
+      "id": "PP5",
+      "limitations": "Deprecated criterion is not applied.",
+      "source_path": "src/acmg_classifier/domain/evaluators/registry.py",
+      "status": "unavailable",
+      "validation_level": "not-evaluable-by-policy"
+    },
+    {
+      "evidence": "tests/unit/domain and tests/integration/application criterion coverage; no independent clinical validation evidence",
+      "id": "BA1",
+      "limitations": "Evaluator implementation is not an independently clinically validated claim.",
+      "source_path": "src/acmg_classifier/domain/evaluators/registry.py",
+      "status": "experimental",
+      "validation_level": "implementation-tested"
+    },
+    {
+      "evidence": "tests/unit/domain and tests/integration/application criterion coverage; no independent clinical validation evidence",
+      "id": "BS1",
+      "limitations": "Evaluator implementation is not an independently clinically validated claim.",
+      "source_path": "src/acmg_classifier/domain/evaluators/registry.py",
+      "status": "experimental",
+      "validation_level": "implementation-tested"
+    },
+    {
+      "evidence": "tests/unit/domain and tests/integration/application criterion coverage; no independent clinical validation evidence",
+      "id": "BS2",
+      "limitations": "Evaluator implementation is not an independently clinically validated claim.",
+      "source_path": "src/acmg_classifier/domain/evaluators/registry.py",
+      "status": "experimental",
+      "validation_level": "implementation-tested"
+    },
+    {
+      "evidence": "tests/unit/domain and tests/integration/application criterion coverage; no independent clinical validation evidence",
+      "id": "BS3",
+      "limitations": "Evaluator implementation is not an independently clinically validated claim.",
+      "source_path": "src/acmg_classifier/domain/evaluators/registry.py",
+      "status": "experimental",
+      "validation_level": "implementation-tested"
+    },
+    {
+      "evidence": "tests/unit/domain and tests/integration/application criterion coverage; no independent clinical validation evidence",
+      "id": "BS4",
+      "limitations": "Evaluator implementation is not an independently clinically validated claim.",
+      "source_path": "src/acmg_classifier/domain/evaluators/registry.py",
+      "status": "experimental",
+      "validation_level": "implementation-tested"
+    },
+    {
+      "evidence": "tests/unit/domain and tests/integration/application criterion coverage; no independent clinical validation evidence",
+      "id": "BP1",
+      "limitations": "Evaluator implementation is not an independently clinically validated claim.",
+      "source_path": "src/acmg_classifier/domain/evaluators/registry.py",
+      "status": "experimental",
+      "validation_level": "implementation-tested"
+    },
+    {
+      "evidence": "tests/unit/domain and tests/integration/application criterion coverage; no independent clinical validation evidence",
+      "id": "BP2",
+      "limitations": "Evaluator implementation is not an independently clinically validated claim.",
+      "source_path": "src/acmg_classifier/domain/evaluators/registry.py",
+      "status": "experimental",
+      "validation_level": "implementation-tested"
+    },
+    {
+      "evidence": "tests/unit/domain and tests/integration/application criterion coverage; no independent clinical validation evidence",
+      "id": "BP3",
+      "limitations": "Evaluator implementation is not an independently clinically validated claim.",
+      "source_path": "src/acmg_classifier/domain/evaluators/registry.py",
+      "status": "experimental",
+      "validation_level": "implementation-tested"
+    },
+    {
+      "evidence": "tests/unit/domain and tests/integration/application criterion coverage; no independent clinical validation evidence",
+      "id": "BP4",
+      "limitations": "Evaluator implementation is not an independently clinically validated claim.",
+      "source_path": "src/acmg_classifier/domain/evaluators/registry.py",
+      "status": "experimental",
+      "validation_level": "implementation-tested"
+    },
+    {
+      "evidence": "tests/unit/domain and tests/integration/application criterion coverage; no independent clinical validation evidence",
+      "id": "BP5",
+      "limitations": "Evaluator implementation is not an independently clinically validated claim.",
+      "source_path": "src/acmg_classifier/domain/evaluators/registry.py",
+      "status": "experimental",
+      "validation_level": "implementation-tested"
+    },
+    {
+      "evidence": "tests/unit/domain and tests/integration/application criterion coverage; no independent clinical validation evidence",
+      "id": "BP6",
+      "limitations": "Deprecated criterion is not applied.",
+      "source_path": "src/acmg_classifier/domain/evaluators/registry.py",
+      "status": "unavailable",
+      "validation_level": "not-evaluable-by-policy"
+    },
+    {
+      "evidence": "tests/unit/domain and tests/integration/application criterion coverage; no independent clinical validation evidence",
+      "id": "BP7",
+      "limitations": "Evaluator implementation is not an independently clinically validated claim.",
+      "source_path": "src/acmg_classifier/domain/evaluators/registry.py",
+      "status": "experimental",
+      "validation_level": "implementation-tested"
+    }
+  ],
+  "default_runtime": {
+    "language": "python",
+    "requires_api_keys_for_default_workflow": false,
+    "requires_docker": false,
+    "requires_postgresql": false,
+    "requires_redis": false,
+    "storage": "sqlite",
+    "transport": "stdio"
+  },
+  "evidence_sources": [
+    {
+      "credential_requirement": "none documented for public endpoint",
+      "evidence": "tests/integration/application/test_evidence_orchestrator_storage.py",
+      "id": "clinvar",
+      "limitations": "Live-source behavior and release evidence are not independent clinical validation.",
+      "source_path": "src/acmg_classifier/infrastructure/evidence/clinvar.py",
+      "status": "experimental",
+      "validation_level": "fixture-and-adapter-tested",
+      "version": "ClinVar_VCV_2.6"
+    },
+    {
+      "credential_requirement": "none documented for public endpoint",
+      "evidence": "tests/integration/application/test_evidence_orchestrator_storage.py",
+      "id": "gnomad",
+      "limitations": "Live-source behavior and release evidence are not independent clinical validation.",
+      "source_path": "src/acmg_classifier/infrastructure/evidence/gnomad.py",
+      "status": "experimental",
+      "validation_level": "fixture-and-adapter-tested",
+      "version": "gnomAD v4.1.1 / gnomad_r4"
+    },
+    {
+      "credential_requirement": "not applicable",
+      "evidence": "src/acmg_classifier/presentation/compat/legacy_go_manifest.json",
+      "id": "cosmic",
+      "limitations": "Legacy query path is rejected; no Python release adapter is claimed.",
+      "source_path": "src/acmg_classifier/presentation/compat/legacy_go_manifest.json",
+      "status": "unavailable",
+      "validation_level": "not-implemented-in-python-release",
+      "version": null
+    }
+  ],
+  "interfaces": {
+    "cli": {
+      "commands": [
+        "classify",
+        "explain",
+        "feedback",
+        "feedback-export",
+        "feedback-import",
+        "doctor",
+        "data status",
+        "data update",
+        "data install"
+      ],
+      "evidence": "tests/integration/presentation/test_default_runtime.py; tests/packaging/test_package_smoke.py",
+      "known_limit": "Without a configured signed release catalog, first-use classification returns BUNDLE_UNAVAILABLE rather than a scientific result.",
+      "source_path": "src/acmg_classifier/presentation/cli/app.py",
+      "status": "experimental",
+      "validation_level": "contract-and-wheel-smoke-tested-on-macos"
+    },
+    "mcp": {
+      "advanced_tools": [
+        "get_raw_snapshot"
+      ],
+      "evidence": "tests/integration/presentation/test_mcp_server.py; tests/integration/presentation/test_mcp_stdio.py",
+      "known_limit": "Stdio is the supported transport; advanced raw content is opt-in and identifier-scoped.",
+      "primary_tools": [
+        "classify_variant",
+        "explain_classification",
+        "submit_feedback"
+      ],
+      "resources": [
+        "acmg://classifications/{classification_id}",
+        "acmg://evidence/{snapshot_id}",
+        "acmg://rulesets/{ruleset_id}/{version}",
+        "acmg://raw/{raw_snapshot_ref}"
+      ],
+      "source_path": "src/acmg_classifier/presentation/mcp/server.py",
+      "status": "experimental",
+      "validation_level": "protocol-contract-tested"
+    }
+  },
+  "known_limits": [
+    "No clinical diagnostic, patient-care, or treatment use.",
+    "No bundled signed release catalog or completed default scientific classification runtime.",
+    "Only germline Mendelian SNVs and small indels are within intended release scope.",
+    "Scientific golden validation, live benchmarks, multi-platform first-use evidence, and participant study evidence are external prerequisites."
+  ],
+  "migration": {
+    "compatibility_window": "external_prerequisite: release owner must set version and end date",
+    "legacy_manifest_path": "src/acmg_classifier/presentation/compat/legacy_go_manifest.json",
+    "legacy_runtime": "go",
+    "legacy_tools": [
+      {
+        "decision": "MAP_SAFE_CLASSIFY_REQUEST",
+        "limitations": [
+          "Only HGVS requests for supported germline SNVs and small indels can be translated.",
+          "The adapter does not classify a variant or preserve legacy result content."
+        ],
+        "replacement": {
+          "field_aliases": {
+            "hgvs_notation": "variant",
+            "preferred_isoform": "transcript",
+            "transcript_id": "transcript"
+          },
+          "tool": "classify_variant"
+        },
+        "status": "experimental",
+        "tool": "classify_variant"
+      },
+      {
+        "decision": "REJECT_DEPRECATED_TOOL",
+        "limitations": [
+          "Validation is part of the current classification workflow and is not exposed separately."
+        ],
+        "replacement": {
+          "tool": "classify_variant"
+        },
+        "status": "deprecated",
+        "tool": "validate_hgvs"
+      },
+      {
+        "decision": "REJECT_DEPRECATED_TOOL",
+        "limitations": [
+          "Criterion evaluation is an internal deterministic workflow step."
+        ],
+        "replacement": {
+          "tool": "classify_variant"
+        },
+        "status": "deprecated",
+        "tool": "apply_rule"
+      },
+      {
+        "decision": "REJECT_DEPRECATED_TOOL",
+        "limitations": [
+          "Evidence combination is an internal deterministic workflow step."
+        ],
+        "replacement": {
+          "tool": "classify_variant"
+        },
+        "status": "deprecated",
+        "tool": "combine_evidence"
+      },
+      {
+        "decision": "REJECT_LOW_LEVEL_EVIDENCE_TOOL",
+        "limitations": [
+          "Low-level evidence access is not a public compatibility surface."
+        ],
+        "replacement": {
+          "tool": "classify_variant"
+        },
+        "status": "deprecated",
+        "tool": "query_evidence"
+      },
+      {
+        "decision": "REJECT_LOW_LEVEL_EVIDENCE_TOOL",
+        "limitations": [
+          "Batch evidence access is not a public compatibility surface."
+        ],
+        "replacement": {
+          "tool": "classify_variant"
+        },
+        "status": "deprecated",
+        "tool": "batch_query_evidence"
+      },
+      {
+        "decision": "REJECT_LOW_LEVEL_EVIDENCE_TOOL",
+        "limitations": [
+          "Direct source queries are not a public compatibility surface."
+        ],
+        "replacement": {
+          "tool": "classify_variant"
+        },
+        "status": "deprecated",
+        "tool": "query_clinvar"
+      },
+      {
+        "decision": "REJECT_LOW_LEVEL_EVIDENCE_TOOL",
+        "limitations": [
+          "Direct source queries are not a public compatibility surface."
+        ],
+        "replacement": {
+          "tool": "classify_variant"
+        },
+        "status": "deprecated",
+        "tool": "query_gnomad"
+      },
+      {
+        "decision": "REJECT_LOW_LEVEL_EVIDENCE_TOOL",
+        "limitations": [
+          "Direct source queries are not a public compatibility surface."
+        ],
+        "replacement": {
+          "tool": "classify_variant"
+        },
+        "status": "deprecated",
+        "tool": "query_cosmic"
+      },
+      {
+        "decision": "REJECT_DEPRECATED_REPORT_TOOL",
+        "limitations": [
+          "The system is research-use-only and does not generate clinical reports."
+        ],
+        "replacement": {
+          "required_fields": [
+            "classification_id"
+          ],
+          "tool": "explain_classification"
+        },
+        "status": "deprecated",
+        "tool": "generate_report"
+      },
+      {
+        "decision": "REJECT_DEPRECATED_REPORT_TOOL",
+        "limitations": [
+          "The system is research-use-only and does not format clinical reports."
+        ],
+        "replacement": {
+          "required_fields": [
+            "classification_id"
+          ],
+          "tool": "explain_classification"
+        },
+        "status": "deprecated",
+        "tool": "format_report"
+      },
+      {
+        "decision": "REJECT_DEPRECATED_REPORT_TOOL",
+        "limitations": [
+          "The system is research-use-only and does not validate clinical reports."
+        ],
+        "replacement": {
+          "required_fields": [
+            "classification_id"
+          ],
+          "tool": "explain_classification"
+        },
+        "status": "deprecated",
+        "tool": "validate_report"
+      },
+      {
+        "decision": "REJECT_UNANCHORED_FEEDBACK",
+        "limitations": [
+          "Legacy feedback lacks the immutable classification anchor required for preservation."
+        ],
+        "replacement": {
+          "required_fields": [
+            "classification_id",
+            "feedback_type",
+            "rationale",
+            "actor_id"
+          ],
+          "tool": "submit_feedback"
+        },
+        "status": "deprecated",
+        "tool": "submit_feedback"
+      },
+      {
+        "decision": "REJECT_DEPRECATED_TOOL",
+        "limitations": [
+          "Feedback retrieval is not exposed through the migration adapter."
+        ],
+        "replacement": {
+          "tool": "submit_feedback"
+        },
+        "status": "deprecated",
+        "tool": "query_feedback"
+      },
+      {
+        "decision": "REJECT_DEPRECATED_TOOL",
+        "limitations": [
+          "Legacy feedback exports cannot be preserved without immutable anchors."
+        ],
+        "replacement": {
+          "tool": "submit_feedback"
+        },
+        "status": "deprecated",
+        "tool": "export_feedback"
+      },
+      {
+        "decision": "REJECT_DEPRECATED_TOOL",
+        "limitations": [
+          "Legacy feedback imports cannot be preserved without immutable anchors."
+        ],
+        "replacement": {
+          "tool": "submit_feedback"
+        },
+        "status": "deprecated",
+        "tool": "import_feedback"
+      },
+      {
+        "decision": "REJECT_DEPRECATED_TOOL",
+        "limitations": [
+          "Feedback listing is not exposed through the migration adapter."
+        ],
+        "replacement": {
+          "tool": "submit_feedback"
+        },
+        "status": "deprecated",
+        "tool": "list_feedback"
+      }
+    ],
+    "status": "deprecated"
+  },
+  "package": {
+    "console_scripts": {
+      "acmg": "acmg_classifier.presentation.cli.app:main",
+      "acmg-mcp": "acmg_classifier.presentation.mcp.server:main"
+    },
+    "name": "acmg-classifier",
+    "python_requires": ">=3.12,<3.14",
+    "version": "0.1.0"
+  },
+  "performance": {
+    "compact_result_max_bytes": 16384,
+    "review_packet_token_cap": 1200,
+    "routine_classify_tool_call_budget": 1,
+    "status": "external_prerequisite",
+    "timing_evidence": "synthetic fixtures only; no live latency claim"
+  },
+  "release_gates": [
+    {
+      "blockers": [
+        "A release owner must set an explicit compatibility-window end before removal."
+      ],
+      "evidence": "tests/contract/test_legacy_go_compatibility.py",
+      "status": "experimental",
+      "task_id": "10.1"
+    },
+    {
+      "blockers": [
+        "A provenance-approved independently curated scientific case set with redistribution permission is required."
+      ],
+      "evidence": "tests/fixtures/golden/synthetic_smoke_manifest.json",
+      "status": "external_prerequisite",
+      "task_id": "10.2"
+    },
+    {
+      "blockers": [
+        "Compatible installed bundle/cache artifacts are required for end-user offline classification."
+      ],
+      "evidence": "tests/integration/application/test_classification_service.py; tests/integration/application/test_reinterpretation.py",
+      "status": "experimental",
+      "task_id": "10.3"
+    },
+    {
+      "blockers": [
+        "Linux and Windows clean-install, five-minute first-use, and participant usability evidence are not recorded."
+      ],
+      "evidence": "tests/packaging/test_package_smoke.py",
+      "status": "external_prerequisite",
+      "task_id": "10.4"
+    },
+    {
+      "blockers": [
+        "External security assessment and certification evidence are not available."
+      ],
+      "evidence": "tests/security/test_security_gate.py; .github/workflows/security.yml",
+      "status": "external_prerequisite",
+      "task_id": "10.5"
+    },
+    {
+      "blockers": [
+        "Live benchmark workload, platform samples, and retained performance evidence are not available."
+      ],
+      "evidence": "tests/benchmarks/test_benchmarks.py",
+      "status": "external_prerequisite",
+      "task_id": "10.6"
+    }
+  ],
+  "release_status": "experimental",
+  "research_use_only": true,
+  "schema_version": "1.0",
+  "security_privacy": {
+    "certifications": "external_prerequisite",
+    "external_security_assessment": "external_prerequisite",
+    "phi_policy": "Default workflows reject or redact PHI-like fields; do not submit patient information.",
+    "research_use_only": true,
+    "status": "experimental"
+  },
+  "status_vocabulary": [
+    "experimental",
+    "validated_for_research",
+    "unavailable",
+    "deprecated",
+    "external_prerequisite"
+  ],
+  "supported_scope": {
+    "analysis_intent": "germline_mendelian",
+    "clinical_use": "not_for_clinical_use",
+    "genome_builds_in_candidate_bundle": [
+      "GRCh38"
+    ],
+    "out_of_scope": [
+      "somatic",
+      "CNV",
+      "structural_variant",
+      "fusion",
+      "mitochondrial",
+      "pharmacogenomic"
+    ],
+    "variant_types": [
+      "SNV",
+      "small_indel"
+    ]
+  }
+}

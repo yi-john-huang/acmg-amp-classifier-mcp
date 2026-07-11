@@ -33,7 +33,6 @@ from acmg_classifier.presentation.serialization import (
 )
 from acmg_classifier.presentation.services import (
     PresentationServices,
-    RuntimeConfigurationError,
     default_services,
 )
 
@@ -381,11 +380,7 @@ def _services(ctx: typer.Context) -> PresentationServices:
     services = ctx.obj.get("services") if isinstance(ctx.obj, dict) else None
     if isinstance(services, PresentationServices):
         return services
-    try:
-        return default_services()
-    except RuntimeConfigurationError as error:
-        typer.echo(str(error), err=True)
-        raise typer.Exit(1) from None
+    return default_services()
 
 
 def _resolve_interactively(

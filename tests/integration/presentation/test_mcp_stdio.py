@@ -8,7 +8,7 @@ from mcp.client.stdio import StdioServerParameters, stdio_client
 
 
 @pytest.mark.asyncio
-async def test_stdio_server_returns_typed_runtime_envelope() -> None:
+async def test_stdio_server_composes_actionable_bundle_failure() -> None:
     project_root = Path(__file__).parents[3]
     parameters = StdioServerParameters(
         command="uv",
@@ -38,6 +38,10 @@ async def test_stdio_server_returns_typed_runtime_envelope() -> None:
         "schema_version": "1.0",
         "status": "failed",
         "classification": None,
-        "error_code": "RUNTIME_UNAVAILABLE",
-        "limitations": [],
+        "error_code": "BUNDLE_UNAVAILABLE",
+        "limitations": [
+            "No compatible data bundle is available",
+            "no bundle candidates are available",
+            "acmg doctor --repair",
+        ],
     }

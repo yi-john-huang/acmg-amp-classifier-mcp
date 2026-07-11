@@ -20,6 +20,7 @@ from acmg_classifier.application.review import (
     ReviewPacket,
 )
 from acmg_classifier.domain.errors import JsonValue
+from acmg_classifier.presentation.runtime import compose_default_services
 
 
 class ClassificationWorkflow(Protocol):
@@ -104,13 +105,6 @@ class PresentationServices:
     review: OptionalReviewWorkflow | None = None
 
 
-class RuntimeConfigurationError(RuntimeError):
-    """No real application composition has been configured for this process."""
-
-
 def default_services() -> PresentationServices:
-    """Reject startup honestly until a real runtime composition is installed."""
-    raise RuntimeConfigurationError(
-        "No application runtime is configured; install a signed compatible data bundle "
-        "and configure the application composition."
-    )
+    """Return the installed application's local, zero-configuration composition."""
+    return compose_default_services()

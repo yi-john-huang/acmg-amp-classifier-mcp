@@ -4,6 +4,7 @@ import unittest
 from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from acmg_classifier.application.reinterpretation import ReinterpretationService
 from acmg_classifier.infrastructure.storage.records import SQLiteRecordStore
@@ -25,7 +26,12 @@ class ReinterpretationServiceIntegrationTests(unittest.TestCase):
     def test_replay_returns_stored_record_without_requerying_work(self) -> None:
         classification_id = self.store.finalize_classification(_record_content())
 
-        replay = self.service.replay(classification_id)
+        with patch(
+            "socket.create_connection",
+            side_effect=AssertionError("replay must not open a network socket"),
+        ) as network:
+            replay = self.service.replay(classification_id)
+        network.assert_not_called()
 
         self.assertEqual(replay.to_canonical_content(), _record_content())
         with self.assertRaises(TypeError):

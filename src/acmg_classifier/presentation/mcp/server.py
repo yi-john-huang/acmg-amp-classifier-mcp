@@ -27,7 +27,7 @@ from acmg_classifier.presentation.serialization import (
     stored_explanation_content,
     workflow_content,
 )
-from acmg_classifier.presentation.services import PresentationServices
+from acmg_classifier.presentation.services import PresentationServices, default_services
 
 
 class ResumeAnswerInput(BaseModel):
@@ -293,8 +293,8 @@ def create_server(
 
 
 def main() -> None:
-    """Run the official MCP stdio server without writing logs to stdout."""
-    create_server().run(transport="stdio")
+    """Run the official MCP stdio server with the default local composition."""
+    create_server(default_services()).run(transport="stdio")
 
 
 def _runtime_unavailable() -> dict[str, Any]:

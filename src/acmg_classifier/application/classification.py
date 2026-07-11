@@ -27,9 +27,10 @@ from acmg_classifier.domain.combination import (
     ClassificationDecision,
 )
 from acmg_classifier.domain.context import ContextQuestion
-from acmg_classifier.domain.criteria import CriteriaEngine
+from acmg_classifier.domain.criteria import CriteriaEngine, CriterionAssessment
 from acmg_classifier.domain.enums import (
     AnalysisIntent,
+    CriterionStatus,
     GenomeBuild,
     InheritanceMode,
     WorkflowStatus,
@@ -52,12 +53,14 @@ from acmg_classifier.domain.normalization import (
     NormalizedVariant,
 )
 from acmg_classifier.domain.rules import (
+    CriterionCode,
     RulesetRegistry,
     RulesetSelectionStatus,
     RulesetSpecification,
 )
 from acmg_classifier.ports.normalization import (
     NormalizationFailure,
+    NormalizationPolicy,
     NormalizationSuccess,
 )
 
@@ -195,6 +198,33 @@ class NeedsContextClassificationResponse:
 
 
 @dataclass(frozen=True, slots=True)
+class SourceCriterionImpact:
+    """The ruleset-declared criteria made non-evaluable by one source failure."""
+
+    source_id: str
+    criterion_codes: tuple[CriterionCode, ...] = ()
+    reason: str | None = None
+
+    def __post_init__(self) -> None:
+        if not self.source_id:
+            raise ValueError("source impact source_id must not be empty")
+        codes = tuple(sorted(set(self.criterion_codes), key=lambda code: code.value))
+        if codes and self.reason is not None:
+            raise ValueError("criterion impact with codes must not include a reason")
+        if not codes and not self.reason:
+            raise ValueError("empty criterion impact requires an explicit reason")
+        object.__setattr__(self, "criterion_codes", codes)
+
+    def to_canonical_content(self) -> dict[str, JsonValue]:
+        """Return stable presentation content without inferring a dependency."""
+        return {
+            "source_id": self.source_id,
+            "criterion_codes": [code.value for code in self.criterion_codes],
+            "reason": self.reason,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class DegradedClassificationResponse:
     """A non-completed decision with source-specific availability loss."""
 
@@ -205,6 +235,7 @@ class DegradedClassificationResponse:
     explanation: Explanation
     snapshot_id: str
     unavailable_sources: tuple[str, ...]
+    source_impacts: tuple[SourceCriterionImpact, ...]
     limitations: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
@@ -212,6 +243,14 @@ class DegradedClassificationResponse:
             raise ValueError("degraded response requires degraded status")
         if not self.unavailable_sources:
             raise ValueError("degraded response requires unavailable sources")
+        if tuple(sorted(set(self.unavailable_sources))) != self.unavailable_sources:
+            raise ValueError("degraded unavailable sources must be sorted and unique")
+        if tuple(impact.source_id for impact in self.source_impacts) != (
+            self.unavailable_sources
+        ):
+            raise ValueError(
+                "degraded source impacts must cover unavailable sources in order"
+            )
         if self.decision.conflict is not None:
             raise ValueError("degraded response cannot conceal a conflict")
 
@@ -403,6 +442,7 @@ class ClassificationService:
             normalization = self._normalizer.normalize(
                 request.variant,
                 context=request.context,
+                policy=_normalization_policy(request.evidence_policy, request.context),
             )
             if isinstance(normalization, NormalizationFailure):
                 return self._normalization_failure(normalization)
@@ -475,6 +515,11 @@ class ClassificationService:
         try:
             facts = FactSet.from_evidence(acquired.evidence_items)
             assessments = self._criteria_engine.evaluate(facts, context, ruleset)
+            assessments = _mark_unavailable_source_dependencies(
+                assessments,
+                ruleset,
+                acquired.unavailable_sources,
+            )
             decision = self._combiner.combine(
                 assessments,
                 ruleset,
@@ -560,6 +605,10 @@ class ClassificationService:
                 explanation=explanation,
                 snapshot_id=snapshot_id,
                 unavailable_sources=acquired.unavailable_sources,
+                source_impacts=_source_impacts(
+                    ruleset,
+                    acquired.unavailable_sources,
+                ),
                 limitations=limitations,
             )
         if self._record_store is None:
@@ -974,6 +1023,120 @@ def _assertion_direction(significance: str) -> str | None:
     if "pathogenic" in normalized:
         return "pathogenic"
     return None
+
+
+def _normalization_policy(
+    evidence_policy: EvidencePolicy,
+    context: InterpretationContext,
+) -> NormalizationPolicy:
+    """Bridge evidence mode to provider eligibility before normalization begins."""
+    offline = evidence_policy.mode is EvidencePolicyMode.OFFLINE
+    return NormalizationPolicy(
+        mode="offline" if offline else "live",
+        allow_remote=not offline,
+        genome_build=context.genome_build,
+    )
+
+
+def _source_impacts(
+    ruleset: RulesetSpecification,
+    unavailable_sources: tuple[str, ...],
+) -> tuple[SourceCriterionImpact, ...]:
+    dependencies = _required_source_dependencies(ruleset)
+    return tuple(
+        SourceCriterionImpact(
+            source_id=source_id,
+            criterion_codes=tuple(
+                sorted(
+                    (
+                        code
+                        for code, required_sources in dependencies.items()
+                        if source_id in required_sources
+                    ),
+                    key=lambda code: code.value,
+                )
+            ),
+            reason=(
+                None
+                if any(
+                    source_id in required_sources
+                    for required_sources in dependencies.values()
+                )
+                else "no enabled criteria declare this source dependency"
+            ),
+        )
+        for source_id in unavailable_sources
+    )
+
+
+def _mark_unavailable_source_dependencies(
+    assessments: Mapping[CriterionCode, CriterionAssessment],
+    ruleset: RulesetSpecification,
+    unavailable_sources: tuple[str, ...],
+) -> dict[CriterionCode, CriterionAssessment]:
+    """Prevent declared source failures from becoming absence-based conclusions."""
+    unavailable = frozenset(unavailable_sources)
+    dependencies = _required_source_dependencies(ruleset)
+    marked: dict[CriterionCode, CriterionAssessment] = {}
+    for code, assessment in assessments.items():
+        missing_sources = tuple(
+            source_id
+            for source_id in dependencies.get(code, ())
+            if source_id in unavailable
+        )
+        if not missing_sources:
+            marked[code] = assessment
+            continue
+        limitations = tuple(
+            sorted(
+                set(assessment.limitations).union(
+                    f"source unavailable: {source_id}" for source_id in missing_sources
+                )
+            )
+        )
+        marked[code] = assessment.model_copy(
+            update={
+                "status": CriterionStatus.NOT_EVALUABLE,
+                "applied_strength": None,
+                "evidence_ids": (),
+                "comparisons": (),
+                "rationale_template": "required source unavailable",
+                "rationale_values": {"source_ids": list(missing_sources)},
+                "limitations": limitations,
+            }
+        )
+    return marked
+
+
+def _required_source_dependencies(
+    ruleset: RulesetSpecification,
+) -> dict[CriterionCode, tuple[str, ...]]:
+    """Read only explicit ruleset declarations; unknown sources imply no impact."""
+    dependencies: dict[CriterionCode, tuple[str, ...]] = {}
+    for specification in ruleset.criteria:
+        if not specification.enabled:
+            continue
+        sources = _declared_required_sources(
+            specification.parameters.get("required_source_ids")
+        )
+        if sources:
+            dependencies[specification.code] = sources
+    return dependencies
+
+
+def _declared_required_sources(value: object) -> tuple[str, ...]:
+    if not isinstance(value, (list, tuple)):
+        return ()
+    source_ids: list[str] = []
+    for source_id in value:
+        if (
+            not isinstance(source_id, str)
+            or not source_id
+            or source_id.strip() != source_id
+        ):
+            return ()
+        source_ids.append(source_id)
+    return tuple(sorted(set(source_ids)))
 
 
 def _limitations(

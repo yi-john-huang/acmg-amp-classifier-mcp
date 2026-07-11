@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+import socket
 import unittest
 from dataclasses import FrozenInstanceError, dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import cast
+from unittest.mock import patch
 
 from acmg_classifier.application.classification import (
     ClassificationRequest,
@@ -29,6 +31,7 @@ from acmg_classifier.application.evidence_orchestrator import (
     EvidenceAcquisitionResult,
     EvidenceOrchestrator,
 )
+from acmg_classifier.application.normalization import VariantNormalizationService
 from acmg_classifier.application.review import ReviewPacket
 from acmg_classifier.domain.combination import ClassificationCombiner
 from acmg_classifier.domain.context import (
@@ -85,6 +88,7 @@ from acmg_classifier.infrastructure.storage.sqlite import SQLiteStateStore
 from acmg_classifier.ports.evidence import CacheState, EvidenceSourceResult
 from acmg_classifier.ports.normalization import (
     NormalizationFailure,
+    NormalizationPolicy,
     NormalizationSuccess,
 )
 from acmg_classifier.presentation.serialization import workflow_content
@@ -121,8 +125,9 @@ class _Normalizer:
         value: str,
         *,
         context: InterpretationContext,
+        policy: NormalizationPolicy,
     ) -> NormalizationSuccess | NormalizationFailure:
-        del value, context
+        del value, context, policy
         return self.result
 
 
@@ -136,9 +141,81 @@ class _CountingNormalizer(_Normalizer):
         value: str,
         *,
         context: InterpretationContext,
+        policy: NormalizationPolicy,
     ) -> NormalizationSuccess | NormalizationFailure:
         self.calls += 1
-        return super().normalize(value, context=context)
+        return super().normalize(value, context=context, policy=policy)
+
+
+class _OfflineNormalizerProvider:
+    provider_id = "local_bundle"
+    capabilities = frozenset({"offline"})
+
+    def __init__(self, result: NormalizationSuccess) -> None:
+        self._result = result
+        self.calls = 0
+        self.policies: list[NormalizationPolicy] = []
+
+    def normalize(
+        self,
+        parsed: object,
+        context: InterpretationContext,
+        policy: NormalizationPolicy,
+    ) -> NormalizationSuccess:
+        del parsed, context
+        self.calls += 1
+        self.policies.append(policy)
+        return self._result
+
+
+class _SocketRemoteNormalizerProvider:
+    provider_id = "ncbi_variation"
+    capabilities = frozenset({"live"})
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def normalize(
+        self,
+        parsed: object,
+        context: InterpretationContext,
+        policy: NormalizationPolicy,
+    ) -> NormalizationSuccess:
+        del parsed, context, policy
+        self.calls += 1
+        socket.create_connection(("example.invalid", 443))
+        raise AssertionError("remote normalization must not complete in offline mode")
+
+
+class _OfflineCacheMissAdapter:
+    source_id = "gnomad"
+
+    def __init__(self) -> None:
+        self.calls = 0
+        self.policies: list[EvidencePolicy] = []
+
+    async def query(
+        self,
+        variant: NormalizedVariant,
+        *,
+        policy: EvidencePolicy,
+    ) -> EvidenceSourceResult:
+        self.calls += 1
+        self.policies.append(policy)
+        if policy.mode is not EvidencePolicyMode.OFFLINE:
+            socket.create_connection(("example.invalid", 443))
+        return EvidenceSourceResult(
+            source_id=self.source_id,
+            evidence_items=(),
+            source_status=SourceStatus(
+                source_id=self.source_id,
+                status=SourceStatusValue.UNAVAILABLE,
+                checked_at=_NOW,
+                normalized_query_key=variant.variant_key,
+                detail="offline_cache_miss",
+            ),
+            cache_state=CacheState.OFFLINE_MISS,
+        )
 
 
 class _DiseaseContextResolver:
@@ -627,6 +704,107 @@ class ClassificationServiceIntegrationTests(unittest.IsolatedAsyncioTestCase):
             ClassificationTier.UNCERTAIN_SIGNIFICANCE,
         )
         self.assertEqual(degraded.explanation.classification, "Uncertain Significance")
+        self.assertEqual(
+            [
+                (
+                    impact.source_id,
+                    tuple(code.value for code in impact.criterion_codes),
+                    impact.reason,
+                )
+                for impact in degraded.source_impacts
+            ],
+            [
+                (
+                    "clinvar",
+                    (),
+                    "no enabled criteria declare this source dependency",
+                )
+            ],
+        )
+
+    async def test_offline_workflow_denies_sockets_and_reports_source_impact(
+        self,
+    ) -> None:
+        normalized = _normalized_variant()
+        local = _OfflineNormalizerProvider(NormalizationSuccess(normalized))
+        remote = _SocketRemoteNormalizerProvider()
+        adapter = _OfflineCacheMissAdapter()
+        with TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            database = root / "state.sqlite3"
+            SQLiteStateStore(database).initialize()
+            service = _service(
+                normalizer=VariantNormalizationService(providers=(local, remote)),
+                evidence=EvidenceOrchestrator(
+                    adapters=(adapter,),
+                    evidence_store=SQLiteEvidenceStore(database, root / "raw"),
+                    clock=lambda: _NOW,
+                    total_deadline_seconds=1.0,
+                ),
+                criteria_engine=CriteriaEngine(
+                    EvaluatorRegistry(
+                        (PopulationCriterionEvaluator(CriterionCode.PM2),)
+                    )
+                ),
+                ruleset=_ruleset(
+                    {CriterionCode.PM2},
+                    required_sources={CriterionCode.PM2: ("gnomad",)},
+                ),
+            )
+            request = ClassificationRequest(
+                variant=normalized.original_input,
+                context=_resolved_context(),
+                evidence_policy=EvidencePolicy(mode=EvidencePolicyMode.OFFLINE),
+            )
+            with patch(
+                "socket.create_connection",
+                side_effect=AssertionError("network is disabled"),
+            ) as network:
+                response = await service.classify(request)
+
+        self.assertIsInstance(response, DegradedClassificationResponse)
+        degraded = cast(DegradedClassificationResponse, response)
+        self.assertEqual(local.calls, 1)
+        self.assertEqual(
+            local.policies,
+            [
+                NormalizationPolicy(
+                    mode="offline",
+                    allow_remote=False,
+                    genome_build=GenomeBuild.GRCH38,
+                )
+            ],
+        )
+        self.assertEqual(remote.calls, 0)
+        self.assertEqual(adapter.calls, 1)
+        self.assertEqual(adapter.policies, [request.evidence_policy])
+        network.assert_not_called()
+        self.assertEqual(degraded.unavailable_sources, ("gnomad",))
+        self.assertEqual(
+            [
+                (impact.source_id, tuple(code.value for code in impact.criterion_codes))
+                for impact in degraded.source_impacts
+            ],
+            [("gnomad", ("PM2",))],
+        )
+        self.assertEqual(
+            next(
+                assessment.status
+                for assessment in degraded.decision.assessments
+                if assessment.code is CriterionCode.PM2
+            ),
+            CriterionStatus.NOT_EVALUABLE,
+        )
+        self.assertEqual(
+            workflow_content(degraded)["source_impacts"],
+            [
+                {
+                    "source_id": "gnomad",
+                    "criterion_codes": ["PM2"],
+                    "reason": None,
+                }
+            ],
+        )
 
     async def test_conflict_persists_review_anchor_without_classification(self) -> None:
         normalized = _normalized_variant()
@@ -934,6 +1112,7 @@ def _ruleset(
     enabled_codes: set[CriterionCode] | None = None,
     *,
     scope: RulesetScope | None = None,
+    required_sources: dict[CriterionCode, tuple[str, ...]] | None = None,
 ) -> RulesetSpecification:
     enabled = enabled_codes or set()
     criteria = []
@@ -955,6 +1134,9 @@ def _ruleset(
                         "required_filter_status": "PASS",
                         "maximum_allele_frequency": 0.0,
                         "applied_strength": "moderate",
+                        "required_source_ids": list(
+                            (required_sources or {}).get(code, ())
+                        ),
                     },
                 )
             )
