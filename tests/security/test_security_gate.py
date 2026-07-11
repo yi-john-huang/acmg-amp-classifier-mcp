@@ -245,3 +245,35 @@ def test_security_workflow_uses_locked_audit_and_fail_closed_secret_scan() -> No
         and finding["is_verified"] is False
         for finding in findings
     )
+
+
+def test_history_secret_scan_uses_verified_gitleaks_and_event_range() -> None:
+    root = Path(__file__).resolve().parents[2]
+    workflow = (root / ".github" / "workflows" / "security.yml").read_text(
+        encoding="utf-8"
+    )
+    gitleaks_config = (root / ".gitleaks.toml").read_text(encoding="utf-8")
+
+    assert "python scripts/verify_history_scan_regression.py" in workflow
+    assert "gitleaks_8.30.0_linux_x64.tar.gz" in workflow
+    assert (
+        "".join(
+            (
+                "79a3ab57",
+                "9b53f71e",
+                "fd634f3a",
+                "af7e04a0",
+                "fa0cf206",
+                "b7ed4346",
+                "38d1547a",
+                "2470a66e",
+            )
+        )
+        in workflow
+    )
+    assert "sha256sum --check --status" in workflow
+    assert "GITLEAKS_BASE_REF" in workflow
+    assert "--base-ref \"$GITLEAKS_BASE_REF\"" in workflow
+    assert "--before \"$GITLEAKS_BEFORE\"" in workflow
+    assert "[[allowlists]]" in gitleaks_config
+    assert "^scripts/verify_history_scan_regression\\.py$" in gitleaks_config

@@ -1,22 +1,14 @@
 #!/usr/bin/env python3
-"""Exercise a history-only API-key assignment that a full-history scanner sees.
-
-The production gate uses Gitleaks. This regression creates a disposable Git
-repository in which an API-key assignment is committed and then deleted. It
-fails unless the value remains discoverable through complete Git history,
-which protects the workflow's full-checkout requirement from a current-tree
-only regression.
-"""
+"""Prove the shared Gitleaks scan detects a deleted history-only credential."""
 
 from __future__ import annotations
 
-import re
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
-_SECRET_ASSIGNMENT = re.compile(r"(?m)^\+?API_KEY\s*=\s*[^\s]+$")
+from run_history_secret_scan import run_history_scan
 
 
 def _run(repository: Path, *args: str) -> subprocess.CompletedProcess[str]:
@@ -32,9 +24,6 @@ def _run(repository: Path, *args: str) -> subprocess.CompletedProcess[str]:
     return completed
 
 
-def _history_detects_deleted_api_key(repository: Path) -> bool:
-    history = _run(repository, "log", "--all", "--format=", "-p").stdout
-    return _SECRET_ASSIGNMENT.search(history) is not None
 
 
 def main() -> int:
@@ -47,9 +36,10 @@ def main() -> int:
             _run(repository, "config", "user.email", "security-test@example.invalid")
             _run(repository, "config", "user.name", "Security Regression")
 
-            credential_file = repository / "settings.env"
+            credential_file = repository / "removed-history-fixture.env"
+            credential = "A" + "KIA" + "".join(("QWER", "TYUI", "OPAS", "DFGH"))
             credential_file.write_text(
-                "API_KEY=history-regression-secret-value\n", encoding="utf-8"
+                "credential=" + credential + "\n", encoding="utf-8"
             )
             _run(repository, "add", credential_file.name)
             _run(repository, "commit", "--quiet", "-m", "add test credential")
@@ -65,15 +55,15 @@ def main() -> int:
             )
             if current_tree.returncode == 0:
                 raise RuntimeError("The test credential unexpectedly remains tracked")
-            if not _history_detects_deleted_api_key(repository):
+            if run_history_scan(repository).returncode == 0:
                 raise RuntimeError(
-                    "The deleted test credential was absent from Git history"
+                    "Gitleaks did not detect the deleted test credential"
                 )
     except (OSError, RuntimeError, subprocess.SubprocessError) as error:
         print(f"history-scan regression failed: {error}", file=sys.stderr)
         return 1
 
-    print("history-scan regression detected a credential removed from the working tree")
+    print("gitleaks detected a credential removed from the working tree")
     return 0
 
 
