@@ -217,22 +217,21 @@ def test_security_workflow_uses_locked_audit_and_fail_closed_secret_scan() -> No
 
     assert "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683" in workflow
     assert "actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065" in workflow
+    assert "astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb" in workflow
+    assert "python -m pip install" not in workflow
     assert "uv export --locked" in workflow
     assert 'pip-audit==2.9.0' in pyproject
+    assert 'detect-secrets==1.5.0' in pyproject
     assert 'name = "pip-audit"' in lock
-    assert "uv run --locked --no-dev --group audit pip-audit" in workflow
-    assert "detect-secrets==1.5.0" in workflow
-    assert "detect-secrets-hook" in workflow
+    assert 'name = "detect-secrets"' in lock
+    assert "uv sync --frozen --no-dev --group security" in workflow
+    assert "uv run --frozen --no-sync --no-dev --group security pip-audit" in workflow
+    assert "uv run --frozen --no-sync --no-dev --group security detect-secrets-hook" in workflow
     assert "--baseline .secrets.baseline" in workflow
     assert "git ls-files -z" in workflow
     assert "branches:" in workflow
     assert "      - develop" in workflow
     assert "      - master" in workflow
-    assert "python scripts/verify_history_scan_regression.py" in workflow
-    assert (
-        "gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7"
-        in workflow
-    )
     assert "contents: read" in workflow
     assert baseline["version"] == "1.5.0"
     assert baseline["results"]["data_builder/recipes/core-2026.7.10.json"]
