@@ -45,25 +45,23 @@ class CaseEvidenceSchemaTests(unittest.TestCase):
                 )
                 self.assertEqual(type(request.case_evidence[0]).__name__, type_name)
 
-    def test_segregation_counts_cannot_exceed_informative_meioses(self) -> None:
+    def test_segregation_counts_require_positive_informative_meioses(self) -> None:
         from acmg_classifier.presentation.schemas.classification import (
             ClassificationRequest,
         )
 
-        with self.assertRaises(ValidationError):
-            ClassificationRequest.model_validate(
-                {
-                    "variant": VARIANT,
-                    "case_evidence": [
-                        {
-                            "kind": "segregation",
-                            "informative_meioses": 2,
-                            "co_segregations": 2,
-                            "non_segregations": 1,
-                        }
-                    ],
-                }
-            )
+        for counts in (
+            {"informative_meioses": 2, "co_segregations": 2, "non_segregations": 1},
+            {"informative_meioses": 0, "non_segregations": 1},
+            {"informative_meioses": 0, "co_segregations": 0},
+        ):
+            with self.subTest(counts=counts), self.assertRaises(ValidationError):
+                ClassificationRequest.model_validate(
+                    {
+                        "variant": VARIANT,
+                        "case_evidence": [{"kind": "segregation", **counts}],
+                    }
+                )
 
     def test_unknown_and_not_applicable_states_are_explicitly_preserved(self) -> None:
         from acmg_classifier.presentation.schemas.classification import (

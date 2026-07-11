@@ -238,11 +238,14 @@ class SegregationObservation(EvidenceModel):
 
     @model_validator(mode="after")
     def validate_segregation_counts(self) -> Self:
+        if self.co_segregations is None and self.non_segregations is None:
+            return self
+        if self.informative_meioses is None or self.informative_meioses == 0:
+            raise ValueError(
+                "segregation counts require positive informative_meioses"
+            )
         if (
-            self.informative_meioses is not None
-            and self.co_segregations is not None
-            and self.non_segregations is not None
-            and self.co_segregations + self.non_segregations
+            (self.co_segregations or 0) + (self.non_segregations or 0)
             > self.informative_meioses
         ):
             raise ValueError(
