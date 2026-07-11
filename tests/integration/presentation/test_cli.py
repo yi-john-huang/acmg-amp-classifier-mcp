@@ -488,6 +488,17 @@ def test_doctor_text_reports_bootstrap_readiness() -> None:
     assert result.exit_code == 1
     assert "status: not_ready" in result.stdout
 
+def test_bundle_command_help_states_catalog_dependency() -> None:
+    runner = CliRunner()
+
+    doctor_help = runner.invoke(app, ["doctor", "--help"])
+    update_help = runner.invoke(app, ["data", "update", "--help"])
+
+    assert doctor_help.exit_code == 0
+    assert "configured catalog" in doctor_help.stdout
+    assert update_help.exit_code == 0
+    assert "configured catalog" in update_help.stdout
+
 
 def _normalized() -> NormalizedVariant:
     key = CanonicalAlleleKey(

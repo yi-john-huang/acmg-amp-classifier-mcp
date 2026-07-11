@@ -14,9 +14,9 @@ acmg data status --format json
 
 The application state is usable but no compatible signed bundle/catalog is
 available. This is expected for the current experimental wheel. Read the
-reported repair action; do not install a manually assembled or unsigned archive.
-A release administrator must provide a compatible controlled catalog before a
-scientific runtime can be used.
+reported repair action as diagnostic information; do not install a manually
+assembled or unsigned archive. The shipped wheel has no catalog configuration
+or trusted release keys, so it cannot self-repair into a scientific runtime.
 
 ## `needs_context`
 

@@ -12,8 +12,9 @@ clinical diagnostic device and its output requires professional interpretation.
 - Launch `acmg-mcp` over standard input/output. It exposes no HTTP service.
 - The supported local state store is SQLite. PostgreSQL, Redis, Docker Swarm,
   Kubernetes, and the legacy Go server are not runtime contracts.
-- Run `acmg doctor` before first use; `acmg doctor --repair` can repair a local
-  compatible bundle. A non-ready report exits nonzero.
+- Run `acmg doctor` before first use to inspect readiness. The default wheel
+  has no release catalog or trusted release keys, so `doctor --repair` reports
+  diagnostics but cannot install a scientific runtime.
 
 ## Routine MCP surface
 

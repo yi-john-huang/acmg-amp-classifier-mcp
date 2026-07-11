@@ -9,14 +9,16 @@ limitations. It does not describe a deployed clinical service.
 ## Start here
 
 1. [Scientist onboarding](onboarding.md): install from source, check readiness,
-   run CLI/MCP commands, and interpret structured states.
-2. [Capability support matrix](release/capabilities.md): source-controlled
+   and run CLI/MCP commands.
+2. [Research workflow guide](user-guide.md): use the supported CLI safely and
+   interpret readiness, workflow states, and offline behavior.
+3. [Capability support matrix](release/capabilities.md): source-controlled
    implementation, validation, and release-blocker status.
-3. [Known limits](known-limits.md): scope, unavailable paths, and external
+4. [Known limits](known-limits.md): scope, unavailable paths, and external
    prerequisites.
-4. [Safety and privacy](safety-and-privacy.md): no-PHI and no-patient-care
+5. [Safety and privacy](safety-and-privacy.md): no-PHI and no-patient-care
    boundaries.
-5. [Migration guide](migration.md): legacy Go contract decisions.
+6. [Migration guide](migration.md): legacy Go contract decisions.
 
 ## Reference guides
 

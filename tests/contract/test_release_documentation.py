@@ -235,7 +235,6 @@ def test_entry_docs_are_current_and_research_use_only() -> None:
 def test_legacy_documentation_and_examples_exclude_obsolete_claims() -> None:
     paths = (
         DOCS / "README.md",
-        DOCS / "USER_GUIDE.md",
         DOCS / "user-guide.md",
         DOCS / "api-documentation.md",
         DOCS / "architecture.md",

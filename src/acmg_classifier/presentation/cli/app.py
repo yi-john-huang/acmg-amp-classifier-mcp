@@ -315,7 +315,7 @@ def doctor(
     repair: RepairOption = False,
     output_format: OutputFormatOption = "text",
 ) -> None:
-    """Inspect local readiness or repair a compatible signed data bundle."""
+    """Inspect local readiness; repair requires an injected configured catalog."""
     services = _services(ctx)
     _validate_format(output_format)
     report = services.bootstrap.doctor(repair=repair)
@@ -337,7 +337,7 @@ def data_update(
     ctx: typer.Context,
     output_format: OutputFormatOption = "text",
 ) -> None:
-    """Install or reuse the selected compatible data bundle."""
+    """Install or reuse a compatible bundle from an injected configured catalog."""
     services = _services(ctx)
     _validate_format(output_format)
     report = services.bootstrap.ensure_ready()
