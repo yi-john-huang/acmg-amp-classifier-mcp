@@ -149,6 +149,10 @@ class PopulationObservation(EvidenceModel):
                 raise ValueError(
                     "homozygote and hemizygote counts exceed allele_count"
                 )
+        if self.allele_count == 0 and self.allele_frequency not in (None, 0):
+            raise ValueError(
+                "allele_frequency must be zero when allele_count is zero"
+            )
         if (
             self.allele_count is not None
             and self.allele_number is not None

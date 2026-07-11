@@ -273,6 +273,18 @@ class EvidenceModelTests(unittest.TestCase):
                 "filter_status": "pass",
             }
         )
+        zero_count = PopulationObservation.model_validate(
+            {
+                "kind": "population",
+                "source_release": "gnomad-r4.1",
+                "allele_count": 0,
+                "allele_number": 100,
+                "allele_frequency": 0.0,
+                "filter_status": "pass",
+            }
+        )
+        self.assertEqual(zero_count.allele_frequency, 0.0)
+
         self.assertEqual(rounded.allele_frequency, 0.0100005)
 
         for invalid in (
@@ -283,6 +295,7 @@ class EvidenceModelTests(unittest.TestCase):
             {"allele_count": 1, "hemizygote_count": 2},
             {"allele_frequency": math.nan},
             {"allele_frequency": 1.1},
+            {"allele_count": 0, "allele_number": 100, "allele_frequency": 0.0000001},
         ):
             with self.subTest(invalid=invalid), self.assertRaises(ValidationError):
                 PopulationObservation.model_validate(
