@@ -37,7 +37,23 @@ class Variant:
     genome_build = "GRCh38"
     genomic_hgvs = "NC_000007.14:g.117559593_117559595del"
 
+    genomic_accession = "NC_000007.14"
+    genomic_start = 117559592
+    genomic_end = 117559595
+    reference_allele = "CTT"
+    alternate_allele = "C"
 
+
+class MismatchedVariant(Variant):
+    alternate_allele = "A"
+
+
+class DirectVariationIdMismatchedVariant(MismatchedVariant):
+    clinvar_variation_id = "14206"
+
+
+class DirectVcvMismatchedVariant(MismatchedVariant):
+    clinvar_accession = "VCV000014206"
 
 
 class RecordedTransport:
@@ -173,6 +189,42 @@ class ClinVarAdapterTests(unittest.TestCase):
         self.assertEqual(item.provenance.source_version, "VCV000014206.4")
         self.assertTrue(item.raw_snapshot_ref.startswith("raw_"))
         self.assertIn(item.raw_snapshot_ref, result.raw_snapshot_refs)
+
+    def test_mismatched_authoritative_allele_is_non_evidence_for_esearch(
+        self,
+    ) -> None:
+        transport = RecordedTransport(
+            [
+                ESEARCH_ONE_RECORD,
+                (FIXTURE_ROOT / "efetch_single_assertion.xml").read_bytes(),
+            ]
+        )
+
+        result = self.query(self.adapter(transport), variant=MismatchedVariant())
+
+        self.assertEqual(result.evidence_items, ())
+        self.assertEqual(result.source_status.detail, "allele_mismatch_excluded")
+        self.assertEqual(len(transport.requests), 2)
+
+    def test_mismatched_authoritative_allele_is_non_evidence_for_direct_ids(
+        self,
+    ) -> None:
+        for variant in (
+            DirectVariationIdMismatchedVariant(),
+            DirectVcvMismatchedVariant(),
+        ):
+            with self.subTest(variant=type(variant).__name__):
+                transport = RecordedTransport(
+                    [(FIXTURE_ROOT / "efetch_single_assertion.xml").read_bytes()]
+                )
+
+                result = self.query(self.adapter(transport), variant=variant)
+
+                self.assertEqual(result.evidence_items, ())
+                self.assertEqual(
+                    result.source_status.detail, "allele_mismatch_excluded"
+                )
+                self.assertEqual(len(transport.requests), 1)
 
     def test_conflicting_assertions_stay_separate_and_sorted(self) -> None:
         transport = RecordedTransport(

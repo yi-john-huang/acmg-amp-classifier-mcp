@@ -27,6 +27,21 @@ class NormalizedVariantQuery(Protocol):
     @property
     def genomic_hgvs(self) -> str | None: ...
 
+    @property
+    def genomic_accession(self) -> str: ...
+
+    @property
+    def genomic_start(self) -> int: ...
+
+    @property
+    def genomic_end(self) -> int: ...
+
+    @property
+    def reference_allele(self) -> str: ...
+
+    @property
+    def alternate_allele(self) -> str: ...
+
 
 @dataclass(frozen=True, slots=True)
 class SourceQuery:
