@@ -160,11 +160,10 @@ class BundleManagerTests(unittest.TestCase):
         transport=None,
     ):
         from acmg_classifier.infrastructure.bundles.manager import BundleManager
-        from acmg_classifier.infrastructure.bundles.verifier import BundleVerifier
         from acmg_classifier.infrastructure.bundles.transport import (
             HttpDownloadTransport,
         )
-
+        from acmg_classifier.infrastructure.bundles.verifier import BundleVerifier
         return BundleManager(
             root,
             verifier=BundleVerifier({"test-key": self.public_key}),

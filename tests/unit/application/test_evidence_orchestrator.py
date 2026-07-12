@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import sqlite3
 import unittest
+from contextlib import closing
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -373,7 +374,7 @@ class EvidenceOrchestratorTests(unittest.IsolatedAsyncioTestCase):
             await task
         self.assertTrue(adapter.cancelled)
 
-        with sqlite3.connect(self.database_path) as connection:
+        with closing(sqlite3.connect(self.database_path)) as connection:
             snapshot_count = connection.execute(
                 "SELECT COUNT(*) FROM evidence_snapshots"
             ).fetchone()[0]

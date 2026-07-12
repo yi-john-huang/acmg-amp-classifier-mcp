@@ -842,7 +842,14 @@ def _vcv_allele_matches(raw_xml: bytes, variant: NormalizedVariantQuery) -> bool
         stop = element.get("stop")
         reference = element.get("referenceAllele")
         alternate = element.get("alternateAllele")
-        if None in (assembly, accession, start, stop, reference, alternate):
+        if (
+            assembly is None
+            or accession is None
+            or start is None
+            or stop is None
+            or reference is None
+            or alternate is None
+        ):
             continue
         try:
             authoritative.append(

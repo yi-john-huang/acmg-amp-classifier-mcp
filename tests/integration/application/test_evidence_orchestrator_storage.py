@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator
 import sqlite3
 import unittest
+from collections.abc import AsyncIterator
+from contextlib import closing
 from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -107,7 +108,7 @@ class EvidenceOrchestratorStorageIntegrationTests(unittest.IsolatedAsyncioTestCa
                 )
             )
             await asyncio.wait_for(started.wait(), timeout=0.5)
-            with sqlite3.connect(database, timeout=0) as writer:
+            with closing(sqlite3.connect(database, timeout=0)) as writer, writer:
                 writer.execute("BEGIN IMMEDIATE")
                 writer.execute("ROLLBACK")
             release.set()

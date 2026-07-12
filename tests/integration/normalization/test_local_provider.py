@@ -4,6 +4,7 @@ import hashlib
 import json
 import socket
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -45,7 +46,7 @@ FIXTURES = Path(__file__).parents[2] / "fixtures" / "normalization"
 
 
 def _create_knowledge_database(path: Path, *, bundle_version: str) -> None:
-    with sqlite3.connect(path) as database:
+    with closing(sqlite3.connect(path)) as database, database:
         database.executescript(
             """
             CREATE TABLE metadata (
@@ -117,7 +118,7 @@ def _install_signed_bundle(
     knowledge_path.parent.mkdir()
     _create_knowledge_database(knowledge_path, bundle_version=metadata_bundle_version)
     if invalid_schema:
-        with sqlite3.connect(knowledge_path) as database:
+        with closing(sqlite3.connect(knowledge_path)) as database, database:
             database.execute("DROP TABLE gene_disease")
 
     private_key = Ed25519PrivateKey.generate()

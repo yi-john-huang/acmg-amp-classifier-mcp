@@ -6,9 +6,9 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
+
 from acmg_classifier.domain.enums import GenomeBuild
 from acmg_classifier.domain.evidence import EvidenceContextScope
-
 
 FIXTURES = Path(__file__).parents[2] / "fixtures" / "evidence" / "gnomad"
 NOW = datetime(2026, 7, 11, 12, 0, tzinfo=UTC)
@@ -104,7 +104,12 @@ class GnomADAdapterTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_zero_with_adequate_denominator_is_population_evidence(self) -> None:
         transport = RecordedTransport("variant_absent_with_coverage.json")
-        result = await self.make_adapter(transport).query(Variant("GRCh38:1:55516888:G:GA", "GRCh38"), context_scope=scope_for(Variant("GRCh38:1:55516888:G:GA", "GRCh38")), policy=self.live_policy())
+        variant = Variant("GRCh38:1:55516888:G:GA", "GRCh38")
+        result = await self.make_adapter(transport).query(
+            variant,
+            context_scope=scope_for(variant),
+            policy=self.live_policy(),
+        )
 
         from acmg_classifier.domain.evidence import SourceStatusValue
         from acmg_classifier.ports.evidence import CacheState
@@ -139,9 +144,14 @@ class GnomADAdapterTests(unittest.IsolatedAsyncioTestCase):
     async def test_no_variant_without_denominator_is_no_record_not_zero_evidence(
         self,
     ) -> None:
+        variant = Variant("GRCh38:1:55516888:G:GA", "GRCh38")
         result = await self.make_adapter(
             RecordedTransport("variant_not_found.json")
-        ).query(Variant("GRCh38:1:55516888:G:GA", "GRCh38"), context_scope=scope_for(Variant("GRCh38:1:55516888:G:GA", "GRCh38")), policy=self.live_policy())
+        ).query(
+            variant,
+            context_scope=scope_for(variant),
+            policy=self.live_policy(),
+        )
 
         from acmg_classifier.domain.evidence import SourceStatusValue
 
@@ -153,9 +163,14 @@ class GnomADAdapterTests(unittest.IsolatedAsyncioTestCase):
     async def test_overall_and_ancestry_observations_preserve_genome_exome_split(
         self,
     ) -> None:
+        variant = Variant("GRCh38:1:55516888:G:GA", "GRCh38")
         result = await self.make_adapter(
             RecordedTransport("overall_and_ancestry_counts.json")
-        ).query(Variant("GRCh38:1:55516888:G:GA", "GRCh38"), context_scope=scope_for(Variant("GRCh38:1:55516888:G:GA", "GRCh38")), policy=self.live_policy())
+        ).query(
+            variant,
+            context_scope=scope_for(variant),
+            policy=self.live_policy(),
+        )
 
         observations = [item.observation for item in result.evidence_items]
         self.assertEqual(
@@ -184,12 +199,22 @@ class GnomADAdapterTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(observations[4].hemizygote_count, None)
 
     async def test_filtered_and_hemizygous_values_are_preserved(self) -> None:
+        filtered_variant = Variant("GRCh38:1:55516888:G:GA", "GRCh38")
         filtered = await self.make_adapter(
             RecordedTransport("filtered_variant.json")
-        ).query(Variant("GRCh38:1:55516888:G:GA", "GRCh38"), context_scope=scope_for(Variant("GRCh38:1:55516888:G:GA", "GRCh38")), policy=self.live_policy())
+        ).query(
+            filtered_variant,
+            context_scope=scope_for(filtered_variant),
+            policy=self.live_policy(),
+        )
+        hemizygous_variant = Variant("GRCh38:X:154931044:C:T", "GRCh38")
         hemizygous = await self.make_adapter(
             RecordedTransport("hemizygous_counts.json")
-        ).query(Variant("GRCh38:X:154931044:C:T", "GRCh38"), context_scope=scope_for(Variant("GRCh38:X:154931044:C:T", "GRCh38")), policy=self.live_policy())
+        ).query(
+            hemizygous_variant,
+            context_scope=scope_for(hemizygous_variant),
+            policy=self.live_policy(),
+        )
 
         from acmg_classifier.domain.evidence import QualityFlag
 
@@ -202,12 +227,21 @@ class GnomADAdapterTests(unittest.IsolatedAsyncioTestCase):
     async def test_schema_errors_and_missing_required_counts_are_not_no_record(
         self,
     ) -> None:
+        variant = Variant("GRCh38:1:55516888:G:GA", "GRCh38")
         graphql_error = await self.make_adapter(
             RecordedTransport("graphql_errors_schema.json")
-        ).query(Variant("GRCh38:1:55516888:G:GA", "GRCh38"), context_scope=scope_for(Variant("GRCh38:1:55516888:G:GA", "GRCh38")), policy=self.live_policy())
+        ).query(
+            variant,
+            context_scope=scope_for(variant),
+            policy=self.live_policy(),
+        )
         drift = await self.make_adapter(
             RecordedTransport("schema_drift_missing_an.json")
-        ).query(Variant("GRCh38:1:55516888:G:GA", "GRCh38"), context_scope=scope_for(Variant("GRCh38:1:55516888:G:GA", "GRCh38")), policy=self.live_policy())
+        ).query(
+            variant,
+            context_scope=scope_for(variant),
+            policy=self.live_policy(),
+        )
 
         from acmg_classifier.domain.evidence import SourceStatusValue
 
@@ -220,7 +254,12 @@ class GnomADAdapterTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_build_release_mismatch_fails_before_http(self) -> None:
         transport = NeverCalledTransport()
-        result = await self.make_adapter(transport).query(Variant("GRCh37:1:55516888:G:GA", "GRCh37"), context_scope=scope_for(Variant("GRCh37:1:55516888:G:GA", "GRCh37")), policy=self.live_policy())
+        variant = Variant("GRCh37:1:55516888:G:GA", "GRCh37")
+        result = await self.make_adapter(transport).query(
+            variant,
+            context_scope=scope_for(variant),
+            policy=self.live_policy(),
+        )
 
         from acmg_classifier.domain.evidence import SourceStatusValue
         from acmg_classifier.ports.evidence import CacheState
@@ -234,8 +273,16 @@ class GnomADAdapterTests(unittest.IsolatedAsyncioTestCase):
         transport = RecordedTransport("variant_absent_with_coverage.json")
         adapter = self.make_adapter(transport)
         variant = Variant("GRCh38:1:55516888:G:GA", "GRCh38")
-        live = await adapter.query(variant, context_scope=scope_for(variant), policy=self.live_policy())
-        cached = await adapter.query(variant, context_scope=scope_for(variant), policy=self.live_policy())
+        live = await adapter.query(
+            variant,
+            context_scope=scope_for(variant),
+            policy=self.live_policy(),
+        )
+        cached = await adapter.query(
+            variant,
+            context_scope=scope_for(variant),
+            policy=self.live_policy(),
+        )
 
         from acmg_classifier.domain.evidence import SourceStatusValue
         from acmg_classifier.ports.evidence import CacheState

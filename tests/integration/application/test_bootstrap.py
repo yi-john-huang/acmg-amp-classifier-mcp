@@ -5,6 +5,7 @@ import json
 import sqlite3
 import zipfile
 from collections.abc import Callable
+from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -95,7 +96,7 @@ def _real_bundle_provisioner(tmp_path: Path):
     )
 
     knowledge_path = tmp_path / "knowledge.sqlite3"
-    with sqlite3.connect(knowledge_path) as connection:
+    with closing(sqlite3.connect(knowledge_path)) as connection, connection:
         connection.execute("CREATE TABLE knowledge (identifier TEXT PRIMARY KEY)")
         connection.execute("INSERT INTO knowledge VALUES ('fixture')")
     knowledge_bytes = knowledge_path.read_bytes()
@@ -311,7 +312,7 @@ def test_bootstrap_runs_real_sqlite_migrations(tmp_path: Path) -> None:
     )
     assert report.state_database.journal_mode == "wal"
     assert report.state_database.foreign_keys_enabled
-    with sqlite3.connect(tmp_path / "state" / "state.sqlite3") as connection:
+    with closing(sqlite3.connect(tmp_path / "state" / "state.sqlite3")) as connection:
         migration_count = connection.execute(
             "SELECT COUNT(*) FROM schema_migrations"
         ).fetchone()[0]
@@ -337,7 +338,9 @@ def test_bootstrap_installs_and_reuses_a_real_signed_bundle_manager_bundle(
         == "2026.7.10"
     )
     installed_knowledge = manager.root / "bundles" / "2026.7.10" / "knowledge.sqlite3"
-    with sqlite3.connect(f"file:{installed_knowledge}?mode=ro", uri=True) as connection:
+    with closing(
+        sqlite3.connect(f"file:{installed_knowledge}?mode=ro", uri=True)
+    ) as connection:
         assert connection.execute("SELECT identifier FROM knowledge").fetchone() == (
             "fixture",
         )

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from contextlib import closing
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -117,7 +118,7 @@ class SQLiteSourceCacheTests(unittest.TestCase):
             byte_size=raw.byte_size,
         )
 
-        with self.evidence_store._connect() as connection:
+        with closing(self.evidence_store._connect()) as connection, connection:
             connection.execute("DROP TRIGGER evidence_items_reject_delete")
             connection.execute(
                 "DELETE FROM evidence_items WHERE evidence_id = ?", (evidence_id,)
@@ -169,7 +170,7 @@ class SQLiteSourceCacheTests(unittest.TestCase):
             self.assertFalse(lookup.eligible)
 
         deleted_query, deleted_raw = put_cache_entry("deleted-metadata")
-        with self.evidence_store._connect() as connection:
+        with closing(self.evidence_store._connect()) as connection, connection:
             connection.execute(
                 "DELETE FROM raw_snapshots WHERE snapshot_hash = ?",
                 (deleted_raw.snapshot_hash,),
@@ -272,7 +273,7 @@ class SQLiteSourceCacheTests(unittest.TestCase):
 
         cache = self.cache()
         query = self.query()
-        with cache._connect() as connection:
+        with closing(cache._connect()) as connection, connection:
             connection.execute(
                 """
                 INSERT INTO source_cache (

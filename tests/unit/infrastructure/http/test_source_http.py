@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-
 import unittest
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime

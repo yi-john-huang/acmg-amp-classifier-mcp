@@ -8,7 +8,6 @@ from pydantic import Field, StringConstraints, field_validator, model_validator
 
 from acmg_classifier.presentation.schemas.base import StrictModel
 
-
 type CaseCitationId = Annotated[
     str,
     StringConstraints(
@@ -153,7 +152,9 @@ class FunctionalAssayEvidenceInput(CaseEvidenceInputBase):
             and self.confidence_interval_upper is not None
             and self.confidence_interval_lower > self.confidence_interval_upper
         ):
-            raise ValueError("confidence interval lower bound must not exceed upper bound")
+            raise ValueError(
+                "confidence interval lower bound must not exceed upper bound"
+            )
         return self
 
 
@@ -191,7 +192,9 @@ class CaseControlEvidenceInput(CaseEvidenceInputBase):
             and self.control_count is not None
             and self.control_allele_count > 2 * self.control_count
         ):
-            raise ValueError("control_allele_count exceeds diploid control allele capacity")
+            raise ValueError(
+                "control_allele_count exceeds diploid control allele capacity"
+            )
         return self
 
 

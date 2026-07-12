@@ -89,7 +89,10 @@ class ExplanationServiceTests(unittest.TestCase):
                 "pathogenic and benign evidence conflict",
             ),
         )
-    def test_conflicting_assessment_renders_in_standard_and_full_conflicts(self) -> None:
+
+    def test_conflicting_assessment_renders_in_standard_and_full_conflicts(
+        self,
+    ) -> None:
         decision = ClassificationDecision(
             algorithm_id="acmg-2015",
             algorithm_version="1.0.0",

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ssl
 import urllib.request
 from email.message import Message
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -162,6 +163,55 @@ def test_pinned_https_connection_uses_validated_address_after_dns_changes(
 
     assert resolution_attempts == ["bundles.example.test"]
     assert connection_attempts == [("93.184.216.34", 443)]
+
+def test_pinned_https_handler_uses_its_ssl_context(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from acmg_classifier.infrastructure.bundles import transport
+
+    handler = transport._PinnedHTTPSHandler()
+    expected = object()
+    observed: dict[str, object] = {}
+
+    def _do_open(
+        connection_factory: object,
+        request: urllib.request.Request,
+        **kwargs: object,
+    ) -> object:
+        observed["connection_factory"] = connection_factory
+        observed["request"] = request
+        observed.update(kwargs)
+        return expected
+
+    monkeypatch.setattr(
+        transport,
+        "_validate_download_url",
+        lambda *_args, **_kwargs: "93.184.216.34",
+    )
+    monkeypatch.setattr(handler, "do_open", _do_open)
+    request = urllib.request.Request("https://bundles.example.test/current")
+
+    assert handler.https_open(request) is expected
+    assert observed["request"] is request
+    assert isinstance(observed["context"], ssl.SSLContext)
+    assert set(observed) == {"connection_factory", "context", "request"}
+
+
+def test_download_opener_ignores_ambient_proxy_settings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from acmg_classifier.infrastructure.bundles import transport
+
+    monkeypatch.setenv("HTTPS_PROXY", "http://127.0.0.1:8080")
+
+    opener = transport._download_opener(allow_loopback_http=False)
+    proxy_handlers = [
+        handler
+        for handler in opener.handlers
+        if isinstance(handler, urllib.request.ProxyHandler)
+    ]
+
+    assert proxy_handlers == []
 
 
 

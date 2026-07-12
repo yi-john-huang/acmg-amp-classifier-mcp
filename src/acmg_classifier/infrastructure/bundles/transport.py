@@ -4,12 +4,13 @@ import http.client
 import ipaddress
 import os
 import socket
+import ssl
 import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
-from typing import Protocol
+from typing import IO, Protocol
 from urllib.parse import urlparse
 
 
@@ -44,10 +45,10 @@ class _ValidatedRedirectHandler(urllib.request.HTTPRedirectHandler):
     def redirect_request(
         self,
         request: urllib.request.Request,
-        fp: object,
+        fp: IO[bytes],
         code: int,
         msg: str,
-        headers: object,
+        headers: http.client.HTTPMessage,
         new_url: str,
     ) -> urllib.request.Request | None:
         _validate_download_url(
@@ -59,7 +60,7 @@ class _ValidatedRedirectHandler(urllib.request.HTTPRedirectHandler):
 def _connect_to_pinned_address(
     pinned_address: str,
     target: tuple[str, int],
-    timeout: object,
+    timeout: float | None,
     source_address: tuple[str, int] | None,
 ) -> socket.socket:
     return socket.create_connection(
@@ -71,22 +72,45 @@ class _PinnedHTTPSConnection(http.client.HTTPSConnection):
     """HTTPS connection whose TCP peer is a previously validated address."""
 
     def __init__(
-        self, host: str, *, pinned_address: str, **kwargs: object
+        self,
+        host: str,
+        port: int | None = None,
+        *,
+        timeout: float | None = None,
+        source_address: tuple[str, int] | None = None,
+        context: ssl.SSLContext | None = None,
+        blocksize: int = 8192,
+        pinned_address: str,
     ) -> None:
-        super().__init__(host, **kwargs)
+        super().__init__(
+            host,
+            port=port,
+            timeout=timeout,
+            source_address=source_address,
+            context=context,
+            blocksize=blocksize,
+        )
         self._create_connection = partial(
             _connect_to_pinned_address, pinned_address
         )
 
 
 class _PinnedHTTPSHandler(urllib.request.HTTPSHandler):
-    """Resolve and pin each HTTPS peer before connecting."""
+    """Resolve and pin each direct HTTPS peer before connecting."""
 
-    def __init__(self, *, allow_loopback_http: bool = False) -> None:
-        super().__init__()
+    def __init__(
+        self,
+        *,
+        allow_loopback_http: bool = False,
+        ssl_context: ssl.SSLContext | None = None,
+    ) -> None:
         self._allow_loopback_http = allow_loopback_http
+        self._ssl_context = ssl_context or ssl.create_default_context()
+        super().__init__(context=self._ssl_context)
 
-    def https_open(self, request: urllib.request.Request) -> object:
+    def https_open(
+        self, request: urllib.request.Request
+    ) -> http.client.HTTPResponse:
         pinned_address = _validate_download_url(
             request.full_url, allow_loopback_http=self._allow_loopback_http
         )
@@ -98,9 +122,19 @@ class _PinnedHTTPSHandler(urllib.request.HTTPSHandler):
         return self.do_open(
             connection_factory,
             request,
-            context=self._context,
-            check_hostname=self._check_hostname,
+            context=self._ssl_context,
         )
+
+
+def _download_opener(
+    *, allow_loopback_http: bool
+) -> urllib.request.OpenerDirector:
+    """Create a direct-only opener so proxy DNS cannot bypass origin pinning."""
+    return urllib.request.build_opener(
+        urllib.request.ProxyHandler({}),
+        _PinnedHTTPSHandler(allow_loopback_http=allow_loopback_http),
+        _ValidatedRedirectHandler(allow_loopback_http=allow_loopback_http),
+    )
 
 
 type ProgressSink = Callable[[ProgressEvent], None]
@@ -152,9 +186,8 @@ class HttpDownloadTransport:
         headers = {"Range": f"bytes={offset}-"} if offset else {}
         request = urllib.request.Request(url, headers=headers)
         destination.parent.mkdir(parents=True, exist_ok=True)
-        opener = urllib.request.build_opener(
-            _PinnedHTTPSHandler(allow_loopback_http=self.allow_loopback_http),
-            _ValidatedRedirectHandler(allow_loopback_http=self.allow_loopback_http),
+        opener = _download_opener(
+            allow_loopback_http=self.allow_loopback_http
         )
         with opener.open(request, timeout=self.timeout_seconds) as response:
             _validate_download_url(
@@ -217,7 +250,7 @@ def _validate_download_url(
         and parsed.scheme == "http"
         and parsed.hostname in {"127.0.0.1", "localhost", "::1"}
     ):
-        return
+        return None
     if parsed.scheme != "https":
         raise ValueError("Bundle downloads require HTTPS")
     try:

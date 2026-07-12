@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -27,7 +28,7 @@ class _StaticKnowledgeLocator:
 
 
 def _repository(path: Path) -> KnowledgeBundleRepository:
-    with sqlite3.connect(path) as database:
+    with closing(sqlite3.connect(path)) as database, database:
         database.executescript(
             """
             CREATE TABLE metadata (

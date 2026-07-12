@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from contextlib import closing
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -60,7 +61,7 @@ def test_feedback_is_append_only_and_queryable_by_canonical_variant_context(
     ) == (record,)
 
     with (
-        sqlite3.connect(feedback_store.database_path) as connection,
+        closing(sqlite3.connect(feedback_store.database_path)) as connection,
         pytest.raises(
             sqlite3.IntegrityError,
             match="immutable",
@@ -96,7 +97,7 @@ def test_feedback_export_import_preserves_ids_and_audit_content(
 
     target_path = tmp_path / "target.sqlite3"
     SQLiteStateStore(target_path).initialize()
-    with sqlite3.connect(target_path) as connection:
+    with closing(sqlite3.connect(target_path)) as connection, connection:
         connection.execute(
             """
             INSERT INTO classification_records
@@ -148,7 +149,7 @@ def test_feedback_import_is_atomic_when_any_referenced_record_is_missing(
 
     target_path = tmp_path / "atomic-target.sqlite3"
     SQLiteStateStore(target_path).initialize()
-    with sqlite3.connect(target_path) as connection:
+    with closing(sqlite3.connect(target_path)) as connection, connection:
         connection.execute(
             """
             INSERT INTO classification_records
