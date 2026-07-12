@@ -14,6 +14,9 @@ or institutional compliance assessment.
   content.
 - TLS certificate validation, redirect constraints, and source response-size
   limits in the HTTP policy.
+- Bundle downloads use direct HTTPS with public-IP DNS pinning, revalidate
+  redirect targets, and ignore ambient proxy settings; loopback HTTP requires
+  explicit opt-in and is not part of the default runtime.
 - Archive/member/path, digest, signature, and staging checks for bundles.
 - Focused abuse tests for malformed URLs, raw-resource limits, source transport,
   malicious bundles, and research-safety language.
