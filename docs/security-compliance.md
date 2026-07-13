@@ -20,6 +20,9 @@ or institutional compliance assessment.
 - Archive/member/path, digest, signature, and staging checks for bundles.
 - Focused abuse tests for malformed URLs, raw-resource limits, source transport,
   malicious bundles, and research-safety language.
+- The general quality workflow runs frozen tests, Ruff, mypy, lock validation,
+  and package builds across Python 3.12 and 3.13; this is engineering evidence,
+  not scientific validation or release authorization.
 - A locked runtime dependency audit and reviewed secret-detection workflow in
   continuous integration configuration.
 

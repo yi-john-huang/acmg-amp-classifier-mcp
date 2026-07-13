@@ -48,6 +48,7 @@ config.*.yaml
 *api*key*
 *api*token*
 *secret*
+!scripts/run_history_secret_scan.py
 !.secrets.baseline
 *password*
 *credential*
