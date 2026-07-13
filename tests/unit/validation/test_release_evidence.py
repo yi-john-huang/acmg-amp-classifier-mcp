@@ -125,6 +125,7 @@ def _manifest() -> dict[str, object]:
                     "p99_ms": 180.0,
                     "collection_period": "2026-07-10/2026-07-12",
                     "report_uri": "https://evidence.example/performance.json",
+                    "report_sha256": _SHA,
                 },
             ),
             _record(

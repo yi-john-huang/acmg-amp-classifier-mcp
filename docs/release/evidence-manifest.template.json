@@ -124,7 +124,8 @@
         "p95_ms": 0,
         "p99_ms": 0,
         "collection_period": "replace-with-collection-period",
-        "report_uri": "https://replace.example/performance-report.json"
+        "report_uri": "https://replace.example/performance-report.json",
+        "report_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
       }
     },
     {

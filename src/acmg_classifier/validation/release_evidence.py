@@ -372,6 +372,7 @@ def _detail_blockers(
             "p99_ms",
             "collection_period",
             "report_uri",
+            "report_sha256",
         ),
         EvidenceKind.RELEASE_OWNER_APPROVAL.value: (
             "release_version",
@@ -527,6 +528,8 @@ def _detail_blockers(
             blockers.append("live_performance p99 must not be below p95")
         if not _is_https(details["report_uri"]):
             blockers.append("live_performance report must use HTTPS")
+        if not _is_nonplaceholder_sha256(details["report_sha256"]):
+            blockers.append("live_performance report digest is invalid")
     elif kind == EvidenceKind.RELEASE_OWNER_APPROVAL.value:
         if details["release_version"] != candidate_version:
             blockers.append("release_owner_approval version does not match candidate")
