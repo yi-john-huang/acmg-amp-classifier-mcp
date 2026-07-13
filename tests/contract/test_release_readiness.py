@@ -24,6 +24,19 @@ REQUIRED_GATE_IDS = {"10.1", "10.2", "10.3", "10.4", "10.5", "10.6"}
 def _matrix() -> dict[str, object]:
     return json.loads(MATRIX_PATH.read_text(encoding="utf-8"))
 
+def _mark_evidence_manifest_accepted(matrix: dict[str, object]) -> None:
+    evidence = matrix["evidence_manifest"]
+    assert isinstance(evidence, dict)
+    evidence.update(
+        {
+            "status": "accepted",
+            "candidate_bundle_version": "2026.7.10",
+            "sha256": "c" * 64,
+            "verified_at": "2026-07-13T12:00:00Z",
+            "verified_by": "controlled-release-owner",
+            "review_status": "approved",
+        }
+    )
 
 def test_current_matrix_has_a_complete_fail_closed_ledger() -> None:
     matrix = _matrix()
@@ -55,6 +68,7 @@ def test_future_explicitly_complete_matrix_is_ready() -> None:
     matrix["release_status"] = "ready"
     matrix["candidate_bundle"]["release_signature_status"] = "verified"
     matrix["candidate_bundle"]["scientific_release_gate"] = "complete"
+    _mark_evidence_manifest_accepted(matrix)
     for capability in matrix["capabilities"]:
         if capability["id"] == "default-classification-runtime":
             capability["status"] = "experimental"
@@ -72,6 +86,54 @@ def test_future_explicitly_complete_matrix_is_ready() -> None:
     assert result.status is ReadinessStatus.READY
     assert result.blockers == ()
 
+
+def test_ready_matrix_requires_accepted_evidence_manifest() -> None:
+    matrix = copy.deepcopy(_matrix())
+    matrix["release_status"] = "ready"
+    matrix["candidate_bundle"]["release_signature_status"] = "verified"
+    matrix["candidate_bundle"]["scientific_release_gate"] = "complete"
+    _mark_evidence_manifest_accepted(matrix)
+    matrix["evidence_manifest"]["status"] = "missing"
+    for capability in matrix["capabilities"]:
+        if capability["id"] == "default-classification-runtime":
+            capability["status"] = "experimental"
+    for gate in matrix["release_gates"]:
+        gate["state"] = "complete"
+        gate["blockers"] = []
+        gate["review"] = {
+            "status": "approved",
+            "reviewed_at": "2026-07-13T00:00:00Z",
+            "reviewed_by": "release-owner",
+        }
+
+    result = evaluate_matrix(matrix)
+
+    assert result.status is ReadinessStatus.BLOCKED
+    assert any(blocker.gate_id == "evidence-manifest" for blocker in result.blockers)
+
+
+
+def test_ready_matrix_rejects_placeholder_evidence_digest() -> None:
+    matrix = copy.deepcopy(_matrix())
+    matrix["release_status"] = "ready"
+    matrix["candidate_bundle"]["release_signature_status"] = "verified"
+    matrix["candidate_bundle"]["scientific_release_gate"] = "complete"
+    _mark_evidence_manifest_accepted(matrix)
+    matrix["evidence_manifest"]["sha256"] = "0" * 64
+    for capability in matrix["capabilities"]:
+        if capability["id"] == "default-classification-runtime":
+            capability["status"] = "experimental"
+    for gate in matrix["release_gates"]:
+        gate["state"] = "complete"
+        gate["blockers"] = []
+        gate["review"] = {
+            "status": "approved",
+            "reviewed_at": "2026-07-13T00:00:00Z",
+            "reviewed_by": "release-owner",
+        }
+
+    with pytest.raises(MatrixValidationError, match="placeholder"):
+        evaluate_matrix(matrix)
 
 def test_complete_gate_requires_review_identity() -> None:
     matrix = copy.deepcopy(_matrix())

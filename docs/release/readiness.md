@@ -20,6 +20,19 @@ python scripts/check_release_readiness.py --format text
 python scripts/check_release_readiness.py --format json
 ```
 
+Validate a retained external evidence manifest without reading its report
+contents:
+
+```sh
+python scripts/validate_release_evidence.py \
+  --manifest /controlled/retention/core-2026.7.10.evidence.json \
+  --format json
+```
+
+The submission contract is documented in
+[`evidence-intake.md`](evidence-intake.md), with the shaped template in
+[`evidence-manifest.template.json`](evidence-manifest.template.json).
+
 Exit status:
 
 | Exit | Meaning |
@@ -78,16 +91,24 @@ performance.
 | 10.6 Performance and token budgets | Performance owner | Retained live workload and platform benchmark samples | Blocked |
 | Candidate bundle | Controlled release owner | Controlled Ed25519 signature, trusted catalog, publication, retention, and revocation records | Blocked |
 
+The matrix also records a digest-bound `evidence_manifest` block. It remains
+`status: missing` until the retained manifest has all seven accepted records
+and an approved verification review. The evaluator checks this metadata but
+never fetches the referenced reports.
+
 The synthetic validation fixture, deterministic benchmark suite, local TLS
 server, CI runs, and package smoke jobs must remain labeled engineering evidence.
 They cannot be substituted for the external artifacts above.
 
 ## Controlled release sequence
 
+0. Validate the retained manifest with `scripts/validate_release_evidence.py`;
+   do not update the matrix while any record is pending, rejected, expired, or
+   synthetic-only.
 1. Supply and independently review every evidence artifact in the ledger.
 2. Update the corresponding matrix gate `state`, evidence reference, review
-   record, candidate signature status, and scientific release gate through the
-   controlled release process.
+   record, candidate signature status, scientific release gate, and
+   `evidence_manifest` metadata through the controlled release process.
 3. Run the evaluator and retain its JSON output with the release record.
 4. Run the complete quality, security, package, platform, and benchmark gates.
 5. Obtain the release-owner approval and confirm branch protections and review

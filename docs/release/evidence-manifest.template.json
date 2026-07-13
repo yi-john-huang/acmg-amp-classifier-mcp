@@ -1,0 +1,151 @@
+{
+  "schema_version": "1.0",
+  "release_id": "replace-with-release-id",
+  "candidate_bundle_version": "0.0.0",
+  "matrix_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "records": [
+    {
+      "kind": "scientific_validation",
+      "status": "pending",
+      "artifact_uri": "https://replace.example/scientific-validation.json",
+      "retention_uri": "https://replace.example/retention/scientific-validation",
+      "artifact_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "owner": "scientific-validation-owner",
+      "submitted_at": "2026-07-13T00:00:00Z",
+      "review": {"status": "pending", "reviewed_by": null, "reviewed_at": null, "independent": false},
+      "details": {
+        "dataset_id": "replace-with-independent-dataset",
+        "provenance_uris": ["https://replace.example/provenance"],
+        "redistribution_permission": "replace-with-license-decision",
+        "evaluation_protocol": "replace-with-protocol",
+        "result_summary": "replace-with-retained-results",
+        "independent_review": false,
+        "synthetic_only": true
+      }
+    },
+    {
+      "kind": "controlled_catalog",
+      "status": "pending",
+      "artifact_uri": "https://replace.example/catalog.json",
+      "retention_uri": "https://replace.example/retention/catalog",
+      "artifact_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "owner": "controlled-release-owner",
+      "submitted_at": "2026-07-13T00:00:00Z",
+      "review": {"status": "pending", "reviewed_by": null, "reviewed_at": null, "independent": false},
+      "details": {
+        "key_id": "replace-with-controlled-key-id",
+        "algorithm": "Ed25519",
+        "public_key_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "catalog_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "archive_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "manifest_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "manifest_verified": false,
+        "signature_verified": false,
+        "published_uri": "https://replace.example/public/catalog.json",
+        "revocation_uri": "https://replace.example/public/revocations.json",
+        "retention_uri": "https://replace.example/retention/catalog"
+      }
+    },
+    {
+      "kind": "bundle_installation",
+      "status": "pending",
+      "artifact_uri": "https://replace.example/bundle-installation.json",
+      "retention_uri": "https://replace.example/retention/bundle-installation",
+      "artifact_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "owner": "controlled-release-owner",
+      "submitted_at": "2026-07-13T00:00:00Z",
+      "review": {"status": "pending", "reviewed_by": null, "reviewed_at": null, "independent": false},
+      "details": {
+        "bundle_version": "0.0.0",
+        "platform": "replace-platform",
+        "python_version": "3.13",
+        "clean_install": false,
+        "first_use_seconds": 0,
+        "installed_manifest_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "cache_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "runtime_smoke_status": "pending"
+      }
+    },
+    {
+      "kind": "platform_usability",
+      "status": "pending",
+      "artifact_uri": "https://replace.example/platform-usability.json",
+      "retention_uri": "https://replace.example/retention/platform-usability",
+      "artifact_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "owner": "platform-and-usability-owner",
+      "submitted_at": "2026-07-13T00:00:00Z",
+      "review": {"status": "pending", "reviewed_by": null, "reviewed_at": null, "independent": false},
+      "details": {
+        "python_versions": ["3.13"],
+        "platforms": ["replace-linux", "replace-windows"],
+        "clean_install_report_uri": "https://replace.example/clean-install.json",
+        "participant_record_uri": "https://replace.example/participants.json",
+        "report_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "participant_count": 0,
+        "first_use_max_seconds": 0,
+        "automation_only": true
+      }
+    },
+    {
+      "kind": "security_assessment",
+      "status": "pending",
+      "artifact_uri": "https://replace.example/security-assessment.json",
+      "retention_uri": "https://replace.example/retention/security-assessment",
+      "artifact_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "owner": "security-owner",
+      "submitted_at": "2026-07-13T00:00:00Z",
+      "review": {"status": "pending", "reviewed_by": null, "reviewed_at": null, "independent": false},
+      "details": {
+        "assessor": "replace-with-independent-assessor",
+        "assessor_independent": false,
+        "standard": "replace-with-assessment-standard",
+        "issued_at": "2026-07-13T00:00:00Z",
+        "valid_until": "2026-07-13T00:00:00Z",
+        "report_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "findings_status": "pending",
+        "scope": "replace-with-assessment-scope"
+      }
+    },
+    {
+      "kind": "live_performance",
+      "status": "pending",
+      "artifact_uri": "https://replace.example/live-performance.json",
+      "retention_uri": "https://replace.example/retention/live-performance",
+      "artifact_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "owner": "performance-owner",
+      "submitted_at": "2026-07-13T00:00:00Z",
+      "review": {"status": "pending", "reviewed_by": null, "reviewed_at": null, "independent": false},
+      "details": {
+        "workload_id": "replace-with-live-workload-id",
+        "synthetic": true,
+        "platform": "replace-platform",
+        "python_version": "3.13",
+        "sample_count": 0,
+        "p95_ms": 0,
+        "p99_ms": 0,
+        "collection_period": "replace-with-collection-period",
+        "report_uri": "https://replace.example/performance-report.json"
+      }
+    },
+    {
+      "kind": "release_owner_approval",
+      "status": "pending",
+      "artifact_uri": "https://replace.example/release-approval.json",
+      "retention_uri": "https://replace.example/retention/release-approval",
+      "artifact_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "owner": "controlled-release-owner",
+      "submitted_at": "2026-07-13T00:00:00Z",
+      "review": {"status": "pending", "reviewed_by": null, "reviewed_at": null, "independent": false},
+      "details": {
+        "release_version": "0.0.0",
+        "compatibility_window_end": "1970-01-01",
+        "decision_id": "replace-with-release-decision-id",
+        "candidate_bundle_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "evidence_manifest_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "approved_at": "1970-01-01",
+        "bound_candidate_bundle_version": "0.0.0",
+        "approved": false
+      }
+    }
+  ]
+}

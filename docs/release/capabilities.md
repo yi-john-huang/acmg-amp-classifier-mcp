@@ -13,6 +13,11 @@ The current machine-checked verdict is documented in the
 `python scripts/check_release_readiness.py --format json` from the repository
 root; a blocked matrix exits with status `1`.
 
+The maintainer-only evidence intake and signed-catalog commands are documented
+in [`evidence-intake.md`](evidence-intake.md). They validate metadata and
+signatures but do not create external scientific, security, usability, or
+performance evidence.
+
 ## Status vocabulary
 
 | Status | Meaning |
@@ -57,6 +62,7 @@ redistribution flags are in [`capabilities.json`](capabilities.json).
 | 10.4 packaging/first use | External prerequisite | Local macOS wheel install and help smoke | Linux/Windows, reference journey, and participant usability evidence. |
 | 10.5 security/privacy | External prerequisite | Focused controls, locked dependency audit, and secret-scan workflow | Independent external security assessment or certification evidence. |
 | 10.6 performance/tokens | External prerequisite | Deterministic byte/tool/token budget evaluation | Retained live platform/workload samples for latency claims. |
+| Evidence intake and signed catalog | Experimental | Metadata-only evidence validator and Ed25519 catalog/bundle verification | External evidence, key custody, publication, and independent review remain required. |
 
 ## Sources and criteria
 

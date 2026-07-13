@@ -153,6 +153,25 @@ def test_capability_matrix_labels_every_claim_and_preserves_release_blockers() -
     assert golden["release_eligible"] is False
 
 
+
+def test_evidence_manifest_is_digest_bound_and_fail_closed() -> None:
+    evidence = _matrix()["evidence_manifest"]
+
+    assert evidence["status"] == "missing"
+    assert evidence["release_id"] == "core-2026.7.10"
+    assert evidence["candidate_bundle_version"] == "2026.7.10"
+    assert evidence["required_kinds"] == [
+        "scientific_validation",
+        "controlled_catalog",
+        "bundle_installation",
+        "platform_usability",
+        "security_assessment",
+        "live_performance",
+        "release_owner_approval",
+    ]
+    assert evidence["review_status"] == "pending"
+    assert evidence["sha256"] is None
+
 def test_candidate_bundle_metadata_is_sourced_from_release_artifacts() -> None:
     matrix = _matrix()
     recipe = json.loads(

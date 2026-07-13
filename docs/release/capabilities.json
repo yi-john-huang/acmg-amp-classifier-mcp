@@ -43,6 +43,25 @@
     ],
     "status": "external_prerequisite"
   },
+  "evidence_manifest": {
+    "status": "missing",
+    "release_id": "core-2026.7.10",
+    "candidate_bundle_version": "2026.7.10",
+    "required_kinds": [
+      "scientific_validation",
+      "controlled_catalog",
+      "bundle_installation",
+      "platform_usability",
+      "security_assessment",
+      "live_performance",
+      "release_owner_approval"
+    ],
+    "path": "controlled-release/evidence/core-2026.7.10.json",
+    "sha256": null,
+    "verified_at": null,
+    "verified_by": null,
+    "review_status": "pending"
+  },
   "capabilities": [
     {
       "evidence": "tests/integration/presentation/test_default_runtime.py",

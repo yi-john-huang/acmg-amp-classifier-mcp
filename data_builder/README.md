@@ -32,6 +32,14 @@ Ed25519 key, the builder targets byte-identical archive, manifest, signature, an
 build-report outputs. Retain locked raw source inputs because public source
 endpoints can change over time.
 
+After a bundle manifest and its manifest signature have been independently
+checked, a release operator can create a signed catalog with
+`python -m data_builder catalog`. The command requires the bundle public key and
+an operator-supplied Ed25519 catalog key; it rejects non-HTTPS archive URLs and
+never writes key material. See
+[`docs/release/evidence-intake.md`](../docs/release/evidence-intake.md) for the
+complete handoff contract.
+
 Transformation `1.0.0` includes MANE rows only when they have a stable HGNC
 identifier. MANE v1.5 has 52 rows without an HGNC assignment; they are excluded
 from the runtime mapping table and counted in candidate build review. A

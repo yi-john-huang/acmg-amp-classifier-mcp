@@ -22,6 +22,17 @@ DEFAULT_MATRIX = ROOT / "docs" / "release" / "capabilities.json"
 REQUIRED_GATE_IDS = ("10.1", "10.2", "10.3", "10.4", "10.5", "10.6")
 _ALLOWED_GATE_STATES = frozenset({"blocked", "complete"})
 _ALLOWED_REVIEW_STATES = frozenset({"pending", "approved"})
+_EVIDENCE_MANIFEST_STATUSES = frozenset({"missing", "accepted"})
+_EVIDENCE_REVIEW_STATUSES = frozenset({"pending", "approved", "rejected"})
+_REQUIRED_EVIDENCE_KINDS = (
+    "scientific_validation",
+    "controlled_catalog",
+    "bundle_installation",
+    "platform_usability",
+    "security_assessment",
+    "live_performance",
+    "release_owner_approval",
+)
 
 
 class MatrixValidationError(ValueError):
@@ -105,6 +116,91 @@ def _require_mapping(value: Any, label: str) -> Mapping[str, Any]:
     return value
 
 
+
+
+def _require_sha256(value: Any, label: str) -> str:
+    result = _require_nonempty_string(value, label)
+    if len(result) != 64 or any(
+        character not in "0123456789abcdef" for character in result
+    ):
+        raise MatrixValidationError(f"{label} must be a lowercase SHA-256 digest")
+    if result == "0" * 64:
+        raise MatrixValidationError(f"{label} must not be a placeholder digest")
+    return result
+
+
+def _validate_evidence_manifest_metadata(
+    value: Any, candidate_bundle_version: str
+) -> tuple[Blocker, ...]:
+    evidence = _require_mapping(value, "evidence_manifest")
+    status = _require_nonempty_string(
+        evidence.get("status"), "evidence_manifest status"
+    )
+    if status not in _EVIDENCE_MANIFEST_STATUSES:
+        raise MatrixValidationError(
+            f"evidence_manifest has unknown status {status!r}"
+        )
+    release_id = _require_nonempty_string(
+        evidence.get("release_id"), "evidence_manifest release_id"
+    )
+    path = _require_nonempty_string(
+        evidence.get("path"), "evidence_manifest path"
+    )
+    if (
+        path.startswith(("/", "\\"))
+        or "\\" in path
+        or ".." in path.split("/")
+    ):
+        raise MatrixValidationError("evidence_manifest path must be safe")
+    bound_version = _require_nonempty_string(
+        evidence.get("candidate_bundle_version"),
+        "evidence_manifest candidate_bundle_version",
+    )
+    if bound_version != candidate_bundle_version:
+        raise MatrixValidationError(
+            "evidence_manifest candidate_bundle_version does not match candidate"
+        )
+    required_kinds = _require_string_list(
+        evidence.get("required_kinds"), "evidence_manifest required_kinds"
+    )
+    if required_kinds != _REQUIRED_EVIDENCE_KINDS:
+        raise MatrixValidationError(
+            "evidence_manifest required_kinds must match the canonical evidence kinds"
+        )
+    review_status = _require_nonempty_string(
+        evidence.get("review_status"), "evidence_manifest review_status"
+    )
+    if review_status not in _EVIDENCE_REVIEW_STATUSES:
+        raise MatrixValidationError(
+            f"evidence_manifest has unknown review_status {review_status!r}"
+        )
+    if status == "accepted":
+        _require_sha256(evidence.get("sha256"), "evidence_manifest sha256")
+        _require_nonempty_string(
+            evidence.get("verified_at"), "evidence_manifest verified_at"
+        )
+        _require_nonempty_string(
+            evidence.get("verified_by"), "evidence_manifest verified_by"
+        )
+        if review_status != "approved":
+            raise MatrixValidationError(
+                "accepted evidence_manifest requires an approved review"
+            )
+        return ()
+    return (
+        Blocker(
+            gate_id="evidence-manifest",
+            reason=(
+                f"Evidence manifest {release_id!r} at {path!r} "
+                f"has status {status!r}; all external evidence must be accepted."
+            ),
+            required_evidence=(
+                "accepted digest-bound evidence manifest covering scientific, "
+                "catalog, bundle, platform, security, performance, and approval records"
+            ),
+            owner_role="controlled-release-owner",
+        ),
+    )
 def _require_nonempty_string(value: Any, label: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise MatrixValidationError(f"{label} must be a non-empty string")
@@ -249,6 +345,14 @@ def evaluate_matrix(matrix: Mapping[str, Any]) -> ReadinessResult:
     scientific_gate = _require_nonempty_string(
         candidate.get("scientific_release_gate"),
         "candidate_bundle.scientific_release_gate",
+    )
+    candidate_bundle_version = _require_nonempty_string(
+        candidate.get("bundle_version"), "candidate_bundle.bundle_version"
+    )
+    blockers.extend(
+        _validate_evidence_manifest_metadata(
+            root.get("evidence_manifest"), candidate_bundle_version
+        )
     )
     if signature_status != "verified":
         _append_global_blocker(
