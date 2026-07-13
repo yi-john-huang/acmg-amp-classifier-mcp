@@ -38,4 +38,4 @@ jobs:
         run: uv run --frozen --no-sync pytest --no-cov tests/packaging/test_package_smoke.py -q
 
       - name: Record platform evidence metadata
-        run: uv run --frozen --no-sync python -c "import platform, sys; print({'platform': platform.platform(), 'python': sys.version, 'package_smoke': 'passed'})"
+        run: uv run --frozen --no-sync python -c "import platform, sys; print(platform.platform(), sys.version, 'package_smoke=passed')"
