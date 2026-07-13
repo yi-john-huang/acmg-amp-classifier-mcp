@@ -12,6 +12,9 @@ diagnosis or recommend treatment.
 This repository is an **experimental** migration release. The source-controlled
 [capability support matrix](docs/release/capabilities.md) is the authoritative
 record of implemented interfaces, validation level, and release blockers.
+See the [release readiness decision](docs/release/readiness.md) for the
+machine-checked verdict and the evidence required before any controlled
+publication.
 
 The package starts with local SQLite state and structured CLI/MCP behavior. It
 does **not** ship a controlled signed data catalog, trusted release keys, or a

@@ -23,6 +23,7 @@ LIMITS_PATH = DOCS / "known-limits.md"
 MIGRATION_PATH = DOCS / "migration.md"
 SAFETY_PATH = DOCS / "safety-and-privacy.md"
 SUPPORT_POLICY_PATH = DOCS / "support-policy.md"
+READINESS_PATH = DOCS / "release" / "readiness.md"
 
 _ALLOWED_STATUSES = {
     "experimental",
@@ -205,6 +206,7 @@ def test_entry_docs_are_current_and_research_use_only() -> None:
         SAFETY_PATH,
         SUPPORT_POLICY_PATH,
         DOCS / "release" / "capabilities.md",
+        READINESS_PATH,
     )
     for path in entry_docs:
         text = path.read_text(encoding="utf-8").lower()
@@ -231,6 +233,17 @@ def test_entry_docs_are_current_and_research_use_only() -> None:
     ):
         assert re.search(obsolete_pattern, quick_start) is None
 
+
+
+def test_release_readiness_documentation_preserves_blocked_verdict() -> None:
+    text = READINESS_PATH.read_text(encoding="utf-8").lower()
+
+    assert "not ready" in text
+    assert "check_release_readiness.py --format json" in text
+    for gate_id in ("10.1", "10.2", "10.3", "10.4", "10.5", "10.6"):
+        assert gate_id in text
+    assert "research and educational use only" in text
+    assert "not for clinical" in text
 
 def test_legacy_documentation_and_examples_exclude_obsolete_claims() -> None:
     paths = (

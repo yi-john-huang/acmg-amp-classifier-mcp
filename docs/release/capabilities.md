@@ -8,6 +8,11 @@ This page is a readable view of
 source-controlled contract used by documentation tests. A passing local test is
 not a clinical validation or a release certification.
 
+The current machine-checked verdict is documented in the
+[release readiness decision](readiness.md). Run
+`python scripts/check_release_readiness.py --format json` from the repository
+root; a blocked matrix exits with status `1`.
+
 ## Status vocabulary
 
 | Status | Meaning |

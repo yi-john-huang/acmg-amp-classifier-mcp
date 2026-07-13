@@ -651,6 +651,15 @@
     "status": "external_prerequisite",
     "timing_evidence": "synthetic fixtures only; no live latency claim"
   },
+  "readiness_schema_version": "1.0",
+  "required_release_gate_ids": [
+    "10.1",
+    "10.2",
+    "10.3",
+    "10.4",
+    "10.5",
+    "10.6"
+  ],
   "release_gates": [
     {
       "blockers": [
@@ -658,7 +667,13 @@
       ],
       "evidence": "tests/contract/test_legacy_go_compatibility.py",
       "status": "experimental",
-      "task_id": "10.1"
+      "task_id": "10.1",
+      "state": "blocked",
+      "owner_role": "release-owner",
+      "required_evidence": "approved compatibility-window version and end-date decision",
+      "review": {
+        "status": "pending"
+      }
     },
     {
       "blockers": [
@@ -666,7 +681,13 @@
       ],
       "evidence": "tests/fixtures/golden/synthetic_smoke_manifest.json",
       "status": "external_prerequisite",
-      "task_id": "10.2"
+      "task_id": "10.2",
+      "state": "blocked",
+      "owner_role": "scientific-validation-owner",
+      "required_evidence": "provenance-approved independently curated validation dataset and retained review",
+      "review": {
+        "status": "pending"
+      }
     },
     {
       "blockers": [
@@ -674,7 +695,13 @@
       ],
       "evidence": "tests/integration/application/test_classification_service.py; tests/integration/application/test_reinterpretation.py",
       "status": "experimental",
-      "task_id": "10.3"
+      "task_id": "10.3",
+      "state": "blocked",
+      "owner_role": "controlled-release-owner",
+      "required_evidence": "compatible installed signed bundle and cache artifacts",
+      "review": {
+        "status": "pending"
+      }
     },
     {
       "blockers": [
@@ -682,7 +709,13 @@
       ],
       "evidence": "tests/packaging/test_package_smoke.py",
       "status": "external_prerequisite",
-      "task_id": "10.4"
+      "task_id": "10.4",
+      "state": "blocked",
+      "owner_role": "platform-and-usability-owner",
+      "required_evidence": "Linux and Windows clean-install evidence and participant usability record",
+      "review": {
+        "status": "pending"
+      }
     },
     {
       "blockers": [
@@ -690,7 +723,13 @@
       ],
       "evidence": "tests/security/test_security_gate.py; .github/workflows/security.yml",
       "status": "external_prerequisite",
-      "task_id": "10.5"
+      "task_id": "10.5",
+      "state": "blocked",
+      "owner_role": "security-owner",
+      "required_evidence": "independent external security assessment or certification report",
+      "review": {
+        "status": "pending"
+      }
     },
     {
       "blockers": [
@@ -698,7 +737,13 @@
       ],
       "evidence": "tests/benchmarks/test_benchmarks.py",
       "status": "external_prerequisite",
-      "task_id": "10.6"
+      "task_id": "10.6",
+      "state": "blocked",
+      "owner_role": "performance-owner",
+      "required_evidence": "retained live workload and platform benchmark samples",
+      "review": {
+        "status": "pending"
+      }
     }
   ],
   "release_status": "experimental",
