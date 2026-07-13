@@ -54,9 +54,11 @@ The GitHub API verification for both `develop` and `master` confirms:
 
 - pull requests and one approval are required;
 - stale approvals are dismissed;
-- strict required checks are `Quality (Python 3.12)`, `Quality (Python 3.13)`,
-  `Locked Python dependency audit`, `Fail-closed local secret scan`, and
+- strict required checks include `Quality (Python 3.12)`, `Quality (Python
+  3.13)`, `Locked Python dependency audit`, `Fail-closed local secret scan`, and
   `Fail-closed complete Git history secret scan`;
+- the six `Package smoke` matrix jobs and `Retain synthetic benchmark evidence`
+  are also required;
 - administrator enforcement and conversation resolution are enabled;
 - force pushes and branch deletion are disabled.
 
